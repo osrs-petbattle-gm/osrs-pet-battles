@@ -43,6 +43,15 @@ public class BattleOverlay extends Overlay
 	private static final Color HP_RED = new Color(200, 60, 50);
 	private static final Color LOG_TEXT = new Color(230, 225, 210);
 
+	private static final Color SPLAT_RED = new Color(161, 22, 21);
+	private static final Color SPLAT_SUPER = new Color(220, 80, 10);
+	private static final Color SPLAT_RESIST = new Color(110, 45, 45);
+	private static final Color SPLAT_BLUE = new Color(40, 66, 155);
+
+	// Sprite positions shared by the pet drawing and the effect layers
+	private static final Rectangle ENEMY_SPRITE = new Rectangle(WIDTH - 96, 24, 72, 72);
+	private static final Rectangle PLAYER_SPRITE = new Rectangle(24, 88, 72, 72);
+
 	/**
 	 * A clickable region, in overlay-local coordinates.
 	 */
@@ -123,11 +132,18 @@ public class BattleOverlay extends Overlay
 
 		// Enemy: info card top-left, sprite top-right
 		drawPetInfo(g, enemy, 10, 22, false);
-		drawPetSprite(g, enemy, WIDTH - 96, 24, 72);
+		drawPetSprite(g, enemy, ENEMY_SPRITE.x, ENEMY_SPRITE.y, ENEMY_SPRITE.width);
 
 		// Player: sprite mid-left, info card mid-right
-		drawPetSprite(g, player, 24, 88, 72);
+		drawPetSprite(g, player, PLAYER_SPRITE.x, PLAYER_SPRITE.y, PLAYER_SPRITE.width);
 		drawPetInfo(g, player, WIDTH - 150, 92, true);
+
+		// Hit splats ride the current event
+		BattleEvent current = session.getCurrentEvent();
+		if (current != null && session.getPhase() == BattleSession.Phase.ANIMATING)
+		{
+			drawEventEffects(g, current, session.getAnimationProgress());
+		}
 
 		List<Button> newButtons = new ArrayList<>();
 		if (session.getPhase() == BattleSession.Phase.ANIMATING)
@@ -192,6 +208,66 @@ public class BattleOverlay extends Overlay
 		}
 
 		return new Dimension(WIDTH, HEIGHT);
+	}
+
+	/**
+	 * Per-event effect layer: OSRS-style hit splats over the affected pet sprite.
+	 */
+	private void drawEventEffects(Graphics2D g, BattleEvent event, float progress)
+	{
+		switch (event.getType())
+		{
+			case DAMAGE:
+			{
+				Color color = event.getEffectiveness() >= 2.0 ? SPLAT_SUPER
+					: event.getEffectiveness() <= 0.5 ? SPLAT_RESIST : SPLAT_RED;
+				drawHitsplat(g, spriteRect(event.getSide()), String.valueOf(event.getValue()), color, progress);
+				break;
+			}
+			case MISSED:
+				// A whiff renders as the OSRS blue 0 splat on the would-be defender
+				drawHitsplat(g, spriteRect(BattleState.opponent(event.getSide())), "0", SPLAT_BLUE, progress);
+				break;
+			default:
+				break;
+		}
+	}
+
+	private static Rectangle spriteRect(int side)
+	{
+		return side == BattleState.PLAYER ? PLAYER_SPRITE : ENEMY_SPRITE;
+	}
+
+	/**
+	 * A four-lobed splat that pops in, holds, and fades over the animation progress.
+	 */
+	private void drawHitsplat(Graphics2D g, Rectangle target, String number, Color color, float progress)
+	{
+		// Pop in over the first 15%, fade out over the last 25%
+		float scale = Math.min(1f, progress / 0.15f);
+		float alpha = progress > 0.75f ? Math.max(0f, 1f - (progress - 0.75f) / 0.25f) : 1f;
+		if (scale <= 0f || alpha <= 0f)
+		{
+			return;
+		}
+		int cx = target.x + target.width / 2;
+		int cy = target.y + target.height / 2;
+		int r = (int) (13 * scale);
+
+		Color body = new Color(color.getRed(), color.getGreen(), color.getBlue(), (int) (230 * alpha));
+		g.setColor(body);
+		// Four overlapping lobes plus a centre give the classic splat silhouette
+		g.fillOval(cx - r, cy - r / 2 - 2, r, r);
+		g.fillOval(cx, cy - r / 2 - 2, r, r);
+		g.fillOval(cx - r / 2 - 2, cy - r, r, r);
+		g.fillOval(cx - r / 2 - 2, cy, r, r);
+		g.fillOval(cx - r + 2, cy - r / 2, 2 * r - 4, r);
+
+		g.setFont(FontManager.getRunescapeSmallFont());
+		g.setColor(new Color(255, 255, 255, (int) (255 * alpha)));
+		FontMetrics fm = g.getFontMetrics();
+		g.drawString(number, cx - fm.stringWidth(number) / 2,
+			cy + (fm.getAscent() - fm.getDescent()) / 2);
 	}
 
 	/**
