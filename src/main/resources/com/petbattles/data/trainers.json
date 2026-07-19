@@ -1,0 +1,70 @@
+[
+  {
+    "id": "party_pete", "name": "Party Pete", "theme": "Falador Party Room host",
+    "difficulty": "EASY",
+    "party": [
+      { "species": "giant_squirrel", "level": 5 },
+      { "species": "beaver", "level": 6 }
+    ]
+  },
+  {
+    "id": "gertrude", "name": "Gertrude", "theme": "Varrock's famous pet keeper",
+    "difficulty": "EASY",
+    "party": [
+      { "species": "heron", "level": 8 },
+      { "species": "rocky", "level": 8 },
+      { "species": "baby_chinchompa", "level": 10 }
+    ]
+  },
+  {
+    "id": "wyson", "name": "Wyson the Gardener", "theme": "Falador Park groundskeeper",
+    "difficulty": "MEDIUM",
+    "party": [
+      { "species": "tangleroot", "level": 15 },
+      { "species": "giant_squirrel", "level": 14 },
+      { "species": "baby_mole", "level": 18 }
+    ]
+  },
+  {
+    "id": "oziach", "name": "Oziach", "theme": "Seller of rune platebodies, slayer of dragons",
+    "difficulty": "MEDIUM",
+    "party": [
+      { "species": "prince_black_dragon", "level": 20 },
+      { "species": "vorki", "level": 22 }
+    ]
+  },
+  {
+    "id": "tzhaar_mej", "name": "TzHaar-Mej", "theme": "Mor Ul Rek mystic",
+    "difficulty": "MEDIUM",
+    "party": [
+      { "species": "jal_nib_rek", "level": 25 },
+      { "species": "tzrek_jad", "level": 28 }
+    ]
+  },
+  {
+    "id": "sergeant_damien", "name": "Sergeant Damien", "theme": "Abyssal drill demon",
+    "difficulty": "HARD",
+    "party": [
+      { "species": "hellpuppy", "level": 32 },
+      { "species": "abyssal_orphan", "level": 35 }
+    ]
+  },
+  {
+    "id": "duradel", "name": "Duradel", "theme": "Master Slayer",
+    "difficulty": "HARD",
+    "party": [
+      { "species": "skotos", "level": 38 },
+      { "species": "vetion_jr", "level": 40 },
+      { "species": "ikkle_hydra", "level": 42 }
+    ]
+  },
+  {
+    "id": "wise_old_man", "name": "The Wise Old Man", "theme": "Draynor's most dangerous retiree",
+    "difficulty": "HARD",
+    "party": [
+      { "species": "rocky", "level": 45 },
+      { "species": "olmlet", "level": 48 },
+      { "species": "lil_zik", "level": 50 }
+    ]
+  }
+]

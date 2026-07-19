@@ -1,0 +1,12 @@
+{
+  "MELEE":    { "RANGED": 2.0, "MAGIC": 0.5, "ICE": 2.0, "UNDEAD": 0.5, "DRAGON": 0.5, "SKILLING": 2.0 },
+  "RANGED":   { "MELEE": 0.5, "MAGIC": 2.0, "NATURE": 0.5, "DRAGON": 2.0, "SKILLING": 2.0 },
+  "MAGIC":    { "MELEE": 2.0, "RANGED": 0.5, "FIRE": 0.5, "DEMON": 2.0, "SKILLING": 2.0 },
+  "FIRE":     { "MAGIC": 0.5, "FIRE": 0.5, "ICE": 2.0, "NATURE": 2.0, "UNDEAD": 2.0, "DEMON": 0.5, "DRAGON": 0.5 },
+  "ICE":      { "RANGED": 0.5, "FIRE": 0.5, "ICE": 0.5, "NATURE": 2.0, "DRAGON": 2.0 },
+  "NATURE":   { "RANGED": 2.0, "MAGIC": 0.5, "FIRE": 0.5, "NATURE": 0.5, "UNDEAD": 2.0, "SKILLING": 0.5 },
+  "UNDEAD":   { "FIRE": 0.5, "NATURE": 2.0, "UNDEAD": 0.5, "DEMON": 0.5, "SKILLING": 2.0 },
+  "DEMON":    { "MELEE": 2.0, "MAGIC": 0.5, "FIRE": 2.0, "ICE": 0.5, "DEMON": 0.5, "SKILLING": 2.0 },
+  "DRAGON":   { "MELEE": 2.0, "RANGED": 0.5, "FIRE": 0.5, "ICE": 0.5, "NATURE": 2.0, "DEMON": 2.0, "DRAGON": 0.5, "SKILLING": 2.0 },
+  "SKILLING": { "MELEE": 0.5, "RANGED": 0.5, "MAGIC": 0.5, "NATURE": 2.0 }
+}

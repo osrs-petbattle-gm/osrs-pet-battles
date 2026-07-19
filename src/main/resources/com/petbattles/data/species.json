@@ -1,0 +1,360 @@
+[
+  {
+    "id": "baby_mole", "name": "Baby Mole",
+    "itemId": 12646, "altItemIds": [25613],
+    "npcIds": [6635, 6651, 10650, 10651],
+    "npcXpTags": ["Giant Mole"],
+    "types": ["MELEE", "NATURE"],
+    "base": { "hp": 55, "atk": 52, "def": 60, "spd": 40 },
+    "learnset": [
+      { "level": 1, "move": "scratch" },
+      { "level": 7, "move": "vine_whip" },
+      { "level": 14, "move": "bulk_up" },
+      { "level": 22, "move": "crush" },
+      { "level": 34, "move": "overgrowth" }
+    ],
+    "easterEggs": [
+      { "move": "grand_exit", "trigger": { "kind": "LOCATION", "regionId": 11828, "desc": "Take Baby Mole home to Falador Park" } }
+    ]
+  },
+  {
+    "id": "prince_black_dragon", "name": "Prince Black Dragon",
+    "itemId": 12653, "altItemIds": [],
+    "npcIds": [6636, 6652],
+    "npcXpTags": ["King Black Dragon", "Black dragon", "Baby black dragon"],
+    "types": ["DRAGON", "MELEE"],
+    "base": { "hp": 62, "atk": 65, "def": 58, "spd": 45 },
+    "learnset": [
+      { "level": 1, "move": "tail_swipe" },
+      { "level": 7, "move": "scratch" },
+      { "level": 16, "move": "dragon_breath" },
+      { "level": 26, "move": "crush" },
+      { "level": 38, "move": "draconic_fury" },
+      { "level": 50, "move": "ancient_wyrm_rage" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "pet_snakeling", "name": "Pet Snakeling",
+    "itemId": 12921, "altItemIds": [12939, 12940],
+    "npcIds": [2127, 2130, 2128, 2131, 2129, 2132],
+    "npcXpTags": ["Zulrah"],
+    "types": ["MAGIC", "NATURE"],
+    "base": { "hp": 58, "atk": 68, "def": 50, "spd": 62 },
+    "learnset": [
+      { "level": 1, "move": "wind_strike" },
+      { "level": 8, "move": "toxic_fang" },
+      { "level": 16, "move": "water_blast" },
+      { "level": 25, "move": "spore_cloud" },
+      { "level": 36, "move": "arcane_blast" },
+      { "level": 48, "move": "trident_surge" }
+    ],
+    "easterEggs": [
+      { "move": "serpent_dance", "trigger": { "kind": "EMOTE", "animId": 866, "desc": "Dance with Pet Snakeling out" } }
+    ]
+  },
+  {
+    "id": "vetion_jr", "name": "Vet'ion Jr.",
+    "itemId": 13179, "altItemIds": [13180, 27650, 27651],
+    "npcIds": [5536, 5559, 5537, 5560, 11983, 11987, 11984, 11988],
+    "npcXpTags": ["Vet'ion", "Calvar'ion", "Skeleton", "Zombie"],
+    "types": ["UNDEAD", "MELEE"],
+    "base": { "hp": 66, "atk": 62, "def": 62, "spd": 38 },
+    "learnset": [
+      { "level": 1, "move": "bone_bash" },
+      { "level": 8, "move": "scratch" },
+      { "level": 16, "move": "grave_chill" },
+      { "level": 24, "move": "soul_drain" },
+      { "level": 36, "move": "death_grasp" },
+      { "level": 46, "move": "whirlwind" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "kalphite_princess", "name": "Kalphite Princess",
+    "itemId": 12647, "altItemIds": [12654],
+    "npcIds": [6638, 6654, 6637, 6653],
+    "npcXpTags": ["Kalphite Queen", "Kalphite"],
+    "types": ["RANGED", "NATURE"],
+    "base": { "hp": 60, "atk": 58, "def": 62, "spd": 48 },
+    "learnset": [
+      { "level": 1, "move": "dart_toss" },
+      { "level": 8, "move": "vine_whip" },
+      { "level": 15, "move": "harden" },
+      { "level": 24, "move": "bolt_rack" },
+      { "level": 34, "move": "toxic_fang" },
+      { "level": 44, "move": "snipe" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "baby_chinchompa", "name": "Baby Chinchompa",
+    "itemId": 13324, "altItemIds": [13323, 13325, 13326],
+    "npcIds": [6719, 6757, 6718, 6756, 6720, 6758, 6721, 6759],
+    "npcXpTags": [],
+    "types": ["RANGED", "SKILLING"],
+    "base": { "hp": 45, "atk": 60, "def": 40, "spd": 70 },
+    "learnset": [
+      { "level": 1, "move": "dart_toss" },
+      { "level": 7, "move": "quick_feet" },
+      { "level": 15, "move": "bolt_rack" },
+      { "level": 24, "move": "chin_toss" },
+      { "level": 38, "move": "snipe" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "heron", "name": "Heron",
+    "itemId": 13320, "altItemIds": [25600],
+    "npcIds": [6715, 6722, 6817, 10636],
+    "npcXpTags": [],
+    "types": ["SKILLING", "ICE"],
+    "base": { "hp": 48, "atk": 55, "def": 42, "spd": 68 },
+    "learnset": [
+      { "level": 1, "move": "ice_shard" },
+      { "level": 7, "move": "pickaxe_poke" },
+      { "level": 15, "move": "frost_bite" },
+      { "level": 24, "move": "tool_frenzy" },
+      { "level": 36, "move": "ice_barrage" }
+    ],
+    "easterEggs": [
+      { "move": "perfect_catch", "trigger": { "kind": "STAT", "skill": "FISHING", "desc": "Catch a fish with Heron out" } }
+    ]
+  },
+  {
+    "id": "beaver", "name": "Beaver",
+    "itemId": 13322, "altItemIds": [],
+    "npcIds": [12169, 12181, 12170, 12182, 12171, 12183, 12172, 12184, 12173, 12185, 12174, 12186, 12175, 12187],
+    "npcXpTags": [],
+    "types": ["SKILLING", "NATURE"],
+    "base": { "hp": 50, "atk": 56, "def": 46, "spd": 58 },
+    "learnset": [
+      { "level": 1, "move": "log_toss" },
+      { "level": 8, "move": "vine_whip" },
+      { "level": 16, "move": "harden" },
+      { "level": 25, "move": "tool_frenzy" },
+      { "level": 36, "move": "overgrowth" }
+    ],
+    "easterEggs": [
+      { "move": "timber", "trigger": { "kind": "STAT", "skill": "WOODCUTTING", "desc": "Chop a tree with Beaver out" } }
+    ]
+  },
+  {
+    "id": "rock_golem", "name": "Rock Golem",
+    "itemId": 13321, "altItemIds": [21340],
+    "npcIds": [7439, 7451, 7440, 7452, 7441, 7453, 7442, 7454, 7443, 7455],
+    "npcXpTags": [],
+    "types": ["SKILLING", "MELEE"],
+    "base": { "hp": 62, "atk": 50, "def": 70, "spd": 25 },
+    "learnset": [
+      { "level": 1, "move": "pickaxe_poke" },
+      { "level": 8, "move": "harden" },
+      { "level": 16, "move": "crush" },
+      { "level": 26, "move": "tool_frenzy" },
+      { "level": 40, "move": "whirlwind" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "rocky", "name": "Rocky",
+    "itemId": 20663, "altItemIds": [24849, 24847],
+    "npcIds": [7336, 7353, 9851, 9853, 9850, 9852],
+    "npcXpTags": [],
+    "types": ["SKILLING"],
+    "base": { "hp": 50, "atk": 58, "def": 45, "spd": 66 },
+    "learnset": [
+      { "level": 1, "move": "scratch" },
+      { "level": 7, "move": "quick_feet" },
+      { "level": 15, "move": "log_toss" },
+      { "level": 25, "move": "tool_frenzy" }
+    ],
+    "easterEggs": [
+      { "move": "five_finger_discount", "trigger": { "kind": "STAT", "skill": "THIEVING", "desc": "Pickpocket someone with Rocky out" } }
+    ]
+  },
+  {
+    "id": "giant_squirrel", "name": "Giant Squirrel",
+    "itemId": 20659, "altItemIds": [24701, 30151],
+    "npcIds": [7334, 7351, 9637, 9638, 14032, 14044],
+    "npcXpTags": [],
+    "types": ["SKILLING", "NATURE"],
+    "base": { "hp": 46, "atk": 52, "def": 42, "spd": 75 },
+    "learnset": [
+      { "level": 1, "move": "scratch" },
+      { "level": 7, "move": "quick_feet" },
+      { "level": 15, "move": "vine_whip" },
+      { "level": 26, "move": "tool_frenzy" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "tangleroot", "name": "Tangleroot",
+    "itemId": 20661, "altItemIds": [24555, 24557, 24559, 24561, 24563],
+    "npcIds": [7335, 7352, 9492, 9497, 9493, 9498, 9494, 9499, 9495, 9500, 9496, 9501],
+    "npcXpTags": [],
+    "types": ["NATURE", "SKILLING"],
+    "base": { "hp": 58, "atk": 60, "def": 55, "spd": 35 },
+    "learnset": [
+      { "level": 1, "move": "vine_whip" },
+      { "level": 8, "move": "entangling_roots" },
+      { "level": 16, "move": "regrow" },
+      { "level": 26, "move": "overgrowth" },
+      { "level": 38, "move": "timber" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "tzrek_jad", "name": "TzRek-Jad",
+    "itemId": 13225, "altItemIds": [25519],
+    "npcIds": [5892, 5893, 10620, 10625],
+    "npcXpTags": ["TzTok-Jad", "TzHaar"],
+    "types": ["FIRE", "MELEE"],
+    "base": { "hp": 64, "atk": 70, "def": 56, "spd": 44 },
+    "learnset": [
+      { "level": 1, "move": "ember" },
+      { "level": 8, "move": "scratch" },
+      { "level": 16, "move": "flame_breath" },
+      { "level": 26, "move": "crush" },
+      { "level": 38, "move": "inferno" },
+      { "level": 52, "move": "tzhaar_fury" }
+    ],
+    "easterEggs": [
+      { "move": "obsidian_slam", "trigger": { "kind": "LOCATION", "regionId": 9808, "desc": "Bring TzRek-Jad home to Mor Ul Rek" } }
+    ]
+  },
+  {
+    "id": "jal_nib_rek", "name": "Jal-Nib-Rek",
+    "itemId": 21291, "altItemIds": [22319],
+    "npcIds": [7674, 7675, 8009, 8011],
+    "npcXpTags": ["TzKal-Zuk", "TzHaar"],
+    "types": ["FIRE"],
+    "base": { "hp": 56, "atk": 66, "def": 52, "spd": 60 },
+    "learnset": [
+      { "level": 1, "move": "ember" },
+      { "level": 9, "move": "flame_breath" },
+      { "level": 18, "move": "quick_feet" },
+      { "level": 30, "move": "inferno" },
+      { "level": 44, "move": "tzhaar_fury" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "ikkle_hydra", "name": "Ikkle Hydra",
+    "itemId": 22746, "altItemIds": [22748, 22750, 22752],
+    "npcIds": [8492, 8517, 8493, 8518, 8494, 8519, 8495, 8520],
+    "npcXpTags": ["Alchemical Hydra", "Hydra"],
+    "types": ["DRAGON", "NATURE"],
+    "base": { "hp": 62, "atk": 64, "def": 60, "spd": 42 },
+    "learnset": [
+      { "level": 1, "move": "tail_swipe" },
+      { "level": 8, "move": "toxic_fang" },
+      { "level": 17, "move": "spore_cloud" },
+      { "level": 27, "move": "dragon_breath" },
+      { "level": 40, "move": "draconic_fury" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "olmlet", "name": "Olmlet",
+    "itemId": 20851, "altItemIds": [22376, 22378, 22380, 22382, 22384],
+    "npcIds": [7519, 7520],
+    "npcXpTags": ["Great Olm"],
+    "types": ["DRAGON", "MAGIC"],
+    "base": { "hp": 65, "atk": 68, "def": 58, "spd": 40 },
+    "learnset": [
+      { "level": 1, "move": "wind_strike" },
+      { "level": 8, "move": "tail_swipe" },
+      { "level": 17, "move": "water_blast" },
+      { "level": 27, "move": "dragon_breath" },
+      { "level": 40, "move": "arcane_blast" },
+      { "level": 52, "move": "ancient_wyrm_rage" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "lil_zik", "name": "Lil' Zik",
+    "itemId": 22473, "altItemIds": [25748, 25749, 25750, 25751, 25752],
+    "npcIds": [8336, 8337],
+    "npcXpTags": ["Verzik Vitur", "Vampyre"],
+    "types": ["UNDEAD", "RANGED"],
+    "base": { "hp": 55, "atk": 66, "def": 52, "spd": 64 },
+    "learnset": [
+      { "level": 1, "move": "dart_toss" },
+      { "level": 8, "move": "bone_bash" },
+      { "level": 17, "move": "grave_chill" },
+      { "level": 27, "move": "bolt_rack" },
+      { "level": 38, "move": "soul_drain" },
+      { "level": 50, "move": "death_grasp" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "vorki", "name": "Vorki",
+    "itemId": 21992, "altItemIds": [],
+    "npcIds": [8025, 8029],
+    "npcXpTags": ["Vorkath"],
+    "types": ["DRAGON", "ICE"],
+    "base": { "hp": 63, "atk": 66, "def": 58, "spd": 43 },
+    "learnset": [
+      { "level": 1, "move": "ice_shard" },
+      { "level": 8, "move": "tail_swipe" },
+      { "level": 17, "move": "frost_bite" },
+      { "level": 27, "move": "dragon_breath" },
+      { "level": 38, "move": "ice_barrage" },
+      { "level": 52, "move": "blizzard" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "skotos", "name": "Skotos",
+    "itemId": 21273, "altItemIds": [],
+    "npcIds": [425, 7671],
+    "npcXpTags": ["Skotizo", "Demon"],
+    "types": ["UNDEAD", "MAGIC"],
+    "base": { "hp": 60, "atk": 64, "def": 56, "spd": 46 },
+    "learnset": [
+      { "level": 1, "move": "wind_strike" },
+      { "level": 8, "move": "bone_bash" },
+      { "level": 17, "move": "haunting_wail" },
+      { "level": 27, "move": "soul_drain" },
+      { "level": 38, "move": "arcane_blast" },
+      { "level": 50, "move": "death_grasp" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "hellpuppy", "name": "Hellpuppy",
+    "itemId": 13247, "altItemIds": [],
+    "npcIds": [964, 3099],
+    "npcXpTags": ["Cerberus", "Hellhound"],
+    "types": ["DEMON", "FIRE"],
+    "base": { "hp": 58, "atk": 68, "def": 52, "spd": 58 },
+    "learnset": [
+      { "level": 1, "move": "demon_claw" },
+      { "level": 8, "move": "ember" },
+      { "level": 17, "move": "flame_breath" },
+      { "level": 27, "move": "hellfire" },
+      { "level": 40, "move": "soul_rend" }
+    ],
+    "easterEggs": [
+      { "move": "hellish_howl", "trigger": { "kind": "EMOTE", "animId": 860, "desc": "Cry with Hellpuppy out" } }
+    ]
+  },
+  {
+    "id": "abyssal_orphan", "name": "Abyssal Orphan",
+    "itemId": 13262, "altItemIds": [],
+    "npcIds": [5883, 5884],
+    "npcXpTags": ["Abyssal Sire", "Abyssal demon"],
+    "types": ["DEMON", "MAGIC"],
+    "base": { "hp": 57, "atk": 70, "def": 50, "spd": 55 },
+    "learnset": [
+      { "level": 1, "move": "demon_claw" },
+      { "level": 8, "move": "wind_strike" },
+      { "level": 17, "move": "dark_ritual" },
+      { "level": 27, "move": "water_blast" },
+      { "level": 38, "move": "hellfire" },
+      { "level": 50, "move": "soul_rend" }
+    ],
+    "easterEggs": []
+  }
+]
