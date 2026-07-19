@@ -22,13 +22,18 @@ import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.ImageUtil;
 import com.petbattles.battle.BattleInputHandler;
 import com.petbattles.battle.BattleSession;
+import com.petbattles.collection.CollectionLogSync;
 import com.petbattles.data.ContentLoader;
 import com.petbattles.data.PetDatabase;
+import com.petbattles.easteregg.EasterEggTracker;
+import com.petbattles.follower.FollowerTracker;
 import com.petbattles.persist.RosterManager;
 import com.petbattles.persist.RosterStore;
 import com.petbattles.ui.BattleOverlay;
 import com.petbattles.ui.PetBattlesPanel;
 import com.petbattles.ui.Sprites;
+import com.petbattles.xp.KillXpTracker;
+import net.runelite.client.eventbus.EventBus;
 
 @Slf4j
 @PluginDescriptor(
@@ -65,6 +70,9 @@ public class PetBattlesPlugin extends Plugin
 	@Inject
 	private MouseManager mouseManager;
 
+	@Inject
+	private EventBus eventBus;
+
 	private PetDatabase db;
 	private RosterManager roster;
 	private PetBattlesPanel panel;
@@ -72,6 +80,10 @@ public class PetBattlesPlugin extends Plugin
 	private BattleSession session;
 	private BattleOverlay overlay;
 	private BattleInputHandler inputHandler;
+	private CollectionLogSync collectionLogSync;
+	private FollowerTracker followerTracker;
+	private KillXpTracker killXpTracker;
+	private EasterEggTracker easterEggTracker;
 
 	@Override
 	protected void startUp() throws Exception
@@ -84,6 +96,16 @@ public class PetBattlesPlugin extends Plugin
 		inputHandler = new BattleInputHandler(session, overlay, clientThread);
 		overlayManager.add(overlay);
 		mouseManager.registerMouseListener(inputHandler);
+
+		Runnable refreshPanel = () -> panel.refresh();
+		collectionLogSync = new CollectionLogSync(client, db, roster, refreshPanel);
+		followerTracker = new FollowerTracker(client, db, roster, refreshPanel);
+		killXpTracker = new KillXpTracker(client, db, roster, followerTracker, config, refreshPanel);
+		easterEggTracker = new EasterEggTracker(client, db, roster, followerTracker, refreshPanel);
+		eventBus.register(collectionLogSync);
+		eventBus.register(followerTracker);
+		eventBus.register(killXpTracker);
+		eventBus.register(easterEggTracker);
 
 		BufferedImage icon = ImageUtil.loadImageResource(getClass(), "/com/petbattles/icons/panel_icon.png");
 		navButton = NavigationButton.builder()
@@ -98,6 +120,7 @@ public class PetBattlesPlugin extends Plugin
 		if (client.getGameState() == GameState.LOGGED_IN)
 		{
 			roster.load();
+			clientThread.invokeLater(followerTracker::refresh);
 			panel.refresh();
 		}
 		log.debug("Pet Battles started with {} species, {} moves, {} trainers",
@@ -108,6 +131,13 @@ public class PetBattlesPlugin extends Plugin
 	protected void shutDown() throws Exception
 	{
 		clientToolbar.removeNavigation(navButton);
+		if (collectionLogSync != null)
+		{
+			eventBus.unregister(collectionLogSync);
+			eventBus.unregister(followerTracker);
+			eventBus.unregister(killXpTracker);
+			eventBus.unregister(easterEggTracker);
+		}
 		if (overlay != null)
 		{
 			overlayManager.remove(overlay);
@@ -131,6 +161,10 @@ public class PetBattlesPlugin extends Plugin
 		session = null;
 		overlay = null;
 		inputHandler = null;
+		collectionLogSync = null;
+		followerTracker = null;
+		killXpTracker = null;
+		easterEggTracker = null;
 	}
 
 	@Subscribe
@@ -147,6 +181,7 @@ public class PetBattlesPlugin extends Plugin
 			if (!roster.isLoaded())
 			{
 				roster.load();
+				clientThread.invokeLater(followerTracker::refresh);
 			}
 			panel.refresh();
 		}
@@ -155,6 +190,7 @@ public class PetBattlesPlugin extends Plugin
 			if (e.getGameState() == GameState.LOGIN_SCREEN)
 			{
 				roster.unload();
+				easterEggTracker.resetBaselines();
 			}
 			panel.refresh();
 		}
