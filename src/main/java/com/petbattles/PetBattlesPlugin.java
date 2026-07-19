@@ -5,6 +5,7 @@ import com.google.inject.Provides;
 import java.awt.image.BufferedImage;
 import javax.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.events.GameStateChanged;
@@ -115,7 +116,7 @@ public class PetBattlesPlugin extends Plugin
 		session = new BattleSession(db, roster, config, () -> panel.refresh());
 		overlay = new BattleOverlay(session, sprites);
 		inputHandler = new BattleInputHandler(session, overlay, clientThread);
-		keyListener = new BattleKeyListener(session, clientThread);
+		keyListener = new BattleKeyListener(client, session, clientThread);
 		overlayManager.add(overlay);
 		overlayManager.add(restOverlay);
 		mouseManager.registerMouseListener(inputHandler);
@@ -258,6 +259,15 @@ public class PetBattlesPlugin extends Plugin
 			if (!session.startTrainerBattle(trainerId))
 			{
 				log.debug("Could not start battle vs {}", trainerId);
+				// Most likely cause: empty or fully-fainted team (e.g. via the
+				// in-world Challenge entry, which has no panel tooltip to explain)
+				String reason = roster.getTeam().isEmpty()
+					? "Add a pet to your team first."
+					: !roster.teamCanFight()
+					? "Your team is knocked out — rest your pets at a bank first."
+					: "Could not start the battle.";
+				client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
+					"Pet Battles: " + reason, null);
 			}
 		});
 	}

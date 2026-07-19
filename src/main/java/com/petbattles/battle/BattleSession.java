@@ -200,6 +200,13 @@ public class BattleSession
 		{
 			return;
 		}
+		// Per-event dwell: hold impactful events (level-ups, flying projectiles)
+		// until their animation has fully played out
+		if (getAnimationProgress() < 1f)
+		{
+			tickCounter = config.battleSpeed();
+			return;
+		}
 		tickCounter = 0;
 		advanceEvent();
 	}
@@ -317,6 +324,8 @@ public class BattleSession
 		if (state != null && !xpAwarded && phase != Phase.IDLE)
 		{
 			persistTeamHp();
+			roster.petChanged();
+			onRosterChanged.run();
 		}
 		phase = Phase.IDLE;
 		state = null;
@@ -334,6 +343,8 @@ public class BattleSession
 		persistTeamHp();
 		if (state.getPhase() != BattleState.Phase.PLAYER_WON)
 		{
+			roster.petChanged();
+			onRosterChanged.run();
 			return;
 		}
 		int enemyLevel = trainer.getParty().stream()
@@ -369,6 +380,7 @@ public class BattleSession
 	/**
 	 * Write each battled pet's ending HP back to its persistent instance. Full HP is
 	 * stored as null ("fully rested") so untouched pets never look injured.
+	 * Callers are responsible for the save/refresh (petChanged + onRosterChanged).
 	 */
 	private void persistTeamHp()
 	{
@@ -382,8 +394,6 @@ public class BattleSession
 			instance.setCurrentHp(battlePet.getCurrentHp() >= battlePet.getMaxHp()
 				? null : battlePet.getCurrentHp());
 		}
-		roster.petChanged();
-		onRosterChanged.run();
 	}
 
 	private void announceNewMoves(PetInstance pet, SpeciesDef species, int oldLevel, int newLevel)

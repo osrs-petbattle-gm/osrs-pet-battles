@@ -1,6 +1,8 @@
 package com.petbattles.battle;
 
 import java.awt.event.KeyEvent;
+import net.runelite.api.Client;
+import net.runelite.api.VarClientStr;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.input.KeyListener;
 
@@ -10,11 +12,13 @@ import net.runelite.client.input.KeyListener;
  */
 public class BattleKeyListener implements KeyListener
 {
+	private final Client client;
 	private final BattleSession session;
 	private final ClientThread clientThread;
 
-	public BattleKeyListener(BattleSession session, ClientThread clientThread)
+	public BattleKeyListener(Client client, BattleSession session, ClientThread clientThread)
 	{
+		this.client = client;
 		this.session = session;
 		this.clientThread = clientThread;
 	}
@@ -33,6 +37,12 @@ public class BattleKeyListener implements KeyListener
 		}
 		if (!session.isActive() || !session.isManualAdvance()
 			|| session.getPhase() != BattleSession.Phase.ANIMATING)
+		{
+			return;
+		}
+		// Don't steal Space from a chat message the player is typing
+		String typed = client.getVarcStrValue(VarClientStr.CHATBOX_TYPED_TEXT);
+		if (typed != null && !typed.isEmpty())
 		{
 			return;
 		}
