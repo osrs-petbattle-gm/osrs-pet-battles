@@ -35,6 +35,8 @@ public class RosterStore
 		public Set<String> devUnlocked = new LinkedHashSet<>();
 		public Map<String, PetInstance> pets = new LinkedHashMap<>();
 		public List<String> team = new ArrayList<>();
+		// Trainers beaten at least once (unlocks remote re-fights at reduced XP)
+		public Set<String> defeatedTrainers = new LinkedHashSet<>();
 	}
 
 	private final ConfigManager configManager;

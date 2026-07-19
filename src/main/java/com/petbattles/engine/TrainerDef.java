@@ -47,6 +47,9 @@ public class TrainerDef
 	private String theme;
 	private Difficulty difficulty = Difficulty.EASY;
 	private List<PartyEntry> party = new ArrayList<>();
+	// In-world NPC ids for this trainer (net.runelite.api.gameval.NpcID values);
+	// empty means the trainer is panel-only.
+	private List<Integer> npcIds = new ArrayList<>();
 
 	public String getId()
 	{
@@ -71,5 +74,10 @@ public class TrainerDef
 	public List<PartyEntry> getParty()
 	{
 		return party == null ? Collections.emptyList() : party;
+	}
+
+	public List<Integer> getNpcIds()
+	{
+		return npcIds == null ? Collections.emptyList() : npcIds;
 	}
 }

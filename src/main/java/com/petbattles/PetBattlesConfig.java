@@ -57,6 +57,18 @@ public interface PetBattlesConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "devRemoteBattles",
+		name = "Dev: remote battles",
+		description = "Testing option: fight any trainer from the panel without meeting them in-game first. "
+			+ "Trivializes training — normally a trainer must be challenged in the world once before remote re-fights unlock.",
+		position = 5
+	)
+	default boolean devRemoteBattles()
+	{
+		return false;
+	}
+
+	@ConfigItem(
 		keyName = "devUnlockAll",
 		name = "Unlock all pets (dev)",
 		description = "Developer option: treat every pet as owned, for testing without the collection log",

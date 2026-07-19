@@ -40,10 +40,15 @@ public class RosterManager
 		{
 			data.devUnlocked = new java.util.LinkedHashSet<>();
 		}
-		// Drop references to species that no longer exist in the content
+		if (data.defeatedTrainers == null)
+		{
+			data.defeatedTrainers = new java.util.LinkedHashSet<>();
+		}
+		// Drop references to species/trainers that no longer exist in the content
 		data.team.removeIf(id -> db.species(id) == null);
 		data.ownedSpecies.removeIf(id -> db.species(id) == null);
 		data.devUnlocked.removeIf(id -> db.species(id) == null);
+		data.defeatedTrainers.removeIf(id -> db.trainer(id) == null);
 		loaded = true;
 	}
 
@@ -236,6 +241,33 @@ public class RosterManager
 		Collections.swap(data.team, from, to);
 		save();
 		return true;
+	}
+
+	/**
+	 * Whether this trainer has been beaten at least once (in-world first win).
+	 */
+	public synchronized boolean isTrainerDefeated(String trainerId)
+	{
+		return data.defeatedTrainers.contains(trainerId);
+	}
+
+	/**
+	 * Record a trainer win; no-op if already recorded.
+	 */
+	public synchronized void recordTrainerDefeated(String trainerId)
+	{
+		if (db.trainer(trainerId) != null && data.defeatedTrainers.add(trainerId))
+		{
+			save();
+		}
+	}
+
+	/**
+	 * Whether the dev "remote battles" toggle allows fighting any trainer from the panel.
+	 */
+	public boolean isDevRemoteBattlesEnabled()
+	{
+		return config.devRemoteBattles();
 	}
 
 	/**

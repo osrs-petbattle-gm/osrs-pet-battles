@@ -63,6 +63,18 @@ public class LevelingTest
 	}
 
 	@Test
+	public void repeatWinsGiveAThirdOfFirstWinXp()
+	{
+		long first = Leveling.battleWinXp(50, 50, true);
+		long repeat = Leveling.battleWinXp(50, 50, false);
+		assertEquals(Leveling.battleWinXp(50, 50), first);
+		assertEquals(Math.round(first * Leveling.REPEAT_WIN_FACTOR), repeat);
+		assertTrue(repeat < first);
+		// Repeats never round down to zero
+		assertTrue(Leveling.battleWinXp(1, 99, false) >= 1);
+	}
+
+	@Test
 	public void petInstanceLevelsUp()
 	{
 		PetInstance pet = new PetInstance("baby_mole");

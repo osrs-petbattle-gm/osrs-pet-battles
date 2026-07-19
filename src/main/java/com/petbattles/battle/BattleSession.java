@@ -338,6 +338,8 @@ public class BattleSession
 		}
 		int enemyLevel = trainer.getParty().stream()
 			.mapToInt(TrainerDef.PartyEntry::getLevel).max().orElse(1);
+		// Repeat wins against an already-beaten trainer award reduced XP
+		boolean firstWin = !roster.isTrainerDefeated(trainer.getId());
 		for (String speciesId : roster.getTeam())
 		{
 			PetInstance pet = roster.getPet(speciesId);
@@ -347,7 +349,7 @@ public class BattleSession
 				continue;
 			}
 			int oldLevel = pet.getLevel();
-			long xp = Leveling.battleWinXp(enemyLevel, oldLevel);
+			long xp = Leveling.battleWinXp(enemyLevel, oldLevel, firstWin);
 			int gained = pet.addXp(xp);
 			pendingEvents.add(BattleEvent.value(BattleEvent.Type.XP_GAINED, BattleState.PLAYER, (int) xp,
 				displayName(pet, species) + " gained " + xp + " XP!"));
@@ -359,6 +361,7 @@ public class BattleSession
 				announceNewMoves(pet, species, oldLevel, newLevel);
 			}
 		}
+		roster.recordTrainerDefeated(trainer.getId());
 		roster.petChanged();
 		onRosterChanged.run();
 	}

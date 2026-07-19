@@ -135,6 +135,7 @@ public class PetBattlesPanel extends PluginPanel
 
 		trainerBox.setAlignmentX(Component.LEFT_ALIGNMENT);
 		trainerBox.setFont(FontManager.getRunescapeSmallFont());
+		trainerBox.addActionListener(e -> refresh());
 		north.add(trainerBox);
 		north.add(Box.createVerticalStrut(4));
 
@@ -240,10 +241,18 @@ public class PetBattlesPanel extends PluginPanel
 			: !canEditTeam ? "Visit a bank to rest your pets"
 			: !injured ? "All pets are rested" : "Restore every pet to full HP");
 
-		boolean canFight = loggedIn && !team.isEmpty() && roster.teamCanFight();
+		// Remote (panel) fights are earned: beat the trainer in the world first,
+		// unless the dev remote-battles toggle is on
+		TrainerItem selected = (TrainerItem) trainerBox.getSelectedItem();
+		boolean remoteUnlocked = selected != null
+			&& (roster.isTrainerDefeated(selected.trainer.getId()) || roster.isDevRemoteBattlesEnabled());
+		boolean canFight = loggedIn && !team.isEmpty() && roster.teamCanFight() && remoteUnlocked;
 		fightButton.setEnabled(canFight);
 		fightButton.setToolTipText(team.isEmpty() ? "Add a pet to your team first"
-			: !canFight && loggedIn ? "Your team is knocked out — rest at a bank" : null);
+			: loggedIn && !roster.teamCanFight() ? "Your team is knocked out — rest at a bank"
+			: loggedIn && !remoteUnlocked && selected != null
+				? "Find and Challenge " + selected.trainer.getName() + " in the world first"
+			: null);
 
 		rebuildAvailableList(team, loggedIn, canEditTeam);
 	}

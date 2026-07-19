@@ -71,11 +71,26 @@ public final class Leveling
 	}
 
 	/**
-	 * XP for winning a plugin battle, scaled by relative levels.
+	 * Fraction of first-win XP awarded when re-fighting an already-defeated trainer.
+	 */
+	public static final double REPEAT_WIN_FACTOR = 0.33;
+
+	/**
+	 * XP for winning a plugin battle, scaled by relative levels (first-win amount).
 	 */
 	public static long battleWinXp(int enemyLevel, int yourLevel)
 	{
 		long xp = Math.round(25.0 * enemyLevel / Math.max(1, yourLevel));
 		return Math.max(10, Math.min(200, xp));
+	}
+
+	/**
+	 * XP for a battle win, reduced to {@link #REPEAT_WIN_FACTOR} on repeat wins
+	 * against a trainer that was already defeated.
+	 */
+	public static long battleWinXp(int enemyLevel, int yourLevel, boolean firstWin)
+	{
+		long xp = battleWinXp(enemyLevel, yourLevel);
+		return firstWin ? xp : Math.max(1, Math.round(xp * REPEAT_WIN_FACTOR));
 	}
 }

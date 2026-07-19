@@ -30,6 +30,7 @@ import com.petbattles.data.ContentLoader;
 import com.petbattles.data.PetDatabase;
 import com.petbattles.easteregg.EasterEggTracker;
 import com.petbattles.follower.FollowerTracker;
+import com.petbattles.npc.NpcTrainerTracker;
 import com.petbattles.persist.RosterManager;
 import com.petbattles.persist.RosterStore;
 import com.petbattles.ui.BattleOverlay;
@@ -90,6 +91,7 @@ public class PetBattlesPlugin extends Plugin
 	private BattleInputHandler inputHandler;
 	private BattleKeyListener keyListener;
 	private AtBankTracker atBankTracker;
+	private NpcTrainerTracker npcTrainerTracker;
 	private CollectionLogSync collectionLogSync;
 	private FollowerTracker followerTracker;
 	private KillXpTracker killXpTracker;
@@ -124,7 +126,9 @@ public class PetBattlesPlugin extends Plugin
 		followerTracker = new FollowerTracker(client, db, roster, refreshPanel);
 		killXpTracker = new KillXpTracker(client, db, roster, followerTracker, config, refreshPanel);
 		easterEggTracker = new EasterEggTracker(client, db, roster, followerTracker, refreshPanel);
+		npcTrainerTracker = new NpcTrainerTracker(client, db, this::startTrainerBattle);
 		eventBus.register(atBankTracker);
+		eventBus.register(npcTrainerTracker);
 		eventBus.register(collectionLogSync);
 		eventBus.register(followerTracker);
 		eventBus.register(killXpTracker);
@@ -157,6 +161,7 @@ public class PetBattlesPlugin extends Plugin
 		if (collectionLogSync != null)
 		{
 			eventBus.unregister(atBankTracker);
+			eventBus.unregister(npcTrainerTracker);
 			eventBus.unregister(collectionLogSync);
 			eventBus.unregister(followerTracker);
 			eventBus.unregister(killXpTracker);
@@ -196,6 +201,7 @@ public class PetBattlesPlugin extends Plugin
 		inputHandler = null;
 		keyListener = null;
 		atBankTracker = null;
+		npcTrainerTracker = null;
 		collectionLogSync = null;
 		followerTracker = null;
 		killXpTracker = null;
