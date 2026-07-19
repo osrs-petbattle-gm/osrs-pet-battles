@@ -34,6 +34,7 @@ import com.petbattles.persist.RosterManager;
 import com.petbattles.persist.RosterStore;
 import com.petbattles.ui.BattleOverlay;
 import com.petbattles.ui.PetBattlesPanel;
+import com.petbattles.ui.RestOverlay;
 import com.petbattles.ui.Sprites;
 import com.petbattles.xp.KillXpTracker;
 import net.runelite.client.eventbus.EventBus;
@@ -85,6 +86,7 @@ public class PetBattlesPlugin extends Plugin
 	private NavigationButton navButton;
 	private BattleSession session;
 	private BattleOverlay overlay;
+	private RestOverlay restOverlay;
 	private BattleInputHandler inputHandler;
 	private BattleKeyListener keyListener;
 	private AtBankTracker atBankTracker;
@@ -106,12 +108,14 @@ public class PetBattlesPlugin extends Plugin
 			}
 		});
 		roster.setTeamEditGate(atBankTracker::isAtBank);
-		panel = new PetBattlesPanel(db, roster, sprites, this::startTrainerBattle);
+		restOverlay = new RestOverlay();
+		panel = new PetBattlesPanel(db, roster, sprites, this::startTrainerBattle, () -> restOverlay.play());
 		session = new BattleSession(db, roster, config, () -> panel.refresh());
 		overlay = new BattleOverlay(session, sprites);
 		inputHandler = new BattleInputHandler(session, overlay, clientThread);
 		keyListener = new BattleKeyListener(session, clientThread);
 		overlayManager.add(overlay);
+		overlayManager.add(restOverlay);
 		mouseManager.registerMouseListener(inputHandler);
 		keyManager.registerKeyListener(keyListener);
 
@@ -162,6 +166,10 @@ public class PetBattlesPlugin extends Plugin
 		{
 			overlayManager.remove(overlay);
 		}
+		if (restOverlay != null)
+		{
+			overlayManager.remove(restOverlay);
+		}
 		if (inputHandler != null)
 		{
 			mouseManager.unregisterMouseListener(inputHandler);
@@ -184,6 +192,7 @@ public class PetBattlesPlugin extends Plugin
 		db = null;
 		session = null;
 		overlay = null;
+		restOverlay = null;
 		inputHandler = null;
 		keyListener = null;
 		atBankTracker = null;

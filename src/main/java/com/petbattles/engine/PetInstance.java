@@ -17,6 +17,9 @@ public class PetInstance
 	private long xp;
 	private List<String> equippedMoves = new ArrayList<>();
 	private Set<String> unlockedEggMoves = new LinkedHashSet<>();
+	// HP carried over from the last battle; null = fully rested. 0 = fainted (can't
+	// fight until rested at a bank). Absolute value, clamped to max HP on battle start.
+	private Integer currentHp;
 
 	public PetInstance()
 	{
@@ -60,6 +63,29 @@ public class PetInstance
 		int before = getLevel();
 		xp += Math.max(0, amount);
 		return getLevel() - before;
+	}
+
+	public Integer getCurrentHp()
+	{
+		return currentHp;
+	}
+
+	public void setCurrentHp(Integer currentHp)
+	{
+		this.currentHp = currentHp;
+	}
+
+	public boolean isFainted()
+	{
+		return currentHp != null && currentHp <= 0;
+	}
+
+	/**
+	 * Fully rest this pet (bank heal): back to full HP and battle-ready.
+	 */
+	public void rest()
+	{
+		currentHp = null;
 	}
 
 	public List<String> getEquippedMoves()

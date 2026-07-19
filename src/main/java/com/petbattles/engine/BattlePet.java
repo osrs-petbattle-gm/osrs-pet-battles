@@ -34,12 +34,20 @@ public class BattlePet
 
 	public BattlePet(SpeciesDef species, String displayName, int level, List<MoveDef> moves)
 	{
+		this(species, displayName, level, moves, null);
+	}
+
+	/**
+	 * @param startingHp carried-over HP from a previous battle; null starts at full
+	 */
+	public BattlePet(SpeciesDef species, String displayName, int level, List<MoveDef> moves, Integer startingHp)
+	{
 		this.species = species;
 		this.displayName = displayName;
 		this.level = level;
 		this.moves = new ArrayList<>(moves);
 		this.maxHp = Leveling.hpAtLevel(species.getBase().getHp(), level);
-		this.currentHp = maxHp;
+		this.currentHp = startingHp == null ? maxHp : Math.max(0, Math.min(maxHp, startingHp));
 	}
 
 	public SpeciesDef getSpecies()

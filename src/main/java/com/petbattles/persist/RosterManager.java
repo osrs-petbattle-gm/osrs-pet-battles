@@ -239,6 +239,55 @@ public class RosterManager
 	}
 
 	/**
+	 * Rest every pet back to full HP (bank heal). Bank-gated like team composition.
+	 * Returns false if not at a bank or nothing needed healing.
+	 */
+	public synchronized boolean restAllPets()
+	{
+		if (!canEditTeam() || !anyPetInjured())
+		{
+			return false;
+		}
+		for (PetInstance pet : data.pets.values())
+		{
+			pet.rest();
+		}
+		save();
+		return true;
+	}
+
+	/**
+	 * Whether any pet carries battle damage (or is fainted) and would benefit from a rest.
+	 */
+	public synchronized boolean anyPetInjured()
+	{
+		for (PetInstance pet : data.pets.values())
+		{
+			if (pet.getCurrentHp() != null)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Whether at least one team member is able to fight (not fainted).
+	 */
+	public synchronized boolean teamCanFight()
+	{
+		for (String speciesId : data.team)
+		{
+			PetInstance pet = data.pets.get(speciesId);
+			if (pet == null || !pet.isFainted())
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
 	 * Persist after external mutation of a PetInstance (xp gain, move equip, egg unlock).
 	 */
 	public synchronized void petChanged()

@@ -129,8 +129,9 @@ public class BattleSession
 	{
 		SpeciesDef species = db.species(speciesId);
 		PetInstance instance = roster.getOrCreatePet(speciesId);
-		if (species == null || instance == null)
+		if (species == null || instance == null || instance.isFainted())
 		{
+			// Fainted pets are benched until rested at a bank
 			return null;
 		}
 		List<MoveDef> moves = new ArrayList<>();
@@ -156,7 +157,7 @@ public class BattleSession
 			}
 		}
 		String name = instance.getNickname() != null ? instance.getNickname() : species.getName();
-		return new BattlePet(species, name, instance.getLevel(), moves);
+		return new BattlePet(species, name, instance.getLevel(), moves, instance.getCurrentHp());
 	}
 
 	private List<MoveDef> enemyMoves(SpeciesDef species, int level)
@@ -312,6 +313,11 @@ public class BattleSession
 	 */
 	public void close()
 	{
+		// Forfeit-closing mid-battle still persists the damage taken so far
+		if (state != null && !xpAwarded && phase != Phase.IDLE)
+		{
+			persistTeamHp();
+		}
 		phase = Phase.IDLE;
 		state = null;
 		trainer = null;
@@ -324,6 +330,8 @@ public class BattleSession
 	private void awardXp()
 	{
 		xpAwarded = true;
+		// Battle damage survives the fight: heal at a bank to restore it
+		persistTeamHp();
 		if (state.getPhase() != BattleState.Phase.PLAYER_WON)
 		{
 			return;
@@ -350,6 +358,26 @@ public class BattleSession
 					displayName(pet, species) + " grew to level " + newLevel + "!"));
 				announceNewMoves(pet, species, oldLevel, newLevel);
 			}
+		}
+		roster.petChanged();
+		onRosterChanged.run();
+	}
+
+	/**
+	 * Write each battled pet's ending HP back to its persistent instance. Full HP is
+	 * stored as null ("fully rested") so untouched pets never look injured.
+	 */
+	private void persistTeamHp()
+	{
+		for (BattlePet battlePet : state.team(BattleState.PLAYER))
+		{
+			PetInstance instance = roster.getPet(battlePet.getSpecies().getId());
+			if (instance == null)
+			{
+				continue;
+			}
+			instance.setCurrentHp(battlePet.getCurrentHp() >= battlePet.getMaxHp()
+				? null : battlePet.getCurrentHp());
 		}
 		roster.petChanged();
 		onRosterChanged.run();

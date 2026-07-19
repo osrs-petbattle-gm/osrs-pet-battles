@@ -45,11 +45,13 @@ public class PetBattlesPanel extends PluginPanel
 	private final RosterManager roster;
 	private final Sprites sprites;
 	private final Consumer<String> fightAction;
+	private final Runnable onRest;
 
 	private final JLabel statusLabel = new JLabel();
 	private final JLabel teamTitle = new JLabel();
 	private final JPanel teamPanel = new JPanel();
 	private final JLabel bankHintLabel = new JLabel();
+	private final JButton restButton = new JButton("Rest pets");
 	private final JComboBox<TrainerItem> trainerBox = new JComboBox<>();
 	private final JButton fightButton = new JButton("Fight!");
 	private final JTextField searchField = new JTextField();
@@ -72,12 +74,14 @@ public class PetBattlesPanel extends PluginPanel
 		}
 	}
 
-	public PetBattlesPanel(PetDatabase db, RosterManager roster, Sprites sprites, Consumer<String> fightAction)
+	public PetBattlesPanel(PetDatabase db, RosterManager roster, Sprites sprites,
+		Consumer<String> fightAction, Runnable onRest)
 	{
 		this.db = db;
 		this.roster = roster;
 		this.sprites = sprites;
 		this.fightAction = fightAction;
+		this.onRest = onRest;
 
 		setLayout(new BorderLayout());
 		setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
@@ -114,6 +118,19 @@ public class PetBattlesPanel extends PluginPanel
 		bankHintLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR.darker());
 		bankHintLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 		north.add(bankHintLabel);
+		north.add(Box.createVerticalStrut(2));
+
+		restButton.setAlignmentX(Component.LEFT_ALIGNMENT);
+		restButton.setFont(FontManager.getRunescapeSmallFont());
+		restButton.addActionListener(e ->
+		{
+			if (roster.restAllPets())
+			{
+				onRest.run();
+			}
+			refresh();
+		});
+		north.add(restButton);
 		north.add(Box.createVerticalStrut(6));
 
 		trainerBox.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -217,8 +234,16 @@ public class PetBattlesPanel extends PluginPanel
 
 		rebuildTeamRows(team, canEditTeam);
 
-		fightButton.setEnabled(loggedIn && !team.isEmpty());
-		fightButton.setToolTipText(team.isEmpty() ? "Add a pet to your team first" : null);
+		boolean injured = loggedIn && roster.anyPetInjured();
+		restButton.setEnabled(canEditTeam && injured);
+		restButton.setToolTipText(!loggedIn ? null
+			: !canEditTeam ? "Visit a bank to rest your pets"
+			: !injured ? "All pets are rested" : "Restore every pet to full HP");
+
+		boolean canFight = loggedIn && !team.isEmpty() && roster.teamCanFight();
+		fightButton.setEnabled(canFight);
+		fightButton.setToolTipText(team.isEmpty() ? "Add a pet to your team first"
+			: !canFight && loggedIn ? "Your team is knocked out — rest at a bank" : null);
 
 		rebuildAvailableList(team, loggedIn, canEditTeam);
 	}
@@ -257,10 +282,15 @@ public class PetBattlesPanel extends PluginPanel
 		row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
 
 		PetInstance pet = roster.getPet(speciesId);
+		boolean fainted = pet != null && pet.isFainted();
+		boolean hurt = pet != null && !fainted && pet.getCurrentHp() != null;
 		JLabel name = new JLabel((index + 1) + ". " + species.getName()
-			+ (pet != null ? "  Lv " + pet.getLevel() : ""));
+			+ (pet != null ? "  Lv " + pet.getLevel() : "")
+			+ (fainted ? "  — KO" : hurt ? "  (" + pet.getCurrentHp() + " hp)" : ""));
 		name.setFont(FontManager.getRunescapeSmallFont());
-		name.setForeground(Color.WHITE);
+		name.setForeground(fainted ? ColorScheme.PROGRESS_ERROR_COLOR
+			: hurt ? ColorScheme.PROGRESS_INPROGRESS_COLOR : Color.WHITE);
+		name.setToolTipText(fainted ? "Fainted — rest at a bank before battling" : null);
 		row.add(name, BorderLayout.CENTER);
 
 		JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 2, 0));
