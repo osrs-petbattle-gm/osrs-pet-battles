@@ -1,0 +1,89 @@
+package com.petbattles.engine;
+
+/**
+ * One thing that happened during battle resolution, in order. The overlay drains these
+ * for animation/log display; each carries a ready-made log line.
+ */
+public class BattleEvent
+{
+	public enum Type
+	{
+		PET_SENT_OUT,
+		MOVE_USED,
+		DAMAGE,
+		MISSED,
+		STATUS_APPLIED,
+		STAT_CHANGED,
+		STATUS_TICK,
+		STATUS_SKIP,
+		STATUS_END,
+		HEALED,
+		FAINTED,
+		FLED,
+		BATTLE_END,
+		XP_GAINED,
+		LEVEL_UP,
+		MOVE_LEARNED
+	}
+
+	private final Type type;
+	private final int side;   // BattleState.PLAYER / BattleState.ENEMY, or -1
+	private final int value;  // damage, heal, level, xp... depending on type
+	private final double effectiveness; // for DAMAGE
+	private final String text;
+
+	public BattleEvent(Type type, int side, int value, double effectiveness, String text)
+	{
+		this.type = type;
+		this.side = side;
+		this.value = value;
+		this.effectiveness = effectiveness;
+		this.text = text;
+	}
+
+	public static BattleEvent of(Type type, int side, String text)
+	{
+		return new BattleEvent(type, side, 0, 1.0, text);
+	}
+
+	public static BattleEvent damage(int side, int amount, double effectiveness, String text)
+	{
+		return new BattleEvent(Type.DAMAGE, side, amount, effectiveness, text);
+	}
+
+	public static BattleEvent value(Type type, int side, int value, String text)
+	{
+		return new BattleEvent(type, side, value, 1.0, text);
+	}
+
+	public Type getType()
+	{
+		return type;
+	}
+
+	public int getSide()
+	{
+		return side;
+	}
+
+	public int getValue()
+	{
+		return value;
+	}
+
+	public double getEffectiveness()
+	{
+		return effectiveness;
+	}
+
+	public String getText()
+	{
+		return text;
+	}
+
+	@Override
+	public String toString()
+	{
+		return type + ": " + text;
+	}
+}
