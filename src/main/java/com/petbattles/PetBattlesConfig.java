@@ -34,6 +34,18 @@ public interface PetBattlesConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "devSelectLockedPets",
+		name = "Dev: select locked pets",
+		description = "Testing option: adds an 'Unlock' button to pets you haven't obtained, so you can build teams with them. "
+			+ "These dev unlocks are kept separate from your real collection log and are ignored while this is off.",
+		position = 3
+	)
+	default boolean devSelectLockedPets()
+	{
+		return false;
+	}
+
+	@ConfigItem(
 		keyName = "devUnlockAll",
 		name = "Unlock all pets (dev)",
 		description = "Developer option: treat every pet as owned, for testing without the collection log",

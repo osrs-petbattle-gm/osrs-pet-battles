@@ -31,9 +31,14 @@ public class RosterManager
 	public synchronized void load()
 	{
 		data = store.load();
+		if (data.devUnlocked == null)
+		{
+			data.devUnlocked = new java.util.LinkedHashSet<>();
+		}
 		// Drop references to species that no longer exist in the content
 		data.team.removeIf(id -> db.species(id) == null);
 		data.ownedSpecies.removeIf(id -> db.species(id) == null);
+		data.devUnlocked.removeIf(id -> db.species(id) == null);
 		loaded = true;
 	}
 
@@ -62,7 +67,54 @@ public class RosterManager
 
 	public synchronized boolean isOwned(String speciesId)
 	{
-		return config.devUnlockAll() || data.ownedSpecies.contains(speciesId);
+		return config.devUnlockAll()
+			|| data.ownedSpecies.contains(speciesId)
+			|| (config.devSelectLockedPets() && data.devUnlocked.contains(speciesId));
+	}
+
+	/**
+	 * Whether the "select locked pets" testing option is currently enabled.
+	 */
+	public boolean isDevSelectEnabled()
+	{
+		return config.devSelectLockedPets();
+	}
+
+	/**
+	 * Whether this species has been manually dev-unlocked (independent of the toggle state).
+	 */
+	public synchronized boolean isDevUnlocked(String speciesId)
+	{
+		return data.devUnlocked.contains(speciesId);
+	}
+
+	/**
+	 * Manually unlock a species for testing. No-op for species already owned for real.
+	 * Returns true if this added a new dev unlock.
+	 */
+	public synchronized boolean devUnlock(String speciesId)
+	{
+		if (db.species(speciesId) == null || data.ownedSpecies.contains(speciesId)
+			|| !data.devUnlocked.add(speciesId))
+		{
+			return false;
+		}
+		save();
+		return true;
+	}
+
+	/**
+	 * Remove a manual dev unlock, also dropping the pet from the battle team.
+	 */
+	public synchronized boolean devLock(String speciesId)
+	{
+		if (!data.devUnlocked.remove(speciesId))
+		{
+			return false;
+		}
+		data.team.remove(speciesId);
+		save();
+		return true;
 	}
 
 	/**

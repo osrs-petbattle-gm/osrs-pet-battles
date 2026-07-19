@@ -212,13 +212,29 @@ public class PetBattlesPanel extends PluginPanel
 			{
 				openMoveEditor(speciesId);
 			}
+
+			@Override
+			public void onToggleDevUnlock(String speciesId)
+			{
+				if (roster.isDevUnlocked(speciesId))
+				{
+					roster.devLock(speciesId);
+				}
+				else
+				{
+					roster.devUnlock(speciesId);
+				}
+				refresh();
+			}
 		};
+		boolean devMode = loggedIn && roster.isDevSelectEnabled();
 		for (SpeciesDef species : db.allSpecies())
 		{
 			boolean owned = loggedIn && roster.isOwned(species.getId());
+			boolean devUnlocked = owned && roster.isDevUnlocked(species.getId());
 			PetInstance pet = owned ? roster.getOrCreatePet(species.getId()) : null;
 			rosterList.add(new PetCard(species, pet, owned,
-				team.contains(species.getId()), teamFull, sprites, listener));
+				team.contains(species.getId()), teamFull, devMode, devUnlocked, sprites, listener));
 		}
 		rosterList.revalidate();
 		rosterList.repaint();

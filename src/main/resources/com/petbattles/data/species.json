@@ -356,5 +356,821 @@
       { "level": 50, "move": "soul_rend" }
     ],
     "easterEggs": []
+  },
+  {
+    "id": "pet_chaos_elemental", "name": "Pet chaos elemental",
+    "itemId": 11995, "altItemIds": [],
+    "npcIds": [2055, 5907],
+    "npcXpTags": ["Chaos Elemental"],
+    "types": ["MAGIC", "DEMON"],
+    "base": { "hp": 58, "atk": 66, "def": 50, "spd": 54 },
+    "learnset": [
+      { "level": 1, "move": "wind_strike" },
+      { "level": 8, "move": "demon_claw" },
+      { "level": 17, "move": "water_blast" },
+      { "level": 27, "move": "arcane_blast" },
+      { "level": 38, "move": "hellfire" },
+      { "level": 50, "move": "soul_rend" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "pet_dagannoth_supreme", "name": "Pet dagannoth supreme",
+    "itemId": 12643, "altItemIds": [],
+    "npcIds": [6626, 6628],
+    "npcXpTags": ["Dagannoth Supreme", "Dagannoth"],
+    "types": ["RANGED", "ICE"],
+    "base": { "hp": 60, "atk": 62, "def": 58, "spd": 48 },
+    "learnset": [
+      { "level": 1, "move": "dart_toss" },
+      { "level": 8, "move": "ice_shard" },
+      { "level": 16, "move": "bolt_rack" },
+      { "level": 26, "move": "frost_bite" },
+      { "level": 38, "move": "chin_toss" },
+      { "level": 48, "move": "snipe" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "pet_dagannoth_prime", "name": "Pet dagannoth prime",
+    "itemId": 12644, "altItemIds": [],
+    "npcIds": [6627, 6629],
+    "npcXpTags": ["Dagannoth Prime", "Dagannoth"],
+    "types": ["MAGIC", "ICE"],
+    "base": { "hp": 58, "atk": 66, "def": 54, "spd": 50 },
+    "learnset": [
+      { "level": 1, "move": "wind_strike" },
+      { "level": 8, "move": "ice_shard" },
+      { "level": 16, "move": "water_blast" },
+      { "level": 26, "move": "frost_bite" },
+      { "level": 38, "move": "arcane_blast" },
+      { "level": 48, "move": "ice_barrage" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "pet_dagannoth_rex", "name": "Pet dagannoth rex",
+    "itemId": 12645, "altItemIds": [],
+    "npcIds": [6630, 6641],
+    "npcXpTags": ["Dagannoth Rex", "Dagannoth"],
+    "types": ["MELEE", "ICE"],
+    "base": { "hp": 64, "atk": 64, "def": 62, "spd": 38 },
+    "learnset": [
+      { "level": 1, "move": "scratch" },
+      { "level": 8, "move": "ice_shard" },
+      { "level": 16, "move": "crush" },
+      { "level": 26, "move": "frost_bite" },
+      { "level": 38, "move": "whirlwind" },
+      { "level": 48, "move": "ice_barrage" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "pet_penance_queen", "name": "Pet penance queen",
+    "itemId": 12703, "altItemIds": [],
+    "npcIds": [6642, 6674],
+    "npcXpTags": ["Penance Queen"],
+    "types": ["RANGED", "NATURE"],
+    "base": { "hp": 56, "atk": 60, "def": 54, "spd": 56 },
+    "learnset": [
+      { "level": 1, "move": "dart_toss" },
+      { "level": 8, "move": "vine_whip" },
+      { "level": 16, "move": "bolt_rack" },
+      { "level": 26, "move": "toxic_fang" },
+      { "level": 38, "move": "overgrowth" },
+      { "level": 48, "move": "snipe" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "pet_kreearra", "name": "Pet kree'arra",
+    "itemId": 12649, "altItemIds": [],
+    "npcIds": [6631, 6643],
+    "npcXpTags": ["Kree'arra"],
+    "types": ["RANGED", "MAGIC"],
+    "base": { "hp": 54, "atk": 66, "def": 50, "spd": 62 },
+    "learnset": [
+      { "level": 1, "move": "dart_toss" },
+      { "level": 8, "move": "wind_strike" },
+      { "level": 16, "move": "bolt_rack" },
+      { "level": 26, "move": "water_blast" },
+      { "level": 38, "move": "snipe" },
+      { "level": 50, "move": "trident_surge" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "pet_general_graardor", "name": "Pet general graardor",
+    "itemId": 12650, "altItemIds": [],
+    "npcIds": [6632, 6644],
+    "npcXpTags": ["General Graardor"],
+    "types": ["MELEE"],
+    "base": { "hp": 66, "atk": 68, "def": 64, "spd": 32 },
+    "learnset": [
+      { "level": 1, "move": "scratch" },
+      { "level": 8, "move": "war_cry" },
+      { "level": 16, "move": "crush" },
+      { "level": 26, "move": "bulk_up" },
+      { "level": 38, "move": "whirlwind" },
+      { "level": 50, "move": "grand_exit" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "pet_zilyana", "name": "Pet zilyana",
+    "itemId": 12651, "altItemIds": [],
+    "npcIds": [6633, 6646],
+    "npcXpTags": ["Commander Zilyana"],
+    "types": ["MAGIC", "RANGED"],
+    "base": { "hp": 56, "atk": 68, "def": 52, "spd": 58 },
+    "learnset": [
+      { "level": 1, "move": "wind_strike" },
+      { "level": 8, "move": "dart_toss" },
+      { "level": 16, "move": "water_blast" },
+      { "level": 26, "move": "bolt_rack" },
+      { "level": 38, "move": "arcane_blast" },
+      { "level": 48, "move": "trident_surge" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "pet_kril_tsutsaroth", "name": "Pet k'ril tsutsaroth",
+    "itemId": 12652, "altItemIds": [],
+    "npcIds": [6634, 6647],
+    "npcXpTags": ["K'ril Tsutsaroth"],
+    "types": ["DEMON", "MELEE"],
+    "base": { "hp": 62, "atk": 68, "def": 56, "spd": 44 },
+    "learnset": [
+      { "level": 1, "move": "demon_claw" },
+      { "level": 8, "move": "scratch" },
+      { "level": 16, "move": "hellfire" },
+      { "level": 26, "move": "crush" },
+      { "level": 38, "move": "soul_rend" },
+      { "level": 50, "move": "whirlwind" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "pet_smoke_devil", "name": "Pet smoke devil",
+    "itemId": 12648, "altItemIds": [22663],
+    "npcIds": [6639, 6655],
+    "npcXpTags": ["Thermonuclear smoke devil", "Smoke devil"],
+    "types": ["MAGIC", "FIRE"],
+    "base": { "hp": 54, "atk": 64, "def": 50, "spd": 60 },
+    "learnset": [
+      { "level": 1, "move": "wind_strike" },
+      { "level": 8, "move": "ember" },
+      { "level": 16, "move": "water_blast" },
+      { "level": 26, "move": "flame_breath" },
+      { "level": 38, "move": "arcane_blast" },
+      { "level": 48, "move": "inferno" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "pet_kraken", "name": "Pet kraken",
+    "itemId": 12655, "altItemIds": [],
+    "npcIds": [6640, 6656],
+    "npcXpTags": ["Kraken", "Cave kraken"],
+    "types": ["MAGIC", "NATURE"],
+    "base": { "hp": 60, "atk": 64, "def": 56, "spd": 46 },
+    "learnset": [
+      { "level": 1, "move": "wind_strike" },
+      { "level": 8, "move": "vine_whip" },
+      { "level": 16, "move": "water_blast" },
+      { "level": 26, "move": "toxic_fang" },
+      { "level": 38, "move": "trident_surge" },
+      { "level": 48, "move": "overgrowth" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "pet_dark_core", "name": "Pet dark core",
+    "itemId": 12816, "altItemIds": [22318],
+    "npcIds": [318, 388, 8008, 8010],
+    "npcXpTags": ["Corporeal Beast"],
+    "types": ["MAGIC", "UNDEAD"],
+    "base": { "hp": 64, "atk": 66, "def": 58, "spd": 42 },
+    "learnset": [
+      { "level": 1, "move": "wind_strike" },
+      { "level": 8, "move": "bone_bash" },
+      { "level": 16, "move": "water_blast" },
+      { "level": 26, "move": "grave_chill" },
+      { "level": 38, "move": "arcane_blast" },
+      { "level": 50, "move": "soul_drain" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "bloodhound", "name": "Bloodhound",
+    "itemId": 19730, "altItemIds": [],
+    "npcIds": [6296, 7232],
+    "npcXpTags": [],
+    "types": ["MELEE", "NATURE"],
+    "base": { "hp": 54, "atk": 60, "def": 50, "spd": 62 },
+    "learnset": [
+      { "level": 1, "move": "scratch" },
+      { "level": 8, "move": "vine_whip" },
+      { "level": 16, "move": "slash" },
+      { "level": 26, "move": "toxic_fang" },
+      { "level": 38, "move": "crush" },
+      { "level": 48, "move": "overgrowth" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "sraracha", "name": "Sraracha",
+    "itemId": 23495, "altItemIds": [25842, 25843],
+    "npcIds": [2143, 2144, 11157, 11159, 11158, 11160],
+    "npcXpTags": ["Sarachnis"],
+    "types": ["NATURE", "MELEE"],
+    "base": { "hp": 56, "atk": 62, "def": 54, "spd": 52 },
+    "learnset": [
+      { "level": 1, "move": "vine_whip" },
+      { "level": 8, "move": "scratch" },
+      { "level": 16, "move": "toxic_fang" },
+      { "level": 26, "move": "slash" },
+      { "level": 38, "move": "spore_cloud" },
+      { "level": 48, "move": "overgrowth" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "youngllef", "name": "Youngllef",
+    "itemId": 23757, "altItemIds": [23759],
+    "npcIds": [8729, 8737],
+    "npcXpTags": ["Crystalline Hunllef", "Corrupted Hunllef"],
+    "types": ["MAGIC", "NATURE"],
+    "base": { "hp": 56, "atk": 64, "def": 52, "spd": 54 },
+    "learnset": [
+      { "level": 1, "move": "wind_strike" },
+      { "level": 8, "move": "vine_whip" },
+      { "level": 16, "move": "water_blast" },
+      { "level": 26, "move": "entangling_roots" },
+      { "level": 38, "move": "arcane_blast" },
+      { "level": 48, "move": "overgrowth" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "little_nightmare", "name": "Little nightmare",
+    "itemId": 24491, "altItemIds": [25836],
+    "npcIds": [9398, 9399],
+    "npcXpTags": ["The Nightmare", "Nightmare"],
+    "types": ["MAGIC", "DEMON"],
+    "base": { "hp": 60, "atk": 66, "def": 54, "spd": 46 },
+    "learnset": [
+      { "level": 1, "move": "wind_strike" },
+      { "level": 8, "move": "demon_claw" },
+      { "level": 16, "move": "water_blast" },
+      { "level": 26, "move": "hellfire" },
+      { "level": 38, "move": "arcane_blast" },
+      { "level": 50, "move": "soul_rend" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "lil_creator", "name": "Lil' creator",
+    "itemId": 25348, "altItemIds": [25350],
+    "npcIds": [2833, 3566, 3564, 5008],
+    "npcXpTags": [],
+    "types": ["MAGIC", "RANGED"],
+    "base": { "hp": 58, "atk": 64, "def": 56, "spd": 50 },
+    "learnset": [
+      { "level": 1, "move": "wind_strike" },
+      { "level": 8, "move": "dart_toss" },
+      { "level": 16, "move": "water_blast" },
+      { "level": 26, "move": "bolt_rack" },
+      { "level": 38, "move": "arcane_blast" },
+      { "level": 48, "move": "lunar_grace" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "tiny_tempor", "name": "Tiny tempor",
+    "itemId": 25602, "altItemIds": [],
+    "npcIds": [10562, 10637],
+    "npcXpTags": ["Tempoross"],
+    "types": ["SKILLING", "ICE"],
+    "base": { "hp": 54, "atk": 56, "def": 50, "spd": 58 },
+    "learnset": [
+      { "level": 1, "move": "ice_shard" },
+      { "level": 8, "move": "log_toss" },
+      { "level": 16, "move": "frost_bite" },
+      { "level": 26, "move": "perfect_catch" },
+      { "level": 38, "move": "tool_frenzy" },
+      { "level": 48, "move": "ice_barrage" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "nexling", "name": "Nexling",
+    "itemId": 26348, "altItemIds": [],
+    "npcIds": [11276, 11277],
+    "npcXpTags": ["Nex"],
+    "types": ["MAGIC", "ICE"],
+    "base": { "hp": 60, "atk": 68, "def": 54, "spd": 50 },
+    "learnset": [
+      { "level": 1, "move": "wind_strike" },
+      { "level": 8, "move": "ice_shard" },
+      { "level": 16, "move": "water_blast" },
+      { "level": 26, "move": "frost_bite" },
+      { "level": 38, "move": "arcane_blast" },
+      { "level": 50, "move": "blizzard" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "abyssal_protector", "name": "Abyssal protector",
+    "itemId": 26901, "altItemIds": [],
+    "npcIds": [11402, 11429],
+    "npcXpTags": [],
+    "types": ["MAGIC", "DEMON"],
+    "base": { "hp": 56, "atk": 62, "def": 54, "spd": 52 },
+    "learnset": [
+      { "level": 1, "move": "wind_strike" },
+      { "level": 8, "move": "demon_claw" },
+      { "level": 16, "move": "water_blast" },
+      { "level": 26, "move": "hellfire" },
+      { "level": 38, "move": "arcane_blast" },
+      { "level": 48, "move": "soul_rend" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "tumekens_guardian", "name": "Tumeken's guardian",
+    "itemId": 27352, "altItemIds": [27386, 27354, 27387, 27382, 27383, 27384, 27385],
+    "npcIds": [11652, 11812, 11844, 11850, 11653, 11813, 11845, 11851, 11840, 11846, 11841, 11847, 11842, 11848, 11843, 11849],
+    "npcXpTags": ["Tumeken's Warden", "Elidinis' Warden", "Wardens"],
+    "types": ["MAGIC", "FIRE"],
+    "base": { "hp": 62, "atk": 66, "def": 58, "spd": 44 },
+    "learnset": [
+      { "level": 1, "move": "wind_strike" },
+      { "level": 8, "move": "ember" },
+      { "level": 16, "move": "water_blast" },
+      { "level": 26, "move": "flame_breath" },
+      { "level": 38, "move": "arcane_blast" },
+      { "level": 50, "move": "inferno" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "muphin", "name": "Muphin",
+    "itemId": 27590, "altItemIds": [27592, 27593],
+    "npcIds": [12005, 12006, 12007, 12014, 12015, 12016],
+    "npcXpTags": ["Phantom Muspah"],
+    "types": ["MAGIC", "ICE"],
+    "base": { "hp": 60, "atk": 64, "def": 56, "spd": 50 },
+    "learnset": [
+      { "level": 1, "move": "wind_strike" },
+      { "level": 8, "move": "ice_shard" },
+      { "level": 16, "move": "water_blast" },
+      { "level": 26, "move": "frost_bite" },
+      { "level": 38, "move": "arcane_blast" },
+      { "level": 48, "move": "ice_barrage" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "chompy_chick", "name": "Chompy chick",
+    "itemId": 13071, "altItemIds": [],
+    "npcIds": [4001, 4002],
+    "npcXpTags": ["Chompy bird"],
+    "types": ["RANGED", "NATURE"],
+    "base": { "hp": 48, "atk": 58, "def": 44, "spd": 66 },
+    "learnset": [
+      { "level": 1, "move": "dart_toss" },
+      { "level": 8, "move": "vine_whip" },
+      { "level": 16, "move": "bolt_rack" },
+      { "level": 26, "move": "quick_feet" },
+      { "level": 38, "move": "chin_toss" },
+      { "level": 48, "move": "snipe" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "venenatis_spiderling", "name": "Venenatis spiderling",
+    "itemId": 13177, "altItemIds": [27648],
+    "npcIds": [495, 5557],
+    "npcXpTags": ["Venenatis", "Spindel"],
+    "types": ["NATURE", "MAGIC"],
+    "base": { "hp": 58, "atk": 62, "def": 56, "spd": 48 },
+    "learnset": [
+      { "level": 1, "move": "vine_whip" },
+      { "level": 8, "move": "wind_strike" },
+      { "level": 16, "move": "toxic_fang" },
+      { "level": 26, "move": "water_blast" },
+      { "level": 38, "move": "spore_cloud" },
+      { "level": 48, "move": "overgrowth" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "callisto_cub", "name": "Callisto cub",
+    "itemId": 13178, "altItemIds": [27649],
+    "npcIds": [497, 5558],
+    "npcXpTags": ["Callisto", "Artio"],
+    "types": ["MELEE", "NATURE"],
+    "base": { "hp": 64, "atk": 64, "def": 60, "spd": 38 },
+    "learnset": [
+      { "level": 1, "move": "scratch" },
+      { "level": 8, "move": "vine_whip" },
+      { "level": 16, "move": "crush" },
+      { "level": 26, "move": "bulk_up" },
+      { "level": 38, "move": "whirlwind" },
+      { "level": 48, "move": "overgrowth" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "scorpias_offspring", "name": "Scorpia's offspring",
+    "itemId": 13181, "altItemIds": [],
+    "npcIds": [5547, 5561],
+    "npcXpTags": ["Scorpia"],
+    "types": ["NATURE", "MELEE"],
+    "base": { "hp": 56, "atk": 62, "def": 54, "spd": 52 },
+    "learnset": [
+      { "level": 1, "move": "scratch" },
+      { "level": 8, "move": "toxic_fang" },
+      { "level": 16, "move": "slash" },
+      { "level": 26, "move": "spore_cloud" },
+      { "level": 38, "move": "crush" },
+      { "level": 48, "move": "overgrowth" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "rift_guardian", "name": "Rift guardian",
+    "itemId": 20665, "altItemIds": [20667, 20669, 20671, 20673, 20675, 20677, 20679, 20681, 20683, 20685, 20687, 20689, 20691, 21990],
+    "npcIds": [7337, 7354, 7338, 7355, 7339, 7356],
+    "npcXpTags": [],
+    "types": ["MAGIC", "SKILLING"],
+    "base": { "hp": 52, "atk": 60, "def": 50, "spd": 58 },
+    "learnset": [
+      { "level": 1, "move": "wind_strike" },
+      { "level": 8, "move": "pickaxe_poke" },
+      { "level": 16, "move": "water_blast" },
+      { "level": 26, "move": "tool_frenzy" },
+      { "level": 38, "move": "arcane_blast" },
+      { "level": 48, "move": "trident_surge" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "phoenix", "name": "Phoenix",
+    "itemId": 20693, "altItemIds": [24484, 24483, 24486, 24485],
+    "npcIds": [7368, 7370],
+    "npcXpTags": [],
+    "types": ["FIRE", "SKILLING"],
+    "base": { "hp": 52, "atk": 60, "def": 48, "spd": 60 },
+    "learnset": [
+      { "level": 1, "move": "ember" },
+      { "level": 8, "move": "pickaxe_poke" },
+      { "level": 16, "move": "flame_breath" },
+      { "level": 26, "move": "tool_frenzy" },
+      { "level": 38, "move": "inferno" },
+      { "level": 48, "move": "obsidian_slam" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "herbi", "name": "Herbi",
+    "itemId": 21509, "altItemIds": [],
+    "npcIds": [7759, 7760],
+    "npcXpTags": [],
+    "types": ["SKILLING", "NATURE"],
+    "base": { "hp": 54, "atk": 56, "def": 52, "spd": 56 },
+    "learnset": [
+      { "level": 1, "move": "log_toss" },
+      { "level": 8, "move": "vine_whip" },
+      { "level": 16, "move": "tool_frenzy" },
+      { "level": 26, "move": "toxic_fang" },
+      { "level": 38, "move": "timber" },
+      { "level": 48, "move": "overgrowth" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "noon", "name": "Noon",
+    "itemId": 21748, "altItemIds": [21750],
+    "npcIds": [7891, 7892, 7890, 7893],
+    "npcXpTags": ["Dawn", "Dusk", "Grotesque Guardian"],
+    "types": ["MELEE", "MAGIC"],
+    "base": { "hp": 60, "atk": 64, "def": 58, "spd": 44 },
+    "learnset": [
+      { "level": 1, "move": "scratch" },
+      { "level": 8, "move": "wind_strike" },
+      { "level": 16, "move": "crush" },
+      { "level": 26, "move": "water_blast" },
+      { "level": 38, "move": "whirlwind" },
+      { "level": 48, "move": "arcane_blast" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "wisp", "name": "Wisp",
+    "itemId": 28246, "altItemIds": [],
+    "npcIds": [12153, 12157],
+    "npcXpTags": ["The Whisperer", "Whisperer"],
+    "types": ["MAGIC", "ICE"],
+    "base": { "hp": 56, "atk": 66, "def": 52, "spd": 52 },
+    "learnset": [
+      { "level": 1, "move": "wind_strike" },
+      { "level": 8, "move": "ice_shard" },
+      { "level": 16, "move": "water_blast" },
+      { "level": 26, "move": "frost_bite" },
+      { "level": 38, "move": "arcane_blast" },
+      { "level": 48, "move": "ice_barrage" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "butch", "name": "Butch",
+    "itemId": 28248, "altItemIds": [],
+    "npcIds": [12154, 12158],
+    "npcXpTags": ["Vardorvis"],
+    "types": ["MELEE", "DEMON"],
+    "base": { "hp": 60, "atk": 68, "def": 54, "spd": 48 },
+    "learnset": [
+      { "level": 1, "move": "scratch" },
+      { "level": 8, "move": "demon_claw" },
+      { "level": 16, "move": "slash" },
+      { "level": 26, "move": "hellfire" },
+      { "level": 38, "move": "whirlwind" },
+      { "level": 50, "move": "soul_rend" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "lilviathan", "name": "Lil'viathan",
+    "itemId": 28252, "altItemIds": [],
+    "npcIds": [12156, 12160],
+    "npcXpTags": ["The Leviathan", "Leviathan"],
+    "types": ["RANGED", "MAGIC"],
+    "base": { "hp": 58, "atk": 66, "def": 54, "spd": 50 },
+    "learnset": [
+      { "level": 1, "move": "dart_toss" },
+      { "level": 8, "move": "wind_strike" },
+      { "level": 16, "move": "bolt_rack" },
+      { "level": 26, "move": "water_blast" },
+      { "level": 38, "move": "snipe" },
+      { "level": 48, "move": "trident_surge" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "baron", "name": "Baron",
+    "itemId": 28250, "altItemIds": [],
+    "npcIds": [12155, 12159],
+    "npcXpTags": ["Duke Sucellus"],
+    "types": ["MELEE", "NATURE"],
+    "base": { "hp": 64, "atk": 64, "def": 60, "spd": 40 },
+    "learnset": [
+      { "level": 1, "move": "scratch" },
+      { "level": 8, "move": "vine_whip" },
+      { "level": 16, "move": "crush" },
+      { "level": 26, "move": "toxic_fang" },
+      { "level": 38, "move": "whirlwind" },
+      { "level": 48, "move": "overgrowth" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "scurry", "name": "Scurry",
+    "itemId": 28801, "altItemIds": [],
+    "npcIds": [7219, 7616],
+    "npcXpTags": ["Scurrius"],
+    "types": ["MELEE", "NATURE"],
+    "base": { "hp": 54, "atk": 58, "def": 50, "spd": 58 },
+    "learnset": [
+      { "level": 1, "move": "scratch" },
+      { "level": 8, "move": "vine_whip" },
+      { "level": 16, "move": "slash" },
+      { "level": 26, "move": "toxic_fang" },
+      { "level": 38, "move": "crush" },
+      { "level": 48, "move": "spore_cloud" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "smol_heredit", "name": "Smol heredit",
+    "itemId": 28960, "altItemIds": [],
+    "npcIds": [12767, 12857],
+    "npcXpTags": ["Sol Heredit"],
+    "types": ["MELEE"],
+    "base": { "hp": 62, "atk": 66, "def": 62, "spd": 40 },
+    "learnset": [
+      { "level": 1, "move": "scratch" },
+      { "level": 8, "move": "war_cry" },
+      { "level": 16, "move": "crush" },
+      { "level": 26, "move": "bulk_up" },
+      { "level": 38, "move": "whirlwind" },
+      { "level": 50, "move": "grand_exit" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "quetzin", "name": "Quetzin",
+    "itemId": 28962, "altItemIds": [],
+    "npcIds": [12768, 12858],
+    "npcXpTags": [],
+    "types": ["SKILLING", "DRAGON"],
+    "base": { "hp": 54, "atk": 60, "def": 50, "spd": 60 },
+    "learnset": [
+      { "level": 1, "move": "pickaxe_poke" },
+      { "level": 8, "move": "tail_swipe" },
+      { "level": 16, "move": "tool_frenzy" },
+      { "level": 26, "move": "dragon_breath" },
+      { "level": 38, "move": "timber" },
+      { "level": 48, "move": "draconic_fury" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "smolcano", "name": "Smolcano",
+    "itemId": 23760, "altItemIds": [],
+    "npcIds": [8731, 8739],
+    "npcXpTags": ["Zalcano"],
+    "types": ["FIRE", "SKILLING"],
+    "base": { "hp": 58, "atk": 62, "def": 56, "spd": 44 },
+    "learnset": [
+      { "level": 1, "move": "pickaxe_poke" },
+      { "level": 8, "move": "ember" },
+      { "level": 16, "move": "tool_frenzy" },
+      { "level": 26, "move": "flame_breath" },
+      { "level": 38, "move": "timber" },
+      { "level": 48, "move": "inferno" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "maggot_marquess", "name": "Maggot marquess",
+    "itemId": 33642, "altItemIds": [],
+    "npcIds": [15740, 16293],
+    "npcXpTags": ["Yama"],
+    "types": ["DEMON", "UNDEAD"],
+    "base": { "hp": 60, "atk": 66, "def": 56, "spd": 48 },
+    "learnset": [
+      { "level": 1, "move": "demon_claw" },
+      { "level": 8, "move": "bone_bash" },
+      { "level": 16, "move": "hellfire" },
+      { "level": 26, "move": "grave_chill" },
+      { "level": 38, "move": "soul_rend" },
+      { "level": 48, "move": "death_grasp" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "gull", "name": "Gull",
+    "itemId": 31285, "altItemIds": [31287],
+    "npcIds": [14931, 15059],
+    "npcXpTags": [],
+    "types": ["SKILLING", "RANGED"],
+    "base": { "hp": 48, "atk": 54, "def": 44, "spd": 66 },
+    "learnset": [
+      { "level": 1, "move": "dart_toss" },
+      { "level": 8, "move": "log_toss" },
+      { "level": 16, "move": "bolt_rack" },
+      { "level": 26, "move": "tool_frenzy" },
+      { "level": 38, "move": "quick_feet" },
+      { "level": 48, "move": "snipe" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "nid", "name": "Nid",
+    "itemId": 29836, "altItemIds": [29838],
+    "npcIds": [13681, 13683],
+    "npcXpTags": ["Araxxor", "Araxyte"],
+    "types": ["NATURE", "MELEE"],
+    "base": { "hp": 58, "atk": 64, "def": 56, "spd": 48 },
+    "learnset": [
+      { "level": 1, "move": "scratch" },
+      { "level": 8, "move": "vine_whip" },
+      { "level": 16, "move": "slash" },
+      { "level": 26, "move": "toxic_fang" },
+      { "level": 38, "move": "crush" },
+      { "level": 48, "move": "spore_cloud" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "huberte", "name": "Huberte",
+    "itemId": 30152, "altItemIds": [],
+    "npcIds": [14033, 14045],
+    "npcXpTags": ["Amoxliatl"],
+    "types": ["ICE", "MAGIC"],
+    "base": { "hp": 56, "atk": 62, "def": 54, "spd": 52 },
+    "learnset": [
+      { "level": 1, "move": "ice_shard" },
+      { "level": 8, "move": "wind_strike" },
+      { "level": 16, "move": "frost_bite" },
+      { "level": 26, "move": "water_blast" },
+      { "level": 38, "move": "ice_barrage" },
+      { "level": 48, "move": "arcane_blast" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "moxi", "name": "Moxi",
+    "itemId": 30154, "altItemIds": [],
+    "npcIds": [14034, 14046],
+    "npcXpTags": ["The Hueycoatl", "Hueycoatl"],
+    "types": ["DRAGON", "NATURE"],
+    "base": { "hp": 60, "atk": 64, "def": 56, "spd": 50 },
+    "learnset": [
+      { "level": 1, "move": "tail_swipe" },
+      { "level": 8, "move": "vine_whip" },
+      { "level": 16, "move": "dragon_breath" },
+      { "level": 26, "move": "toxic_fang" },
+      { "level": 38, "move": "draconic_fury" },
+      { "level": 48, "move": "overgrowth" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "bran", "name": "Bran",
+    "itemId": 30622, "altItemIds": [30624],
+    "npcIds": [10476, 12593],
+    "npcXpTags": ["Branda the Fire Queen", "Eldric the Ice King", "Royal Titans"],
+    "types": ["ICE", "FIRE"],
+    "base": { "hp": 62, "atk": 64, "def": 58, "spd": 46 },
+    "learnset": [
+      { "level": 1, "move": "ice_shard" },
+      { "level": 8, "move": "ember" },
+      { "level": 16, "move": "frost_bite" },
+      { "level": 26, "move": "flame_breath" },
+      { "level": 38, "move": "ice_barrage" },
+      { "level": 48, "move": "inferno" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "yami", "name": "Yami",
+    "itemId": 30888, "altItemIds": [],
+    "npcIds": [14203, 14204],
+    "npcXpTags": ["Yama"],
+    "types": ["DEMON", "FIRE"],
+    "base": { "hp": 60, "atk": 68, "def": 54, "spd": 50 },
+    "learnset": [
+      { "level": 1, "move": "demon_claw" },
+      { "level": 8, "move": "ember" },
+      { "level": 16, "move": "hellfire" },
+      { "level": 26, "move": "flame_breath" },
+      { "level": 38, "move": "soul_rend" },
+      { "level": 50, "move": "inferno" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "dom", "name": "Dom",
+    "itemId": 31130, "altItemIds": [],
+    "npcIds": [14785, 14519],
+    "npcXpTags": ["Doom of Mokhaiotl"],
+    "types": ["DEMON", "MAGIC"],
+    "base": { "hp": 60, "atk": 66, "def": 56, "spd": 48 },
+    "learnset": [
+      { "level": 1, "move": "demon_claw" },
+      { "level": 8, "move": "wind_strike" },
+      { "level": 16, "move": "hellfire" },
+      { "level": 26, "move": "water_blast" },
+      { "level": 38, "move": "soul_rend" },
+      { "level": 48, "move": "arcane_blast" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "soup", "name": "Soup",
+    "itemId": 31283, "altItemIds": [],
+    "npcIds": [14930, 15058],
+    "npcXpTags": [],
+    "types": ["SKILLING", "ICE"],
+    "base": { "hp": 52, "atk": 56, "def": 50, "spd": 58 },
+    "learnset": [
+      { "level": 1, "move": "pickaxe_poke" },
+      { "level": 8, "move": "ice_shard" },
+      { "level": 16, "move": "log_toss" },
+      { "level": 26, "move": "frost_bite" },
+      { "level": 38, "move": "tool_frenzy" },
+      { "level": 48, "move": "perfect_catch" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "beef", "name": "Beef",
+    "itemId": 33124, "altItemIds": [],
+    "npcIds": [15631, 15633],
+    "npcXpTags": ["Brutus", "Demonic Brutus"],
+    "types": ["MELEE", "DEMON"],
+    "base": { "hp": 62, "atk": 66, "def": 58, "spd": 44 },
+    "learnset": [
+      { "level": 1, "move": "scratch" },
+      { "level": 8, "move": "demon_claw" },
+      { "level": 16, "move": "crush" },
+      { "level": 26, "move": "hellfire" },
+      { "level": 38, "move": "whirlwind" },
+      { "level": 48, "move": "soul_rend" }
+    ],
+    "easterEggs": []
   }
 ]

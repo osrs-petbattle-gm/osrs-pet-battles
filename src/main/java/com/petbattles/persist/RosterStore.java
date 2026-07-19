@@ -30,6 +30,9 @@ public class RosterStore
 	{
 		public int v = SCHEMA_VERSION;
 		public Set<String> ownedSpecies = new LinkedHashSet<>();
+		// Pets manually unlocked for testing via the "Dev: select locked pets" option.
+		// Kept apart from ownedSpecies so it never masquerades as a real collection-log unlock.
+		public Set<String> devUnlocked = new LinkedHashSet<>();
 		public Map<String, PetInstance> pets = new LinkedHashMap<>();
 		public List<String> team = new ArrayList<>();
 	}

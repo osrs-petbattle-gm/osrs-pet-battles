@@ -28,10 +28,12 @@ public class PetCard extends JPanel
 		void onToggleTeam(String speciesId);
 
 		void onEditMoves(String speciesId);
+
+		void onToggleDevUnlock(String speciesId);
 	}
 
 	public PetCard(SpeciesDef species, PetInstance pet, boolean owned, boolean onTeam,
-		boolean teamFull, Sprites sprites, Listener listener)
+		boolean teamFull, boolean devMode, boolean devUnlocked, Sprites sprites, Listener listener)
 	{
 		setLayout(new BorderLayout(6, 0));
 		setBorder(BorderFactory.createCompoundBorder(
@@ -49,7 +51,9 @@ public class PetCard extends JPanel
 		center.setOpaque(false);
 		center.setLayout(new GridLayout(0, 1, 0, 2));
 
-		JLabel name = new JLabel(species.getName() + (owned && pet != null ? "  Lv " + pet.getLevel() : ""));
+		JLabel name = new JLabel(species.getName()
+			+ (owned && pet != null ? "  Lv " + pet.getLevel() : "")
+			+ (devUnlocked ? "  (dev)" : ""));
 		name.setFont(FontManager.getRunescapeSmallFont());
 		name.setForeground(owned ? Color.WHITE : ColorScheme.LIGHT_GRAY_COLOR.darker());
 		center.add(name);
@@ -107,14 +111,39 @@ public class PetCard extends JPanel
 			movesBtn.setMargin(new java.awt.Insets(1, 4, 1, 4));
 			movesBtn.addActionListener(e -> listener.onEditMoves(species.getId()));
 			buttons.add(movesBtn);
+
+			if (devUnlocked)
+			{
+				JButton lockBtn = new JButton("Lock");
+				lockBtn.setFont(FontManager.getRunescapeSmallFont());
+				lockBtn.setMargin(new java.awt.Insets(1, 4, 1, 4));
+				lockBtn.setToolTipText("Remove this testing-only unlock");
+				lockBtn.addActionListener(e -> listener.onToggleDevUnlock(species.getId()));
+				buttons.add(lockBtn);
+			}
 			center.add(buttons);
 		}
 		else
 		{
-			JLabel locked = new JLabel("Not in your collection log yet");
+			JLabel locked = new JLabel(devMode
+				? "Locked — not in your collection log"
+				: "Not in your collection log yet");
 			locked.setFont(FontManager.getRunescapeSmallFont().deriveFont(Font.ITALIC, 10f));
 			locked.setForeground(ColorScheme.LIGHT_GRAY_COLOR.darker());
 			center.add(locked);
+
+			if (devMode)
+			{
+				JPanel devButtons = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+				devButtons.setOpaque(false);
+				JButton unlockBtn = new JButton("Unlock (dev)");
+				unlockBtn.setFont(FontManager.getRunescapeSmallFont());
+				unlockBtn.setMargin(new java.awt.Insets(1, 4, 1, 4));
+				unlockBtn.setToolTipText("Unlock this pet for testing (not added to your real collection log)");
+				unlockBtn.addActionListener(e -> listener.onToggleDevUnlock(species.getId()));
+				devButtons.add(unlockBtn);
+				center.add(devButtons);
+			}
 		}
 
 		add(center, BorderLayout.CENTER);
