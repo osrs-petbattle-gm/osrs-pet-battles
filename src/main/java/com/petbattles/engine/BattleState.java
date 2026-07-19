@@ -93,6 +93,14 @@ public class BattleState
 	}
 
 	/**
+	 * Set the active pet directly (validated by the engine's switch handling).
+	 */
+	public void setActive(int side, int index)
+	{
+		activeIndex[side] = index;
+	}
+
+	/**
 	 * Switch the active pet to the next non-fainted team member; returns false if none remain.
 	 */
 	public boolean sendNext(int side)

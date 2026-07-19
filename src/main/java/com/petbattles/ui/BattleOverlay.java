@@ -71,6 +71,7 @@ public class BattleOverlay extends Overlay
 	private final Sprites sprites;
 	private final List<Button> buttons = new ArrayList<>();
 	private Point hoverPoint;
+	private volatile boolean swapMenuOpen;
 
 	public BattleOverlay(BattleSession session, Sprites sprites)
 	{
@@ -92,6 +93,11 @@ public class BattleOverlay extends Overlay
 	public void setHoverPoint(Point localPoint)
 	{
 		this.hoverPoint = localPoint;
+	}
+
+	public void setSwapMenuOpen(boolean open)
+	{
+		this.swapMenuOpen = open;
 	}
 
 	@Override
@@ -183,8 +189,13 @@ public class BattleOverlay extends Overlay
 				drawButton(g, close, "Close", true, null);
 				newButtons.add(new Button(close, "close"));
 			}
+			else if (swapMenuOpen && session.isAwaitingInput())
+			{
+				drawSwapMenu(g, state, btnY, newButtons);
+			}
 			else
 			{
+				swapMenuOpen = false;
 				boolean enabled = session.isAwaitingInput();
 				List<MoveDef> moves = player.getMoves();
 				int bw = (WIDTH - 24 - 8) / 2;
@@ -205,6 +216,13 @@ public class BattleOverlay extends Overlay
 						drawButton(g, r, "—", false, null);
 					}
 				}
+				Rectangle swap = new Rectangle(WIDTH - 118, 4, 54, 14);
+				boolean canSwap = enabled && hasBenchTarget(state);
+				drawButton(g, swap, "Swap", canSwap, null);
+				if (canSwap)
+				{
+					newButtons.add(new Button(swap, "swapmenu"));
+				}
 				Rectangle flee = new Rectangle(WIDTH - 60, 4, 50, 14);
 				drawButton(g, flee, "Run", enabled, null);
 				newButtons.add(new Button(flee, "flee"));
@@ -217,6 +235,55 @@ public class BattleOverlay extends Overlay
 		}
 
 		return new Dimension(WIDTH, HEIGHT);
+	}
+
+	private static boolean hasBenchTarget(BattleState state)
+	{
+		List<BattlePet> team = state.team(BattleState.PLAYER);
+		for (int i = 0; i < team.size(); i++)
+		{
+			if (i != state.activeIndex(BattleState.PLAYER) && !team.get(i).isFainted())
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Bench picker shown in place of the move grid: each healthy bench pet with its
+	 * offensive type match-up against the current enemy.
+	 */
+	private void drawSwapMenu(Graphics2D g, BattleState state, int btnY, List<Button> newButtons)
+	{
+		BattlePet enemy = state.active(BattleState.ENEMY);
+		List<BattlePet> team = state.team(BattleState.PLAYER);
+		int active = state.activeIndex(BattleState.PLAYER);
+		int rowY = btnY;
+		for (int i = 0; i < team.size(); i++)
+		{
+			if (i == active || team.get(i).isFainted())
+			{
+				continue;
+			}
+			BattlePet bench = team.get(i);
+			double best = 0;
+			for (PetType type : bench.getSpecies().getTypes())
+			{
+				best = Math.max(best, session.getTypeChart().effectiveness(type, enemy.getSpecies().getTypes()));
+			}
+			String label = bench.getDisplayName() + "  Lv" + bench.getLevel()
+				+ "  " + bench.getCurrentHp() + "/" + bench.getMaxHp()
+				+ "  hits " + String.format("%.1fx", best);
+			Color accent = best >= 2.0 ? HP_GREEN : best <= 0.5 ? HP_RED : null;
+			Rectangle r = new Rectangle(12, rowY, WIDTH - 24, 18);
+			drawButton(g, r, label, true, accent);
+			newButtons.add(new Button(r, "switch:" + i));
+			rowY += 22;
+		}
+		Rectangle back = new Rectangle(WIDTH - 60, 4, 50, 14);
+		drawButton(g, back, "Back", true, null);
+		newButtons.add(new Button(back, "swapcancel"));
 	}
 
 	/**

@@ -169,6 +169,50 @@ public class BattleEngineTest
 	}
 
 	@Test
+	public void switchChangesActivePetAndConsumesTurn()
+	{
+		BattlePet first = TestPets.fastPet("first", PetType.MELEE, 20, TestPets.TACKLE);
+		BattlePet second = TestPets.fastPet("second", PetType.RANGED, 20, TestPets.ARROW);
+		BattlePet enemy = TestPets.slowPet("enemy", PetType.MELEE, 20, TestPets.TACKLE);
+
+		List<BattleEvent> events = new ArrayList<>();
+		BattleState state = start(TestPets.teamOf(first, second), TestPets.teamOf(enemy), events);
+
+		List<BattleEvent> turn = engine.resolveTurn(state, BattleAction.switchTo(1), BattleAction.move(0), new Random(1));
+
+		assertEquals(1, state.activeIndex(BattleState.PLAYER));
+		assertTrue("switch emits a send-out",
+			turn.stream().anyMatch(e -> e.getType() == BattleEvent.Type.PET_SENT_OUT && e.getSide() == BattleState.PLAYER));
+		// Switching consumed the player's turn: no player move was used
+		assertFalse(turn.stream().anyMatch(e -> e.getType() == BattleEvent.Type.MOVE_USED && e.getSide() == BattleState.PLAYER));
+		// The enemy still acted, and its damage landed on the newly sent-out pet
+		assertTrue(turn.stream().anyMatch(e -> e.getType() == BattleEvent.Type.MOVE_USED && e.getSide() == BattleState.ENEMY));
+		assertTrue(second.getCurrentHp() < second.getMaxHp());
+		assertEquals(first.getMaxHp(), first.getCurrentHp());
+	}
+
+	@Test
+	public void switchToFaintedOrInvalidTargetIsIgnored()
+	{
+		BattlePet first = TestPets.fastPet("first", PetType.MELEE, 20, TestPets.TACKLE);
+		BattlePet downed = TestPets.fastPet("downed", PetType.MELEE, 20, TestPets.TACKLE);
+		downed.damage(downed.getMaxHp());
+		BattlePet enemy = TestPets.slowPet("enemy", PetType.MELEE, 20, TestPets.TACKLE);
+
+		List<BattleEvent> events = new ArrayList<>();
+		BattleState state = start(TestPets.teamOf(first, downed), TestPets.teamOf(enemy), events);
+
+		engine.resolveTurn(state, BattleAction.switchTo(1), BattleAction.move(0), new Random(1));
+		assertEquals("cannot switch to a fainted pet", 0, state.activeIndex(BattleState.PLAYER));
+
+		engine.resolveTurn(state, BattleAction.switchTo(0), BattleAction.move(0), new Random(1));
+		assertEquals("switching to the active pet is a no-op", 0, state.activeIndex(BattleState.PLAYER));
+
+		engine.resolveTurn(state, BattleAction.switchTo(7), BattleAction.move(0), new Random(1));
+		assertEquals("out-of-range switch is a no-op", 0, state.activeIndex(BattleState.PLAYER));
+	}
+
+	@Test
 	public void resolveTurnOnFinishedBattleDoesNothing()
 	{
 		List<BattleEvent> events = new ArrayList<>();

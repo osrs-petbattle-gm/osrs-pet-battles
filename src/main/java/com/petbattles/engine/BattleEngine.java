@@ -55,6 +55,11 @@ public class BattleEngine
 			return events;
 		}
 
+		// Switches resolve before moves: the switch consumes the turn and the
+		// opponent's attack lands on the incoming pet
+		handleSwitch(state, BattleState.PLAYER, playerAction, events);
+		handleSwitch(state, BattleState.ENEMY, enemyAction, events);
+
 		// Speed decides order; ties are a coin flip
 		int playerSpd = state.active(BattleState.PLAYER).effectiveSpd();
 		int enemySpd = state.active(BattleState.ENEMY).effectiveSpd();
@@ -88,6 +93,32 @@ public class BattleEngine
 	private static BattleAction actionFor(int side, BattleAction playerAction, BattleAction enemyAction)
 	{
 		return side == BattleState.PLAYER ? playerAction : enemyAction;
+	}
+
+	/**
+	 * Validate and apply a SWITCH action; invalid targets (out of range, fainted,
+	 * already active) are silently ignored.
+	 */
+	private void handleSwitch(BattleState state, int side, BattleAction action, List<BattleEvent> events)
+	{
+		if (action.getKind() != BattleAction.Kind.SWITCH)
+		{
+			return;
+		}
+		int target = action.getSwitchIndex();
+		List<BattlePet> team = state.team(side);
+		if (target < 0 || target >= team.size() || target == state.activeIndex(side)
+			|| team.get(target).isFainted())
+		{
+			return;
+		}
+		BattlePet outgoing = state.active(side);
+		state.setActive(side, target);
+		BattlePet incoming = state.active(side);
+		String text = side == BattleState.PLAYER
+			? outgoing.getDisplayName() + ", come back! Go, " + incoming.getDisplayName() + "!"
+			: "Enemy withdraws " + outgoing.getDisplayName() + " and sends out " + incoming.getDisplayName() + "!";
+		events.add(BattleEvent.of(BattleEvent.Type.PET_SENT_OUT, side, text));
 	}
 
 	private void act(BattleState state, int side, BattleAction action, List<BattleEvent> events, Random rng)

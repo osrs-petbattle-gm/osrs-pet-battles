@@ -13,6 +13,7 @@ import com.petbattles.engine.MoveDef;
 import com.petbattles.engine.PetInstance;
 import com.petbattles.engine.SpeciesDef;
 import com.petbattles.engine.TrainerDef;
+import com.petbattles.engine.TypeChart;
 import com.petbattles.engine.controller.AiController;
 import com.petbattles.engine.controller.OpponentController;
 import com.petbattles.persist.RosterManager;
@@ -280,6 +281,21 @@ public class BattleSession
 		beginAnimating();
 	}
 
+	/**
+	 * Player swaps the active pet for the bench pet at the given team index.
+	 * Consumes the turn; the enemy still acts.
+	 */
+	public void submitSwitch(int teamIndex)
+	{
+		if (phase != Phase.AWAITING_INPUT)
+		{
+			return;
+		}
+		BattleAction enemyAction = enemyController.chooseAction(state, BattleState.ENEMY, rng);
+		pendingEvents.addAll(engine.resolveTurn(state, BattleAction.switchTo(teamIndex), enemyAction, rng));
+		beginAnimating();
+	}
+
 	public void submitFlee()
 	{
 		if (phase != Phase.AWAITING_INPUT)
@@ -400,6 +416,14 @@ public class BattleSession
 	public TrainerDef getTrainer()
 	{
 		return trainer;
+	}
+
+	/**
+	 * Type chart for UI match-up hints (e.g. the swap menu).
+	 */
+	public TypeChart getTypeChart()
+	{
+		return engine.getTypeChart();
 	}
 
 	public List<String> getVisibleLog()

@@ -8,21 +8,30 @@ public class BattleAction
 	public enum Kind
 	{
 		MOVE,
+		SWITCH,
 		FLEE
 	}
 
 	private final Kind kind;
-	private final int moveIndex;
+	private final int index; // move index for MOVE, team index for SWITCH
 
-	private BattleAction(Kind kind, int moveIndex)
+	private BattleAction(Kind kind, int index)
 	{
 		this.kind = kind;
-		this.moveIndex = moveIndex;
+		this.index = index;
 	}
 
 	public static BattleAction move(int index)
 	{
 		return new BattleAction(Kind.MOVE, index);
+	}
+
+	/**
+	 * Switch the active pet to the given team index. Consumes the turn.
+	 */
+	public static BattleAction switchTo(int teamIndex)
+	{
+		return new BattleAction(Kind.SWITCH, teamIndex);
 	}
 
 	public static BattleAction flee()
@@ -37,6 +46,11 @@ public class BattleAction
 
 	public int getMoveIndex()
 	{
-		return moveIndex;
+		return index;
+	}
+
+	public int getSwitchIndex()
+	{
+		return index;
 	}
 }
