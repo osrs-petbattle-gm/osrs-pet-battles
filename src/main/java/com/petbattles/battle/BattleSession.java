@@ -57,6 +57,7 @@ public class BattleSession
 	private int tickCounter;
 	private boolean xpAwarded;
 	private BattleEvent currentEvent;
+	private MoveDef currentMove;
 	private long eventStartMs;
 
 	public BattleSession(PetDatabase db, RosterManager roster, PetBattlesConfig config, Runnable onRosterChanged)
@@ -248,6 +249,11 @@ public class BattleSession
 		{
 			currentEvent = event;
 			eventStartMs = System.currentTimeMillis();
+			if (event.getType() == BattleEvent.Type.MOVE_USED)
+			{
+				// Remembered through the following DAMAGE/STATUS events for tinting
+				currentMove = event.getMove();
+			}
 			pushLog(event.getText());
 			return;
 		}
@@ -296,6 +302,7 @@ public class BattleSession
 		pendingEvents.clear();
 		visibleLog.clear();
 		currentEvent = null;
+		currentMove = null;
 	}
 
 	private void awardXp()
@@ -406,6 +413,14 @@ public class BattleSession
 	public BattleEvent getCurrentEvent()
 	{
 		return currentEvent;
+	}
+
+	/**
+	 * The move behind the most recent MOVE_USED event, for effect tinting.
+	 */
+	public MoveDef getCurrentMove()
+	{
+		return currentMove;
 	}
 
 	/**

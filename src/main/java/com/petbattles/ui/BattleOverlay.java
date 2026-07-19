@@ -130,19 +130,28 @@ public class BattleOverlay extends Overlay
 		String title = session.getTrainer() != null ? "vs " + session.getTrainer().getName() : "Battle";
 		g.drawString(title, 10, 14);
 
+		BattleEvent current = session.getPhase() == BattleSession.Phase.ANIMATING
+			? session.getCurrentEvent() : null;
+		MoveDef currentMove = session.getCurrentMove();
+		float progress = session.getAnimationProgress();
+
 		// Enemy: info card top-left, sprite top-right
 		drawPetInfo(g, enemy, 10, 22, false);
-		drawPetSprite(g, enemy, ENEMY_SPRITE.x, ENEMY_SPRITE.y, ENEMY_SPRITE.width);
+		drawPetSprite(g, enemy, ENEMY_SPRITE,
+			AttackAnimator.spriteTransform(current, currentMove, progress, BattleState.ENEMY, ENEMY_SPRITE, PLAYER_SPRITE));
 
 		// Player: sprite mid-left, info card mid-right
-		drawPetSprite(g, player, PLAYER_SPRITE.x, PLAYER_SPRITE.y, PLAYER_SPRITE.width);
+		drawPetSprite(g, player, PLAYER_SPRITE,
+			AttackAnimator.spriteTransform(current, currentMove, progress, BattleState.PLAYER, PLAYER_SPRITE, ENEMY_SPRITE));
 		drawPetInfo(g, player, WIDTH - 150, 92, true);
 
-		// Hit splats ride the current event
-		BattleEvent current = session.getCurrentEvent();
-		if (current != null && session.getPhase() == BattleSession.Phase.ANIMATING)
+		// Attack effects and hit splats ride the current event
+		if (current != null)
 		{
-			drawEventEffects(g, current, session.getAnimationProgress());
+			Rectangle attackerRect = spriteRect(current.getSide());
+			Rectangle defenderRect = spriteRect(BattleState.opponent(current.getSide()));
+			AttackAnimator.drawEffects(g, current, currentMove, progress, attackerRect, defenderRect);
+			drawEventEffects(g, current, progress);
 		}
 
 		List<Button> newButtons = new ArrayList<>();
@@ -394,8 +403,11 @@ public class BattleOverlay extends Overlay
 		}
 	}
 
-	private void drawPetSprite(Graphics2D g, BattlePet pet, int x, int y, int size)
+	private void drawPetSprite(Graphics2D g, BattlePet pet, Rectangle rect, AttackAnimator.Transform t)
 	{
+		int size = Math.round(rect.width * t.scale);
+		int x = rect.x + t.dx + (rect.width - size) / 2;
+		int y = rect.y + t.dy + (rect.height - size) / 2;
 		Image img = sprites.itemImage(pet.getSpecies().getItemId());
 		if (img != null)
 		{

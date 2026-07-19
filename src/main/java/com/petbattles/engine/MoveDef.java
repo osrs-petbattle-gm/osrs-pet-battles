@@ -12,6 +12,9 @@ public class MoveDef
 	private int accuracy;
 	private MoveEffect effect = MoveEffect.NONE;
 	private int effectChance;
+	// Optional hand-authored animation id ("lunge", "whip", "projectile", "grow",
+	// "shake", "flash", "sparkle"); null falls back to a category default.
+	private String animation;
 
 	public MoveDef()
 	{
@@ -61,6 +64,11 @@ public class MoveDef
 	public int getEffectChance()
 	{
 		return effectChance;
+	}
+
+	public String getAnimation()
+	{
+		return animation;
 	}
 
 	public boolean isStatusMove()

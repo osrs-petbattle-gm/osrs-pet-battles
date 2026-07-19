@@ -134,8 +134,8 @@ public class BattleEngine
 		MoveDef move = moves.get(idx);
 		BattlePet defender = state.active(BattleState.opponent(side));
 
-		events.add(BattleEvent.of(BattleEvent.Type.MOVE_USED, side,
-			attacker.getDisplayName() + " used " + move.getName() + "!"));
+		events.add(BattleEvent.moveUsed(side,
+			move, attacker.getDisplayName() + " used " + move.getName() + "!"));
 
 		if (rng.nextInt(100) >= move.getAccuracy())
 		{

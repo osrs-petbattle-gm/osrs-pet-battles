@@ -31,19 +31,31 @@ public class BattleEvent
 	private final int value;  // damage, heal, level, xp... depending on type
 	private final double effectiveness; // for DAMAGE
 	private final String text;
+	private final MoveDef move; // for MOVE_USED: drives the attack animation
 
 	public BattleEvent(Type type, int side, int value, double effectiveness, String text)
+	{
+		this(type, side, value, effectiveness, text, null);
+	}
+
+	private BattleEvent(Type type, int side, int value, double effectiveness, String text, MoveDef move)
 	{
 		this.type = type;
 		this.side = side;
 		this.value = value;
 		this.effectiveness = effectiveness;
 		this.text = text;
+		this.move = move;
 	}
 
 	public static BattleEvent of(Type type, int side, String text)
 	{
 		return new BattleEvent(type, side, 0, 1.0, text);
+	}
+
+	public static BattleEvent moveUsed(int side, MoveDef move, String text)
+	{
+		return new BattleEvent(Type.MOVE_USED, side, 0, 1.0, text, move);
 	}
 
 	public static BattleEvent damage(int side, int amount, double effectiveness, String text)
@@ -79,6 +91,11 @@ public class BattleEvent
 	public String getText()
 	{
 		return text;
+	}
+
+	public MoveDef getMove()
+	{
+		return move;
 	}
 
 	@Override
