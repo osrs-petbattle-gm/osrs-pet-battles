@@ -1,6 +1,7 @@
 package com.petbattles.ui;
 
 import com.petbattles.battle.BattleSession;
+import com.petbattles.engine.BattleEvent;
 import com.petbattles.engine.BattlePet;
 import com.petbattles.engine.BattleState;
 import com.petbattles.engine.MoveDef;
@@ -128,53 +129,61 @@ public class BattleOverlay extends Overlay
 		drawPetSprite(g, player, 24, 88, 72);
 		drawPetInfo(g, player, WIDTH - 150, 92, true);
 
-		// Log strip
-		int logY = 168;
-		g.setColor(new Color(0, 0, 0, 120));
-		g.fillRect(6, logY - 12, WIDTH - 12, 46);
-		g.setFont(FontManager.getRunescapeSmallFont());
-		g.setColor(LOG_TEXT);
-		int y = logY;
-		for (String line : session.getVisibleLog())
-		{
-			g.drawString(clip(g, line, WIDTH - 24), 12, y);
-			y += 11;
-		}
-
-		// Buttons
 		List<Button> newButtons = new ArrayList<>();
-		int btnY = HEIGHT - 44;
-		if (session.getPhase() == BattleSession.Phase.ENDED)
+		if (session.getPhase() == BattleSession.Phase.ANIMATING)
 		{
-			Rectangle close = new Rectangle(WIDTH / 2 - 40, btnY + 8, 80, 24);
-			drawButton(g, close, "Close", true, null);
-			newButtons.add(new Button(close, "close"));
+			// Turn is resolving: no move grid, just a wide dialog box with the current line
+			drawDialogBox(g);
 		}
 		else
 		{
-			boolean enabled = session.isAwaitingInput();
-			List<MoveDef> moves = player.getMoves();
-			int bw = (WIDTH - 24 - 8) / 2;
-			int bh = 18;
-			for (int i = 0; i < 4; i++)
+			// Log strip
+			int logY = 168;
+			g.setColor(new Color(0, 0, 0, 120));
+			g.fillRect(6, logY - 12, WIDTH - 12, 46);
+			g.setFont(FontManager.getRunescapeSmallFont());
+			g.setColor(LOG_TEXT);
+			int y = logY;
+			for (String line : session.getVisibleLog())
 			{
-				int col = i % 2;
-				int row = i / 2;
-				Rectangle r = new Rectangle(12 + col * (bw + 8), btnY + row * (bh + 4), bw, bh);
-				if (i < moves.size())
-				{
-					MoveDef m = moves.get(i);
-					drawButton(g, r, m.getName(), enabled, new Color(m.getType().getColorRgb()));
-					newButtons.add(new Button(r, "move:" + i));
-				}
-				else
-				{
-					drawButton(g, r, "—", false, null);
-				}
+				g.drawString(clip(g, line, WIDTH - 24), 12, y);
+				y += 11;
 			}
-			Rectangle flee = new Rectangle(WIDTH - 60, 4, 50, 14);
-			drawButton(g, flee, "Run", enabled, null);
-			newButtons.add(new Button(flee, "flee"));
+
+			// Buttons
+			int btnY = HEIGHT - 44;
+			if (session.getPhase() == BattleSession.Phase.ENDED)
+			{
+				Rectangle close = new Rectangle(WIDTH / 2 - 40, btnY + 8, 80, 24);
+				drawButton(g, close, "Close", true, null);
+				newButtons.add(new Button(close, "close"));
+			}
+			else
+			{
+				boolean enabled = session.isAwaitingInput();
+				List<MoveDef> moves = player.getMoves();
+				int bw = (WIDTH - 24 - 8) / 2;
+				int bh = 18;
+				for (int i = 0; i < 4; i++)
+				{
+					int col = i % 2;
+					int row = i / 2;
+					Rectangle r = new Rectangle(12 + col * (bw + 8), btnY + row * (bh + 4), bw, bh);
+					if (i < moves.size())
+					{
+						MoveDef m = moves.get(i);
+						drawButton(g, r, m.getName(), enabled, new Color(m.getType().getColorRgb()));
+						newButtons.add(new Button(r, "move:" + i));
+					}
+					else
+					{
+						drawButton(g, r, "—", false, null);
+					}
+				}
+				Rectangle flee = new Rectangle(WIDTH - 60, 4, 50, 14);
+				drawButton(g, flee, "Run", enabled, null);
+				newButtons.add(new Button(flee, "flee"));
+			}
 		}
 		synchronized (this)
 		{
@@ -183,6 +192,72 @@ public class BattleOverlay extends Overlay
 		}
 
 		return new Dimension(WIDTH, HEIGHT);
+	}
+
+	/**
+	 * Quest-dialog style text box shown while the turn plays out. In manual-advance
+	 * mode a blinking chevron invites the next click / Space press.
+	 */
+	private void drawDialogBox(Graphics2D g)
+	{
+		int boxY = 156;
+		int boxH = HEIGHT - boxY - 8;
+		g.setColor(new Color(0, 0, 0, 170));
+		g.fillRoundRect(6, boxY, WIDTH - 12, boxH, 8, 8);
+		g.setColor(PANEL_EDGE);
+		g.setStroke(new BasicStroke(1));
+		g.drawRoundRect(6, boxY, WIDTH - 12, boxH, 8, 8);
+
+		BattleEvent event = session.getCurrentEvent();
+		if (event != null)
+		{
+			g.setFont(FontManager.getRunescapeFont());
+			g.setColor(LOG_TEXT);
+			int textY = boxY + 22;
+			for (String line : wrap(g, event.getText(), WIDTH - 40))
+			{
+				g.drawString(line, 16, textY);
+				textY += 16;
+				if (textY > boxY + boxH - 6)
+				{
+					break;
+				}
+			}
+		}
+
+		// Blinking "continue" chevron once the line's animation has played out
+		if (session.isManualAdvance() && session.getAnimationProgress() >= 1f
+			&& (System.currentTimeMillis() / 450) % 2 == 0)
+		{
+			g.setFont(FontManager.getRunescapeSmallFont());
+			g.setColor(new Color(240, 220, 120));
+			g.drawString("▼", WIDTH - 26, boxY + boxH - 8);
+		}
+	}
+
+	private static List<String> wrap(Graphics2D g, String text, int maxWidth)
+	{
+		FontMetrics fm = g.getFontMetrics();
+		List<String> lines = new ArrayList<>();
+		StringBuilder line = new StringBuilder();
+		for (String word : text.split(" "))
+		{
+			String candidate = line.length() == 0 ? word : line + " " + word;
+			if (fm.stringWidth(candidate) > maxWidth && line.length() > 0)
+			{
+				lines.add(line.toString());
+				line = new StringBuilder(word);
+			}
+			else
+			{
+				line = new StringBuilder(candidate);
+			}
+		}
+		if (line.length() > 0)
+		{
+			lines.add(line.toString());
+		}
+		return lines;
 	}
 
 	private void drawPetInfo(Graphics2D g, BattlePet pet, int x, int y, boolean showExactHp)

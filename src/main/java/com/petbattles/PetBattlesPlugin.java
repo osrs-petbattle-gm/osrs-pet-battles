@@ -13,6 +13,7 @@ import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
+import net.runelite.client.input.KeyManager;
 import net.runelite.client.input.MouseManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
@@ -21,6 +22,7 @@ import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.ImageUtil;
 import com.petbattles.battle.BattleInputHandler;
+import com.petbattles.battle.BattleKeyListener;
 import com.petbattles.battle.BattleSession;
 import com.petbattles.collection.CollectionLogSync;
 import com.petbattles.data.ContentLoader;
@@ -71,6 +73,9 @@ public class PetBattlesPlugin extends Plugin
 	private MouseManager mouseManager;
 
 	@Inject
+	private KeyManager keyManager;
+
+	@Inject
 	private EventBus eventBus;
 
 	private PetDatabase db;
@@ -80,6 +85,7 @@ public class PetBattlesPlugin extends Plugin
 	private BattleSession session;
 	private BattleOverlay overlay;
 	private BattleInputHandler inputHandler;
+	private BattleKeyListener keyListener;
 	private CollectionLogSync collectionLogSync;
 	private FollowerTracker followerTracker;
 	private KillXpTracker killXpTracker;
@@ -94,8 +100,10 @@ public class PetBattlesPlugin extends Plugin
 		session = new BattleSession(db, roster, config, () -> panel.refresh());
 		overlay = new BattleOverlay(session, sprites);
 		inputHandler = new BattleInputHandler(session, overlay, clientThread);
+		keyListener = new BattleKeyListener(session, clientThread);
 		overlayManager.add(overlay);
 		mouseManager.registerMouseListener(inputHandler);
+		keyManager.registerKeyListener(keyListener);
 
 		Runnable refreshPanel = () -> panel.refresh();
 		collectionLogSync = new CollectionLogSync(client, db, roster, refreshPanel);
@@ -146,6 +154,10 @@ public class PetBattlesPlugin extends Plugin
 		{
 			mouseManager.unregisterMouseListener(inputHandler);
 		}
+		if (keyListener != null)
+		{
+			keyManager.unregisterKeyListener(keyListener);
+		}
 		if (session != null)
 		{
 			session.close();
@@ -161,6 +173,7 @@ public class PetBattlesPlugin extends Plugin
 		session = null;
 		overlay = null;
 		inputHandler = null;
+		keyListener = null;
 		collectionLogSync = null;
 		followerTracker = null;
 		killXpTracker = null;

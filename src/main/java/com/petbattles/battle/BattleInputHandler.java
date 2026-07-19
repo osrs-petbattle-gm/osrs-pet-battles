@@ -49,6 +49,11 @@ public class BattleInputHandler extends MouseAdapter
 				return e;
 			}
 		}
+		// Clicking anywhere on the battle window advances the text in manual mode
+		if (session.getPhase() == BattleSession.Phase.ANIMATING && session.isManualAdvance())
+		{
+			clientThread.invokeLater(session::advance);
+		}
 		// Swallow clicks anywhere on the battle window so they don't hit the game world
 		e.consume();
 		return e;

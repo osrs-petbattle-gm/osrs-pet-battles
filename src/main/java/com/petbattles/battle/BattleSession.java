@@ -56,6 +56,8 @@ public class BattleSession
 	private final LinkedList<String> visibleLog = new LinkedList<>();
 	private int tickCounter;
 	private boolean xpAwarded;
+	private BattleEvent currentEvent;
+	private long eventStartMs;
 
 	public BattleSession(PetDatabase db, RosterManager roster, PetBattlesConfig config, Runnable onRosterChanged)
 	{
@@ -117,7 +119,7 @@ public class BattleSession
 			def.getName() + " wants to battle!"));
 		state = engine.start(playerTeam, enemyTeam, events);
 		pendingEvents.addAll(events);
-		phase = Phase.ANIMATING;
+		beginAnimating();
 		return true;
 	}
 
@@ -174,7 +176,8 @@ public class BattleSession
 	}
 
 	/**
-	 * Advance pacing by one game tick.
+	 * Advance pacing by one game tick. In manual-advance mode (the default) this only
+	 * surfaces the first line after a submit; every further line waits for advance().
 	 */
 	public void tick()
 	{
@@ -182,36 +185,74 @@ public class BattleSession
 		{
 			return;
 		}
+		if (isManualAdvance())
+		{
+			if (currentEvent == null)
+			{
+				advanceEvent();
+			}
+			return;
+		}
 		if (++tickCounter < config.battleSpeed())
 		{
 			return;
 		}
 		tickCounter = 0;
+		advanceEvent();
+	}
 
+	/**
+	 * Player clicked / pressed Space to show the next battle line (manual-advance mode).
+	 */
+	public void advance()
+	{
+		if (phase != Phase.ANIMATING || !isManualAdvance())
+		{
+			return;
+		}
+		advanceEvent();
+	}
+
+	public boolean isManualAdvance()
+	{
+		return !config.autoAdvanceBattleText();
+	}
+
+	/**
+	 * Enter ANIMATING after queuing events. In manual mode the first line shows
+	 * immediately instead of waiting a game tick.
+	 */
+	private void beginAnimating()
+	{
+		phase = Phase.ANIMATING;
+		tickCounter = 0;
+		currentEvent = null;
+		if (isManualAdvance())
+		{
+			advanceEvent();
+		}
+	}
+
+	/**
+	 * Show the next event, or hand over control / finish once the queue drains.
+	 */
+	private void advanceEvent()
+	{
 		BattleEvent event = pendingEvents.poll();
+		if (event == null && state.isOver() && !xpAwarded)
+		{
+			awardXp();
+			event = pendingEvents.poll();
+		}
 		if (event != null)
 		{
+			currentEvent = event;
+			eventStartMs = System.currentTimeMillis();
 			pushLog(event.getText());
 			return;
 		}
-
-		// Queue drained: hand over control or finish
-		if (state.isOver())
-		{
-			if (!xpAwarded)
-			{
-				awardXp();
-				if (!pendingEvents.isEmpty())
-				{
-					return; // show the xp/level-up events first
-				}
-			}
-			phase = Phase.ENDED;
-		}
-		else
-		{
-			phase = Phase.AWAITING_INPUT;
-		}
+		currentEvent = null;
+		phase = state.isOver() ? Phase.ENDED : Phase.AWAITING_INPUT;
 	}
 
 	/**
@@ -230,7 +271,7 @@ public class BattleSession
 		}
 		BattleAction enemyAction = enemyController.chooseAction(state, BattleState.ENEMY, rng);
 		pendingEvents.addAll(engine.resolveTurn(state, BattleAction.move(moveIndex), enemyAction, rng));
-		phase = Phase.ANIMATING;
+		beginAnimating();
 	}
 
 	public void submitFlee()
@@ -241,7 +282,7 @@ public class BattleSession
 		}
 		BattleAction enemyAction = enemyController.chooseAction(state, BattleState.ENEMY, rng);
 		pendingEvents.addAll(engine.resolveTurn(state, BattleAction.flee(), enemyAction, rng));
-		phase = Phase.ANIMATING;
+		beginAnimating();
 	}
 
 	/**
@@ -254,6 +295,7 @@ public class BattleSession
 		trainer = null;
 		pendingEvents.clear();
 		visibleLog.clear();
+		currentEvent = null;
 	}
 
 	private void awardXp()
@@ -356,5 +398,51 @@ public class BattleSession
 	public List<String> getVisibleLog()
 	{
 		return Collections.unmodifiableList(visibleLog);
+	}
+
+	/**
+	 * The event currently on display (drives the dialog box and animations), or null.
+	 */
+	public BattleEvent getCurrentEvent()
+	{
+		return currentEvent;
+	}
+
+	/**
+	 * 0.0 → 1.0 progress of the current event's animation, smooth against wall-clock
+	 * time so overlay motion isn't stepped by game ticks.
+	 */
+	public float getAnimationProgress()
+	{
+		if (currentEvent == null)
+		{
+			return 1f;
+		}
+		long elapsed = System.currentTimeMillis() - eventStartMs;
+		return Math.min(1f, elapsed / (float) animationDurationMs(currentEvent.getType()));
+	}
+
+	/**
+	 * Per-event-type animation dwell so impactful moments get time to read.
+	 */
+	private static int animationDurationMs(BattleEvent.Type type)
+	{
+		switch (type)
+		{
+			case MOVE_USED:
+				return 500;
+			case DAMAGE:
+				return 650;
+			case MISSED:
+				return 500;
+			case LEVEL_UP:
+				return 1500;
+			case HEALED:
+				return 700;
+			case FAINTED:
+				return 600;
+			default:
+				return 400;
+		}
 	}
 }

@@ -23,10 +23,21 @@ public interface PetBattlesConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "autoAdvanceBattleText",
+		name = "Auto-advance battle text",
+		description = "Advance battle messages on a timer instead of waiting for a click or Space on each line",
+		position = 2
+	)
+	default boolean autoAdvanceBattleText()
+	{
+		return false;
+	}
+
+	@ConfigItem(
 		keyName = "showXpMessages",
 		name = "Pet XP chat messages",
 		description = "Announce pet XP gains and level-ups in the chat box",
-		position = 2
+		position = 3
 	)
 	default boolean showXpMessages()
 	{
@@ -38,7 +49,7 @@ public interface PetBattlesConfig extends Config
 		name = "Dev: select locked pets",
 		description = "Testing option: adds an 'Unlock' button to pets you haven't obtained, so you can build teams with them. "
 			+ "These dev unlocks are kept separate from your real collection log and are ignored while this is off.",
-		position = 3
+		position = 4
 	)
 	default boolean devSelectLockedPets()
 	{
