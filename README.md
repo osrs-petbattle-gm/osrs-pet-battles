@@ -1,7 +1,7 @@
 # Pet Battles
 
 A RuneLite plugin that turns your Old School RuneScape collection log pets into a
-Pokemon-style battle team. Collect pets in-game to unlock them, level them up by
+turn-based battle team. Collect pets in-game to unlock them, level them up by
 playing the game with them out, and pit them against themed AI trainers.
 
 ## Features
@@ -21,7 +21,7 @@ playing the game with them out, and pit them against themed AI trainers.
   equip up to 4 at a time from the side panel.
 - **Hidden easter egg moves** — certain actions with the right pet following unlock
   secret moves. Try chopping a tree with your Beaver out... there are more.
-- **Interactive battle overlay** — a Pokemon-style battle scene drawn over the game:
+- **Interactive battle overlay** — a turn-based battle scene drawn over the game:
   HP bars, type badges, a battle log, and clickable move buttons. Battles run
   against 8 themed trainers from Party Pete (easy) to the Wise Old Man (endgame).
 

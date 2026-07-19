@@ -3,7 +3,7 @@ package com.petbattles.engine;
 import java.util.Random;
 
 /**
- * Damage formula: classic Pokemon-shaped, tuned for our stat scale.
+ * Damage formula: classic monster-battler shape, tuned for our stat scale.
  * damage = (((2*level/5 + 2) * power * atk/def) / 50 + 2) * STAB * typeEff * roll(0.85..1.0)
  */
 public final class DamageCalc

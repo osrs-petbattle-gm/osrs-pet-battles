@@ -38,7 +38,7 @@ import net.runelite.client.eventbus.EventBus;
 @Slf4j
 @PluginDescriptor(
 	name = "Pet Battles",
-	description = "Pokemon-style battles between your collection log pets",
+	description = "Turn-based battles between your collection log pets",
 	tags = {"pets", "minigame", "fun", "battle"}
 )
 public class PetBattlesPlugin extends Plugin
