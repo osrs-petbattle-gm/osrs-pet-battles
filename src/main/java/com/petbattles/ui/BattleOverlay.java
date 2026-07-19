@@ -228,6 +228,15 @@ public class BattleOverlay extends Overlay
 				// A whiff renders as the OSRS blue 0 splat on the would-be defender
 				drawHitsplat(g, spriteRect(BattleState.opponent(event.getSide())), "0", SPLAT_BLUE, progress);
 				break;
+			case LEVEL_UP:
+				// OSRS-style level-up fireworks over the levelling pet
+				ParticleBurst.render(g, spriteRect(event.getSide()), progress,
+					event.getValue(), ParticleBurst.FIREWORKS);
+				break;
+			case HEALED:
+				ParticleBurst.render(g, spriteRect(event.getSide()), progress,
+					event.getValue(), ParticleBurst.SPARKLE);
+				break;
 			default:
 				break;
 		}
