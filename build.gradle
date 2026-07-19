@@ -42,6 +42,21 @@ tasks.register('run', JavaExec) {
 	args "--developer-mode", "--debug"
 }
 
+// Build-time QA/reference page: every pet, its learnset, and the type chart.
+// Lives in the test source set so it never touches the shipped plugin jar;
+// output goes to build/ only (gitignored).
+tasks.register('generatePetReference', JavaExec) {
+	group = 'documentation'
+	description = 'Generate build/pets.html from the bundled species/move/typechart JSON'
+	classpath = sourceSets.test.runtimeClasspath
+	mainClass = 'com.petbattles.tools.PetReferenceGenerator'
+	args layout.buildDirectory.file('pets.html').get().asFile.path
+}
+
+tasks.named('build') {
+	dependsOn 'generatePetReference'
+}
+
 tasks.register('shadowJar', Jar) {
 	dependsOn configurations.testRuntimeClasspath
 	manifest {
