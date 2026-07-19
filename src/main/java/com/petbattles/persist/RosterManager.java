@@ -5,7 +5,6 @@ import com.petbattles.data.PetDatabase;
 import com.petbattles.engine.PetInstance;
 import com.petbattles.engine.SpeciesDef;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -29,7 +28,7 @@ public class RosterManager
 		this.store = store;
 	}
 
-	public void load()
+	public synchronized void load()
 	{
 		data = store.load();
 		// Drop references to species that no longer exist in the content
@@ -38,7 +37,7 @@ public class RosterManager
 		loaded = true;
 	}
 
-	public void unload()
+	public synchronized void unload()
 	{
 		if (loaded)
 		{
@@ -53,7 +52,7 @@ public class RosterManager
 		return loaded;
 	}
 
-	private void save()
+	private synchronized void save()
 	{
 		if (loaded)
 		{
@@ -61,7 +60,7 @@ public class RosterManager
 		}
 	}
 
-	public boolean isOwned(String speciesId)
+	public synchronized boolean isOwned(String speciesId)
 	{
 		return config.devUnlockAll() || data.ownedSpecies.contains(speciesId);
 	}
@@ -70,7 +69,7 @@ public class RosterManager
 	 * Mark a species as owned (from collection log sync or a live drop). Additive only.
 	 * Returns true if this is a new unlock.
 	 */
-	public boolean unlock(String speciesId)
+	public synchronized boolean unlock(String speciesId)
 	{
 		if (db.species(speciesId) == null || data.ownedSpecies.contains(speciesId))
 		{
@@ -85,7 +84,7 @@ public class RosterManager
 	 * Get the progression record for an owned species, creating it at level 1 with
 	 * its starter moves equipped.
 	 */
-	public PetInstance getOrCreatePet(String speciesId)
+	public synchronized PetInstance getOrCreatePet(String speciesId)
 	{
 		PetInstance pet = data.pets.get(speciesId);
 		if (pet == null)
@@ -110,17 +109,18 @@ public class RosterManager
 		return pet;
 	}
 
-	public PetInstance getPet(String speciesId)
+	public synchronized PetInstance getPet(String speciesId)
 	{
 		return data.pets.get(speciesId);
 	}
 
-	public List<String> getTeam()
+	public synchronized List<String> getTeam()
 	{
-		return Collections.unmodifiableList(data.team);
+		// Copy: callers iterate outside the lock
+		return new ArrayList<>(data.team);
 	}
 
-	public boolean addToTeam(String speciesId)
+	public synchronized boolean addToTeam(String speciesId)
 	{
 		if (data.team.contains(speciesId) || data.team.size() >= MAX_TEAM_SIZE || !isOwned(speciesId))
 		{
@@ -132,7 +132,7 @@ public class RosterManager
 		return true;
 	}
 
-	public boolean removeFromTeam(String speciesId)
+	public synchronized boolean removeFromTeam(String speciesId)
 	{
 		boolean removed = data.team.remove(speciesId);
 		if (removed)
@@ -145,7 +145,7 @@ public class RosterManager
 	/**
 	 * Persist after external mutation of a PetInstance (xp gain, move equip, egg unlock).
 	 */
-	public void petChanged()
+	public synchronized void petChanged()
 	{
 		save();
 	}

@@ -28,7 +28,8 @@ public class BattleInputHandler extends MouseAdapter
 	@Override
 	public MouseEvent mousePressed(MouseEvent e)
 	{
-		if (!session.isActive() || e.getButton() != MouseEvent.BUTTON1)
+		// Alt+click is overlay repositioning — let the overlay system have it
+		if (!session.isActive() || e.getButton() != MouseEvent.BUTTON1 || e.isAltDown())
 		{
 			return e;
 		}
