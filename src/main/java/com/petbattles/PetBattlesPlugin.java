@@ -8,18 +8,25 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.events.GameTick;
+import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
+import net.runelite.client.input.MouseManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
+import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.ImageUtil;
+import com.petbattles.battle.BattleInputHandler;
+import com.petbattles.battle.BattleSession;
 import com.petbattles.data.ContentLoader;
 import com.petbattles.data.PetDatabase;
 import com.petbattles.persist.RosterManager;
 import com.petbattles.persist.RosterStore;
+import com.petbattles.ui.BattleOverlay;
 import com.petbattles.ui.PetBattlesPanel;
 import com.petbattles.ui.Sprites;
 
@@ -49,10 +56,22 @@ public class PetBattlesPlugin extends Plugin
 	@Inject
 	private Sprites sprites;
 
+	@Inject
+	private ClientThread clientThread;
+
+	@Inject
+	private OverlayManager overlayManager;
+
+	@Inject
+	private MouseManager mouseManager;
+
 	private PetDatabase db;
 	private RosterManager roster;
 	private PetBattlesPanel panel;
 	private NavigationButton navButton;
+	private BattleSession session;
+	private BattleOverlay overlay;
+	private BattleInputHandler inputHandler;
 
 	@Override
 	protected void startUp() throws Exception
@@ -60,6 +79,11 @@ public class PetBattlesPlugin extends Plugin
 		db = PetDatabase.load(new ContentLoader(gson));
 		roster = new RosterManager(db, config, new RosterStore(configManager, gson));
 		panel = new PetBattlesPanel(db, roster, sprites, this::startTrainerBattle);
+		session = new BattleSession(db, roster, config, () -> panel.refresh());
+		overlay = new BattleOverlay(session, sprites);
+		inputHandler = new BattleInputHandler(session, overlay, clientThread);
+		overlayManager.add(overlay);
+		mouseManager.registerMouseListener(inputHandler);
 
 		BufferedImage icon = ImageUtil.loadImageResource(getClass(), "/com/petbattles/icons/panel_icon.png");
 		navButton = NavigationButton.builder()
@@ -84,6 +108,18 @@ public class PetBattlesPlugin extends Plugin
 	protected void shutDown() throws Exception
 	{
 		clientToolbar.removeNavigation(navButton);
+		if (overlay != null)
+		{
+			overlayManager.remove(overlay);
+		}
+		if (inputHandler != null)
+		{
+			mouseManager.unregisterMouseListener(inputHandler);
+		}
+		if (session != null)
+		{
+			session.close();
+		}
 		if (roster != null)
 		{
 			roster.unload();
@@ -92,6 +128,15 @@ public class PetBattlesPlugin extends Plugin
 		panel = null;
 		roster = null;
 		db = null;
+		session = null;
+		overlay = null;
+		inputHandler = null;
+	}
+
+	@Subscribe
+	public void onGameTick(GameTick tick)
+	{
+		session.tick();
 	}
 
 	@Subscribe
@@ -126,8 +171,18 @@ public class PetBattlesPlugin extends Plugin
 
 	private void startTrainerBattle(String trainerId)
 	{
-		// Wired up by the battle session in the next stage
-		log.debug("startTrainerBattle({})", trainerId);
+		clientThread.invokeLater(() ->
+		{
+			if (session.isActive() && session.getPhase() != BattleSession.Phase.ENDED)
+			{
+				return;
+			}
+			session.close();
+			if (!session.startTrainerBattle(trainerId))
+			{
+				log.debug("Could not start battle vs {}", trainerId);
+			}
+		});
 	}
 
 	public PetDatabase getDb()
