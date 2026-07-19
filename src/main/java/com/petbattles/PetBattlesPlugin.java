@@ -21,6 +21,7 @@ import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.ImageUtil;
+import com.petbattles.bank.AtBankTracker;
 import com.petbattles.battle.BattleInputHandler;
 import com.petbattles.battle.BattleKeyListener;
 import com.petbattles.battle.BattleSession;
@@ -86,6 +87,7 @@ public class PetBattlesPlugin extends Plugin
 	private BattleOverlay overlay;
 	private BattleInputHandler inputHandler;
 	private BattleKeyListener keyListener;
+	private AtBankTracker atBankTracker;
 	private CollectionLogSync collectionLogSync;
 	private FollowerTracker followerTracker;
 	private KillXpTracker killXpTracker;
@@ -96,6 +98,14 @@ public class PetBattlesPlugin extends Plugin
 	{
 		db = PetDatabase.load(new ContentLoader(gson));
 		roster = new RosterManager(db, config, new RosterStore(configManager, gson));
+		atBankTracker = new AtBankTracker(client, () ->
+		{
+			if (panel != null)
+			{
+				panel.refresh();
+			}
+		});
+		roster.setTeamEditGate(atBankTracker::isAtBank);
 		panel = new PetBattlesPanel(db, roster, sprites, this::startTrainerBattle);
 		session = new BattleSession(db, roster, config, () -> panel.refresh());
 		overlay = new BattleOverlay(session, sprites);
@@ -110,6 +120,7 @@ public class PetBattlesPlugin extends Plugin
 		followerTracker = new FollowerTracker(client, db, roster, refreshPanel);
 		killXpTracker = new KillXpTracker(client, db, roster, followerTracker, config, refreshPanel);
 		easterEggTracker = new EasterEggTracker(client, db, roster, followerTracker, refreshPanel);
+		eventBus.register(atBankTracker);
 		eventBus.register(collectionLogSync);
 		eventBus.register(followerTracker);
 		eventBus.register(killXpTracker);
@@ -141,6 +152,7 @@ public class PetBattlesPlugin extends Plugin
 		clientToolbar.removeNavigation(navButton);
 		if (collectionLogSync != null)
 		{
+			eventBus.unregister(atBankTracker);
 			eventBus.unregister(collectionLogSync);
 			eventBus.unregister(followerTracker);
 			eventBus.unregister(killXpTracker);
@@ -174,6 +186,7 @@ public class PetBattlesPlugin extends Plugin
 		overlay = null;
 		inputHandler = null;
 		keyListener = null;
+		atBankTracker = null;
 		collectionLogSync = null;
 		followerTracker = null;
 		killXpTracker = null;

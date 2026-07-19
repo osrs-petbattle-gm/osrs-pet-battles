@@ -9,8 +9,11 @@ import com.petbattles.persist.RosterManager;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.Font;
 import java.util.List;
+import java.util.Locale;
 import java.util.function.Consumer;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -22,25 +25,34 @@ import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.PluginPanel;
 
 /**
- * Side panel: sync hint, team summary, trainer picker, and the full roster.
+ * Side panel: sync hint, active-team drawer (reorder anywhere, composition bank-gated),
+ * trainer picker, and the searchable roster of pets not currently on the team.
  */
 public class PetBattlesPanel extends PluginPanel
 {
+	static final String BANK_HINT = "Visit a bank to change your team";
+
 	private final PetDatabase db;
 	private final RosterManager roster;
 	private final Sprites sprites;
 	private final Consumer<String> fightAction;
 
 	private final JLabel statusLabel = new JLabel();
-	private final JLabel teamLabel = new JLabel();
+	private final JLabel teamTitle = new JLabel();
+	private final JPanel teamPanel = new JPanel();
+	private final JLabel bankHintLabel = new JLabel();
 	private final JComboBox<TrainerItem> trainerBox = new JComboBox<>();
 	private final JButton fightButton = new JButton("Fight!");
+	private final JTextField searchField = new JTextField();
 	private final JPanel rosterList = new JPanel();
 
 	private static class TrainerItem
@@ -88,10 +100,20 @@ public class PetBattlesPanel extends PluginPanel
 		north.add(statusLabel);
 		north.add(Box.createVerticalStrut(8));
 
-		teamLabel.setFont(FontManager.getRunescapeSmallFont());
-		teamLabel.setForeground(Color.WHITE);
-		teamLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-		north.add(teamLabel);
+		teamTitle.setFont(FontManager.getRunescapeBoldFont());
+		teamTitle.setForeground(Color.WHITE);
+		teamTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
+		north.add(teamTitle);
+
+		teamPanel.setLayout(new BoxLayout(teamPanel, BoxLayout.Y_AXIS));
+		teamPanel.setOpaque(false);
+		teamPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+		north.add(teamPanel);
+
+		bankHintLabel.setFont(FontManager.getRunescapeSmallFont().deriveFont(Font.ITALIC, 10f));
+		bankHintLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR.darker());
+		bankHintLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+		north.add(bankHintLabel);
 		north.add(Box.createVerticalStrut(6));
 
 		trainerBox.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -112,11 +134,38 @@ public class PetBattlesPanel extends PluginPanel
 		north.add(fightButton);
 		north.add(Box.createVerticalStrut(8));
 
-		JLabel rosterTitle = new JLabel("Roster");
+		JLabel rosterTitle = new JLabel("Available pets");
 		rosterTitle.setFont(FontManager.getRunescapeBoldFont());
 		rosterTitle.setForeground(Color.WHITE);
 		rosterTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
 		north.add(rosterTitle);
+		north.add(Box.createVerticalStrut(4));
+
+		searchField.setFont(FontManager.getRunescapeSmallFont());
+		searchField.setAlignmentX(Component.LEFT_ALIGNMENT);
+		searchField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
+		searchField.setToolTipText("Search pets by name");
+		searchField.getDocument().addDocumentListener(new DocumentListener()
+		{
+			@Override
+			public void insertUpdate(DocumentEvent e)
+			{
+				refresh();
+			}
+
+			@Override
+			public void removeUpdate(DocumentEvent e)
+			{
+				refresh();
+			}
+
+			@Override
+			public void changedUpdate(DocumentEvent e)
+			{
+				refresh();
+			}
+		});
+		north.add(searchField);
 
 		add(north, BorderLayout.NORTH);
 
@@ -135,7 +184,8 @@ public class PetBattlesPanel extends PluginPanel
 	}
 
 	/**
-	 * Rebuild all dynamic content. Safe to call from any thread.
+	 * Rebuild all dynamic content. Safe to call from any thread. The search field
+	 * itself is never rebuilt, so the user's query survives refreshes.
 	 */
 	public void refresh()
 	{
@@ -161,49 +211,115 @@ public class PetBattlesPanel extends PluginPanel
 		}
 
 		List<String> team = roster.getTeam();
-		StringBuilder teamText = new StringBuilder("<html>Team (" + team.size() + "/" + RosterManager.MAX_TEAM_SIZE + "): ");
-		if (team.isEmpty())
-		{
-			teamText.append("<i>empty</i>");
-		}
-		else
-		{
-			for (int i = 0; i < team.size(); i++)
-			{
-				SpeciesDef s = db.species(team.get(i));
-				PetInstance p = roster.getPet(team.get(i));
-				if (i > 0)
-				{
-					teamText.append(", ");
-				}
-				teamText.append(s.getName());
-				if (p != null)
-				{
-					teamText.append(" (").append(p.getLevel()).append(")");
-				}
-			}
-		}
-		teamText.append("</html>");
-		teamLabel.setText(teamText.toString());
+		boolean canEditTeam = loggedIn && roster.canEditTeam();
+		teamTitle.setText("Active team (" + team.size() + "/" + RosterManager.MAX_TEAM_SIZE + ")");
+		bankHintLabel.setText(canEditTeam || !loggedIn ? " " : BANK_HINT);
+
+		rebuildTeamRows(team, canEditTeam);
 
 		fightButton.setEnabled(loggedIn && !team.isEmpty());
 		fightButton.setToolTipText(team.isEmpty() ? "Add a pet to your team first" : null);
 
+		rebuildAvailableList(team, loggedIn, canEditTeam);
+	}
+
+	private void rebuildTeamRows(List<String> team, boolean canEditTeam)
+	{
+		teamPanel.removeAll();
+		if (team.isEmpty())
+		{
+			JLabel empty = new JLabel("No pets on the team yet");
+			empty.setFont(FontManager.getRunescapeSmallFont().deriveFont(Font.ITALIC, 10f));
+			empty.setForeground(ColorScheme.LIGHT_GRAY_COLOR.darker());
+			teamPanel.add(empty);
+		}
+		for (int i = 0; i < team.size(); i++)
+		{
+			String speciesId = team.get(i);
+			SpeciesDef species = db.species(speciesId);
+			if (species == null)
+			{
+				continue;
+			}
+			teamPanel.add(teamRow(speciesId, species, i, team.size(), canEditTeam));
+		}
+		teamPanel.revalidate();
+		teamPanel.repaint();
+	}
+
+	private JPanel teamRow(String speciesId, SpeciesDef species, int index, int teamSize, boolean canEditTeam)
+	{
+		JPanel row = new JPanel(new BorderLayout(4, 0));
+		row.setOpaque(true);
+		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		row.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 2));
+		row.setAlignmentX(Component.LEFT_ALIGNMENT);
+		row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
+
+		PetInstance pet = roster.getPet(speciesId);
+		JLabel name = new JLabel((index + 1) + ". " + species.getName()
+			+ (pet != null ? "  Lv " + pet.getLevel() : ""));
+		name.setFont(FontManager.getRunescapeSmallFont());
+		name.setForeground(Color.WHITE);
+		row.add(name, BorderLayout.CENTER);
+
+		JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 2, 0));
+		buttons.setOpaque(false);
+
+		JButton up = smallButton("↑", "Send out earlier");
+		up.setEnabled(index > 0);
+		up.addActionListener(e ->
+		{
+			roster.moveTeamMember(speciesId, -1);
+			refresh();
+		});
+		buttons.add(up);
+
+		JButton down = smallButton("↓", "Send out later");
+		down.setEnabled(index < teamSize - 1);
+		down.addActionListener(e ->
+		{
+			roster.moveTeamMember(speciesId, +1);
+			refresh();
+		});
+		buttons.add(down);
+
+		JButton remove = smallButton("✕", canEditTeam ? "Remove from team" : BANK_HINT);
+		remove.setEnabled(canEditTeam);
+		remove.addActionListener(e ->
+		{
+			roster.removeFromTeam(speciesId);
+			refresh();
+		});
+		buttons.add(remove);
+
+		row.add(buttons, BorderLayout.EAST);
+		return row;
+	}
+
+	private static JButton smallButton(String label, String tooltip)
+	{
+		JButton button = new JButton(label);
+		button.setFont(FontManager.getRunescapeSmallFont());
+		button.setMargin(new java.awt.Insets(0, 4, 0, 4));
+		button.setToolTipText(tooltip);
+		return button;
+	}
+
+	private void rebuildAvailableList(List<String> team, boolean loggedIn, boolean canEditTeam)
+	{
 		rosterList.removeAll();
 		boolean teamFull = team.size() >= RosterManager.MAX_TEAM_SIZE;
+		boolean canJoin = loggedIn && canEditTeam && !teamFull;
+		String joinTooltip = !canEditTeam ? BANK_HINT : teamFull ? "Team is full" : null;
+		String query = searchField.getText().trim().toLowerCase(Locale.ROOT);
+
 		PetCard.Listener listener = new PetCard.Listener()
 		{
 			@Override
-			public void onToggleTeam(String speciesId)
+			public void onJoinTeam(String speciesId)
 			{
-				if (roster.getTeam().contains(speciesId))
-				{
-					roster.removeFromTeam(speciesId);
-				}
-				else
-				{
-					roster.addToTeam(speciesId);
-				}
+				roster.addToTeam(speciesId);
 				refresh();
 			}
 
@@ -230,11 +346,19 @@ public class PetBattlesPanel extends PluginPanel
 		boolean devMode = loggedIn && roster.isDevSelectEnabled();
 		for (SpeciesDef species : db.allSpecies())
 		{
+			if (team.contains(species.getId()))
+			{
+				continue; // promoted to the team drawer above
+			}
+			if (!query.isEmpty() && !species.getName().toLowerCase(Locale.ROOT).contains(query))
+			{
+				continue;
+			}
 			boolean owned = loggedIn && roster.isOwned(species.getId());
 			boolean devUnlocked = owned && roster.isDevUnlocked(species.getId());
 			PetInstance pet = owned ? roster.getOrCreatePet(species.getId()) : null;
 			rosterList.add(new PetCard(species, pet, owned,
-				team.contains(species.getId()), teamFull, devMode, devUnlocked, sprites, listener));
+				canJoin, joinTooltip, devMode, devUnlocked, sprites, listener));
 		}
 		rosterList.revalidate();
 		rosterList.repaint();

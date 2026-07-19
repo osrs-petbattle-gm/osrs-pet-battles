@@ -5,7 +5,9 @@ import com.petbattles.data.PetDatabase;
 import com.petbattles.engine.PetInstance;
 import com.petbattles.engine.SpeciesDef;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.function.BooleanSupplier;
 
 /**
  * Runtime roster state: which species are owned, per-pet progression, and the battle team.
@@ -20,6 +22,9 @@ public class RosterManager
 	private final RosterStore store;
 	private RosterStore.RosterData data = new RosterStore.RosterData();
 	private boolean loaded;
+	// Team composition (add/remove) is bank-gated; reordering is not. The gate is
+	// re-checked here so a stale panel can't edit the team away from a bank.
+	private volatile BooleanSupplier teamEditGate = () -> true;
 
 	public RosterManager(PetDatabase db, PetBattlesConfig config, RosterStore store)
 	{
@@ -172,9 +177,23 @@ public class RosterManager
 		return new ArrayList<>(data.team);
 	}
 
+	public void setTeamEditGate(BooleanSupplier gate)
+	{
+		this.teamEditGate = gate;
+	}
+
+	/**
+	 * Whether team composition may currently be changed (i.e. the player is at a bank).
+	 */
+	public boolean canEditTeam()
+	{
+		return teamEditGate.getAsBoolean();
+	}
+
 	public synchronized boolean addToTeam(String speciesId)
 	{
-		if (data.team.contains(speciesId) || data.team.size() >= MAX_TEAM_SIZE || !isOwned(speciesId))
+		if (!canEditTeam() || data.team.contains(speciesId)
+			|| data.team.size() >= MAX_TEAM_SIZE || !isOwned(speciesId))
 		{
 			return false;
 		}
@@ -186,12 +205,37 @@ public class RosterManager
 
 	public synchronized boolean removeFromTeam(String speciesId)
 	{
+		if (!canEditTeam())
+		{
+			return false;
+		}
 		boolean removed = data.team.remove(speciesId);
 		if (removed)
 		{
 			save();
 		}
 		return removed;
+	}
+
+	/**
+	 * Move a team member up (-1) or down (+1) in send-out order. Not bank-gated:
+	 * order stays adjustable anywhere.
+	 */
+	public synchronized boolean moveTeamMember(String speciesId, int delta)
+	{
+		int from = data.team.indexOf(speciesId);
+		if (from < 0)
+		{
+			return false;
+		}
+		int to = from + delta;
+		if (to < 0 || to >= data.team.size() || to == from)
+		{
+			return false;
+		}
+		Collections.swap(data.team, from, to);
+		save();
+		return true;
 	}
 
 	/**

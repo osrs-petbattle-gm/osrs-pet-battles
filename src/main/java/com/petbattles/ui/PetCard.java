@@ -25,15 +25,15 @@ public class PetCard extends JPanel
 {
 	public interface Listener
 	{
-		void onToggleTeam(String speciesId);
+		void onJoinTeam(String speciesId);
 
 		void onEditMoves(String speciesId);
 
 		void onToggleDevUnlock(String speciesId);
 	}
 
-	public PetCard(SpeciesDef species, PetInstance pet, boolean owned, boolean onTeam,
-		boolean teamFull, boolean devMode, boolean devUnlocked, Sprites sprites, Listener listener)
+	public PetCard(SpeciesDef species, PetInstance pet, boolean owned, boolean canJoin,
+		String joinDisabledTooltip, boolean devMode, boolean devUnlocked, Sprites sprites, Listener listener)
 	{
 		setLayout(new BorderLayout(6, 0));
 		setBorder(BorderFactory.createCompoundBorder(
@@ -99,11 +99,12 @@ public class PetCard extends JPanel
 
 			JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
 			buttons.setOpaque(false);
-			JButton teamBtn = new JButton(onTeam ? "Leave team" : "Join team");
+			JButton teamBtn = new JButton("Join team");
 			teamBtn.setFont(FontManager.getRunescapeSmallFont());
 			teamBtn.setMargin(new java.awt.Insets(1, 4, 1, 4));
-			teamBtn.setEnabled(onTeam || !teamFull);
-			teamBtn.addActionListener(e -> listener.onToggleTeam(species.getId()));
+			teamBtn.setEnabled(canJoin);
+			teamBtn.setToolTipText(canJoin ? null : joinDisabledTooltip);
+			teamBtn.addActionListener(e -> listener.onJoinTeam(species.getId()));
 			buttons.add(teamBtn);
 
 			JButton movesBtn = new JButton("Moves");
