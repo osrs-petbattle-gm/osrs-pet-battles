@@ -9,7 +9,7 @@
   },
   {
     "id": "gertrude", "name": "Gertrude", "theme": "Varrock's famous pet keeper",
-    "difficulty": "EASY", "npcIds": [3500],
+    "difficulty": "EASY", "npcIds": [7284],
     "party": [
       { "species": "heron", "level": 8 },
       { "species": "rocky", "level": 8 },
