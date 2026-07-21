@@ -11,6 +11,7 @@ import com.petbattles.engine.TrainerDef;
 import com.petbattles.engine.TypeChart;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.regex.Pattern;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
@@ -160,6 +161,28 @@ public class ContentValidationTest
 		// Its held-item ids resolve back to the cat for the inventory/bank scan
 		assertEquals("cat", db.speciesByItemId(1555).getId());
 		assertEquals("cat", db.speciesByItemId(1561).getId());
+	}
+
+	@Test
+	public void tradeInMessagesAreValidAndSpecific()
+	{
+		for (SpeciesDef s : db.allSpecies())
+		{
+			if (s.getTradeInMessage() == null)
+			{
+				continue;
+			}
+			// Compiling throws on an invalid regex; only possession pets can be traded away
+			Pattern.compile(s.getTradeInMessage(), Pattern.CASE_INSENSITIVE);
+			assertTrue("only possession-gated pets trade away: " + s.getId(), s.isItemUnlock());
+		}
+		// The cat's pattern catches the death-rune trade (either word order) but not
+		// unrelated messages that mention only one of the two
+		Pattern cat = Pattern.compile(db.species("cat").getTradeInMessage(), Pattern.CASE_INSENSITIVE);
+		assertTrue(cat.matcher("You hand over the cat and receive 100 death runes.").find());
+		assertTrue(cat.matcher("In exchange for death runes you give up your cat.").find());
+		assertFalse(cat.matcher("You received 100 death runes.").find());
+		assertFalse(cat.matcher("Your cat looks happy.").find());
 	}
 
 	@Test

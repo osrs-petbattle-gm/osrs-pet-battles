@@ -22,6 +22,9 @@ public class SpeciesDef
 	// Unlocked by possessing the pet in-game (item in inventory/bank, or as a follower)
 	// rather than via the collection log — for the OSRS cat, which isn't a log pet.
 	private boolean itemUnlock;
+	// Optional case-insensitive regex; when a game message matches it, the player has
+	// traded this pet away in-game (e.g. a grown cat for death runes) and it is revoked.
+	private String tradeInMessage;
 	// Optional evolution stages (kitten -> cat -> ...); empty for non-growing species.
 	private List<GrowthStage> growthStages = new ArrayList<>();
 
@@ -82,6 +85,15 @@ public class SpeciesDef
 	public boolean isItemUnlock()
 	{
 		return itemUnlock;
+	}
+
+	/**
+	 * Case-insensitive regex whose match in a game message means this pet was traded away
+	 * in-game and should be revoked, or null if the pet can't be traded away.
+	 */
+	public String getTradeInMessage()
+	{
+		return tradeInMessage;
 	}
 
 	public List<GrowthStage> getGrowthStages()

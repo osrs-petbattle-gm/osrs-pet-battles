@@ -128,6 +128,24 @@ public class RosterManager
 	}
 
 	/**
+	 * Give up ownership of a pet entirely: drop it from the owned set, the battle team and
+	 * its progression record. Used when a possession-gated pet is traded away in-game (e.g.
+	 * trading a grown cat for death runes). Returns true if the pet was owned.
+	 */
+	public synchronized boolean removeOwnership(String speciesId)
+	{
+		boolean owned = data.ownedSpecies.remove(speciesId);
+		data.team.remove(speciesId);
+		data.pets.remove(speciesId);
+		data.devUnlocked.remove(speciesId);
+		if (owned)
+		{
+			save();
+		}
+		return owned;
+	}
+
+	/**
 	 * Mark a species as owned (from collection log sync or a live drop). Additive only.
 	 * Returns true if this is a new unlock.
 	 */

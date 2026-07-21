@@ -1179,6 +1179,7 @@
     "npcIds": [],
     "npcXpTags": [],
     "itemUnlock": true,
+    "tradeInMessage": "(?=.*\\bcat\\b)(?=.*death rune)",
     "types": ["MELEE"],
     "base": { "hp": 45, "atk": 48, "def": 42, "spd": 58 },
     "growthStages": [
