@@ -32,6 +32,7 @@ import com.petbattles.data.PetDatabase;
 import com.petbattles.easteregg.EasterEggTracker;
 import com.petbattles.engine.Leveling;
 import com.petbattles.follower.FollowerTracker;
+import com.petbattles.follower.HeldItemTracker;
 import com.petbattles.npc.NearTrainerTracker;
 import com.petbattles.persist.RosterManager;
 import com.petbattles.persist.RosterStore;
@@ -96,6 +97,7 @@ public class PetBattlesPlugin extends Plugin
 	private NearTrainerTracker nearTrainerTracker;
 	private CollectionLogSync collectionLogSync;
 	private FollowerTracker followerTracker;
+	private HeldItemTracker heldItemTracker;
 	private KillXpTracker killXpTracker;
 	private EasterEggTracker easterEggTracker;
 
@@ -135,12 +137,14 @@ public class PetBattlesPlugin extends Plugin
 		Runnable refreshPanel = () -> panel.refresh();
 		collectionLogSync = new CollectionLogSync(client, db, roster, refreshPanel);
 		followerTracker = new FollowerTracker(client, db, roster, refreshPanel);
+		heldItemTracker = new HeldItemTracker(client, db, roster, refreshPanel);
 		killXpTracker = new KillXpTracker(client, db, roster, followerTracker, config, refreshPanel);
 		easterEggTracker = new EasterEggTracker(client, db, roster, followerTracker, refreshPanel);
 		eventBus.register(atBankTracker);
 		eventBus.register(nearTrainerTracker);
 		eventBus.register(collectionLogSync);
 		eventBus.register(followerTracker);
+		eventBus.register(heldItemTracker);
 		eventBus.register(killXpTracker);
 		eventBus.register(easterEggTracker);
 
@@ -174,6 +178,7 @@ public class PetBattlesPlugin extends Plugin
 			eventBus.unregister(nearTrainerTracker);
 			eventBus.unregister(collectionLogSync);
 			eventBus.unregister(followerTracker);
+			eventBus.unregister(heldItemTracker);
 			eventBus.unregister(killXpTracker);
 			eventBus.unregister(easterEggTracker);
 		}
@@ -214,6 +219,7 @@ public class PetBattlesPlugin extends Plugin
 		nearTrainerTracker = null;
 		collectionLogSync = null;
 		followerTracker = null;
+		heldItemTracker = null;
 		killXpTracker = null;
 		easterEggTracker = null;
 	}

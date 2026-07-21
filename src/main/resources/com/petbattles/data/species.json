@@ -1175,10 +1175,10 @@
   },
   {
     "id": "cat", "name": "Cat",
-    "itemId": 1555, "altItemIds": [],
+    "itemId": 1555, "altItemIds": [1561, 1567],
     "npcIds": [],
     "npcXpTags": [],
-    "starter": true,
+    "itemUnlock": true,
     "types": ["MELEE"],
     "base": { "hp": 45, "atk": 48, "def": 42, "spd": 58 },
     "growthStages": [

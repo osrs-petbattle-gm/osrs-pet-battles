@@ -19,9 +19,9 @@ public class SpeciesDef
 	private Stats base;
 	private List<LearnsetEntry> learnset = new ArrayList<>();
 	private List<EasterEggDef> easterEggs = new ArrayList<>();
-	// Always-owned freebie (the OSRS starter cat): granted to every player, never gated
-	// by the collection log, and the player only ever has one.
-	private boolean starter;
+	// Unlocked by possessing the pet in-game (item in inventory/bank, or as a follower)
+	// rather than via the collection log — for the OSRS cat, which isn't a log pet.
+	private boolean itemUnlock;
 	// Optional evolution stages (kitten -> cat -> ...); empty for non-growing species.
 	private List<GrowthStage> growthStages = new ArrayList<>();
 
@@ -76,12 +76,12 @@ public class SpeciesDef
 	}
 
 	/**
-	 * Whether this is an always-owned starter (granted to every player regardless of the
-	 * collection log). Starters never need npcIds and are limited to one per player.
+	 * Whether this pet is unlocked by possessing it in-game — the item in the player's
+	 * inventory or bank, or the pet following them — instead of via the collection log.
 	 */
-	public boolean isStarter()
+	public boolean isItemUnlock()
 	{
-		return starter;
+		return itemUnlock;
 	}
 
 	public List<GrowthStage> getGrowthStages()

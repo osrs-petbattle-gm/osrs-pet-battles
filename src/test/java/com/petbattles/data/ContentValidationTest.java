@@ -51,8 +51,9 @@ public class ContentValidationTest
 			assertTrue(ctx + " unique id", ids.add(s.getId()));
 			assertNotNull(ctx + " name", s.getName());
 			assertTrue(ctx + " itemId", s.getItemId() > 0);
-			// Starters are always-owned freebies with no in-world follower unlock path
-			if (!s.isStarter())
+			// Possession-gated pets (the cat) unlock from a held item, so follower npcIds
+			// are optional for them
+			if (!s.isItemUnlock())
 			{
 				assertFalse(ctx + " needs npcIds for follower detection", s.getNpcIds().isEmpty());
 			}
@@ -145,18 +146,20 @@ public class ContentValidationTest
 	}
 
 	@Test
-	public void exactlyOneStarterCatWithEvolution()
+	public void catIsPossessionGatedAndEvolves()
 	{
-		long starters = db.allSpecies().stream().filter(SpeciesDef::isStarter).count();
-		assertEquals("exactly one always-owned starter", 1, starters);
 		SpeciesDef cat = db.species("cat");
 		assertNotNull(cat);
-		assertTrue(cat.isStarter());
-		assertFalse("starter cat evolves", cat.getGrowthStages().isEmpty());
+		// Possession-gated (held item / follower), not an always-owned freebie
+		assertTrue("cat unlocks by possession", cat.isItemUnlock());
+		assertFalse("cat evolves", cat.getGrowthStages().isEmpty());
 		assertEquals("Kitten", cat.nameAt(1));
 		assertEquals(1555, cat.itemIdAt(1));
 		assertEquals("Cat", cat.nameAt(15));
 		assertEquals("Overgrown Cat", cat.nameAt(40));
+		// Its held-item ids resolve back to the cat for the inventory/bank scan
+		assertEquals("cat", db.speciesByItemId(1555).getId());
+		assertEquals("cat", db.speciesByItemId(1561).getId());
 	}
 
 	@Test
