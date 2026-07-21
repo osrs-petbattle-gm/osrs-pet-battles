@@ -5,7 +5,7 @@
     "npcIds": [6635, 6651, 10650, 10651],
     "npcXpTags": ["Giant Mole"],
     "types": ["MELEE", "NATURE"],
-    "base": { "hp": 55, "atk": 52, "def": 60, "spd": 40 },
+    "base": { "hp": 70, "atk": 52, "def": 68, "spd": 40 },
     "learnset": [
       { "level": 1, "move": "scratch" },
       { "level": 7, "move": "vine_whip" },
@@ -109,10 +109,10 @@
     "npcIds": [6715, 6722, 6817, 10636],
     "npcXpTags": [],
     "types": ["SKILLING", "ICE"],
-    "base": { "hp": 48, "atk": 55, "def": 42, "spd": 68 },
+    "base": { "hp": 48, "atk": 55, "def": 42, "spd": 76 },
     "learnset": [
       { "level": 1, "move": "ice_shard" },
-      { "level": 7, "move": "pickaxe_poke" },
+      { "level": 7, "move": "harpoon" },
       { "level": 15, "move": "frost_bite" },
       { "level": 24, "move": "tool_frenzy" },
       { "level": 36, "move": "ice_barrage" }
@@ -160,8 +160,8 @@
     "itemId": 20663, "altItemIds": [24849, 24847],
     "npcIds": [7336, 7353, 9851, 9853, 9850, 9852],
     "npcXpTags": [],
-    "types": ["SKILLING"],
-    "base": { "hp": 50, "atk": 58, "def": 45, "spd": 66 },
+    "types": ["SKILLING", "MELEE"],
+    "base": { "hp": 50, "atk": 58, "def": 60, "spd": 66 },
     "learnset": [
       { "level": 1, "move": "scratch" },
       { "level": 7, "move": "quick_feet" },
@@ -260,7 +260,7 @@
     "npcIds": [7519, 7520],
     "npcXpTags": ["Great Olm"],
     "types": ["DRAGON", "MAGIC"],
-    "base": { "hp": 65, "atk": 68, "def": 58, "spd": 40 },
+    "base": { "hp": 65, "atk": 60, "def": 58, "spd": 40 },
     "learnset": [
       { "level": 1, "move": "wind_strike" },
       { "level": 8, "move": "tail_swipe" },
@@ -294,7 +294,7 @@
     "npcIds": [8025, 8029],
     "npcXpTags": ["Vorkath"],
     "types": ["DRAGON", "ICE"],
-    "base": { "hp": 63, "atk": 66, "def": 58, "spd": 43 },
+    "base": { "hp": 63, "atk": 58, "def": 68, "spd": 43 },
     "learnset": [
       { "level": 1, "move": "ice_shard" },
       { "level": 8, "move": "tail_swipe" },
@@ -328,7 +328,7 @@
     "npcIds": [964, 3099],
     "npcXpTags": ["Cerberus", "Hellhound"],
     "types": ["DEMON", "FIRE"],
-    "base": { "hp": 58, "atk": 68, "def": 52, "spd": 58 },
+    "base": { "hp": 58, "atk": 62, "def": 52, "spd": 66 },
     "learnset": [
       { "level": 1, "move": "demon_claw" },
       { "level": 8, "move": "ember" },
@@ -1111,7 +1111,7 @@
     "npcIds": [14203, 14204],
     "npcXpTags": ["Yama"],
     "types": ["DEMON", "FIRE"],
-    "base": { "hp": 60, "atk": 68, "def": 54, "spd": 50 },
+    "base": { "hp": 60, "atk": 62, "def": 54, "spd": 66 },
     "learnset": [
       { "level": 1, "move": "demon_claw" },
       { "level": 8, "move": "ember" },

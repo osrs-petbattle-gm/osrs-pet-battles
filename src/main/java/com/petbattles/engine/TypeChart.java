@@ -17,16 +17,16 @@ public class TypeChart
 	// MEL   RNG   MAG   FIR   ICE   NAT   UND   DEM   DRG   SKL
 	private static final double[][] DEFAULT =
 	{
-		{N,    S,    W,    N,    S,    N,    W,    N,    W,    S}, // MELEE
-		{W,    N,    S,    N,    N,    W,    N,    N,    S,    S}, // RANGED
+		{N,    S,    W,    N,    S,    N,    W,    N,    W,    N}, // MELEE
+		{W,    N,    S,    N,    N,    W,    N,    N,    S,    N}, // RANGED
 		{S,    W,    N,    W,    N,    N,    N,    S,    N,    S}, // MAGIC
 		{N,    N,    W,    W,    S,    S,    S,    W,    W,    N}, // FIRE
 		{N,    W,    N,    W,    W,    S,    N,    N,    S,    N}, // ICE
 		{N,    S,    W,    W,    N,    W,    S,    N,    N,    W}, // NATURE
-		{N,    N,    N,    W,    N,    S,    W,    W,    N,    S}, // UNDEAD
+		{N,    N,    N,    W,    N,    S,    W,    S,    N,    S}, // UNDEAD
 		{S,    N,    W,    S,    W,    N,    N,    W,    N,    S}, // DEMON
-		{S,    W,    N,    W,    W,    S,    N,    S,    W,    S}, // DRAGON
-		{W,    W,    W,    N,    N,    S,    N,    N,    N,    N}, // SKILLING
+		{N,    W,    N,    W,    W,    S,    N,    S,    W,    S}, // DRAGON
+		{N,    N,    N,    N,    S,    S,    S,    N,    N,    N}, // SKILLING
 	};
 
 	private final double[][] matrix;

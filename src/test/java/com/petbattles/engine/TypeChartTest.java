@@ -36,6 +36,29 @@ public class TypeChartTest
 	}
 
 	@Test
+	public void rebalance2026()
+	{
+		// Dragon no longer super-effective against Melee
+		assertEquals(1.0, chart.effectiveness(PetType.DRAGON, PetType.MELEE), 0.001);
+		// Undead now punishes Demons
+		assertEquals(2.0, chart.effectiveness(PetType.UNDEAD, PetType.DEMON), 0.001);
+		// Skilling gains an offensive niche vs Ice and Undead (Nature unchanged)
+		assertEquals(2.0, chart.effectiveness(PetType.SKILLING, PetType.ICE), 0.001);
+		assertEquals(2.0, chart.effectiveness(PetType.SKILLING, PetType.UNDEAD), 0.001);
+		// Skilling survivability: no longer weak to Melee or Ranged...
+		assertEquals(1.0, chart.effectiveness(PetType.MELEE, PetType.SKILLING), 0.001);
+		assertEquals(1.0, chart.effectiveness(PetType.RANGED, PetType.SKILLING), 0.001);
+		// ...but still 2x from Magic, Undead, Demon and Dragon
+		assertEquals(2.0, chart.effectiveness(PetType.MAGIC, PetType.SKILLING), 0.001);
+		assertEquals(2.0, chart.effectiveness(PetType.UNDEAD, PetType.SKILLING), 0.001);
+		assertEquals(2.0, chart.effectiveness(PetType.DEMON, PetType.SKILLING), 0.001);
+		assertEquals(2.0, chart.effectiveness(PetType.DRAGON, PetType.SKILLING), 0.001);
+		// Ice still resists Dragon attacks and Ice offense vs Dragon is retained
+		assertEquals(0.5, chart.effectiveness(PetType.DRAGON, PetType.ICE), 0.001);
+		assertEquals(2.0, chart.effectiveness(PetType.ICE, PetType.DRAGON), 0.001);
+	}
+
+	@Test
 	public void dualTypesMultiply()
 	{
 		// Fire vs [Undead, Nature] = 2.0 * 2.0 = 4.0

@@ -58,6 +58,7 @@
   { "id": "ancient_wyrm_rage", "name": "Ancient Wyrm Rage", "type": "DRAGON", "power": 115, "accuracy": 70, "effect": "NONE", "effectChance": 0, "animation": "flash" },
 
   { "id": "pickaxe_poke", "name": "Pickaxe Poke", "type": "SKILLING", "power": 45, "accuracy": 100, "effect": "NONE", "effectChance": 0, "animation": "lunge" },
+  { "id": "harpoon", "name": "Harpoon", "type": "SKILLING", "power": 45, "accuracy": 100, "effect": "NONE", "effectChance": 0, "animation": "lunge" },
   { "id": "log_toss", "name": "Log Toss", "type": "SKILLING", "power": 55, "accuracy": 95, "effect": "NONE", "effectChance": 0, "animation": "projectile" },
   { "id": "tool_frenzy", "name": "Tool Frenzy", "type": "SKILLING", "power": 75, "accuracy": 90, "effect": "NONE", "effectChance": 0, "animation": "lunge" },
   { "id": "harden", "name": "Harden", "type": "SKILLING", "power": 0, "accuracy": 100, "effect": "DEF_UP", "effectChance": 100 },
