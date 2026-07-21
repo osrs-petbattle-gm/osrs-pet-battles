@@ -118,14 +118,35 @@ public class BattleEngineTest
 
 		List<BattleEvent> turn1 = engine.resolveTurn(state, BattleAction.move(0), BattleAction.move(0), new Random(1));
 		assertTrue(turn1.stream().anyMatch(e -> e.getType() == BattleEvent.Type.FAINTED));
-		assertTrue("second pet sent out",
-			turn1.stream().anyMatch(e -> e.getType() == BattleEvent.Type.PET_SENT_OUT));
+		BattleEvent sendOut = turn1.stream()
+			.filter(e -> e.getType() == BattleEvent.Type.PET_SENT_OUT && e.getSide() == BattleState.ENEMY)
+			.findFirst().orElse(null);
+		assertTrue("second pet sent out", sendOut != null);
+		assertTrue("enemy replacement swap is deferred to animation time", sendOut.isDeferredSwitch());
+		assertFalse("the replacement never acts with the fainted pet's queued move",
+			turn1.stream().anyMatch(e -> e.getType() == BattleEvent.Type.MOVE_USED && e.getSide() == BattleState.ENEMY));
 		assertFalse(state.isOver());
+		// The swap isn't applied during resolution — the fainted pet stays active so it can
+		// play its faint animation; the UI applies the swap when the send-out is shown
+		assertEquals("swap deferred, not applied yet", 0, state.activeIndex(BattleState.ENEMY));
+		applyDeferredSwitches(state, turn1);
 		assertEquals(1, state.activeIndex(BattleState.ENEMY));
 
 		List<BattleEvent> turn2 = engine.resolveTurn(state, BattleAction.move(0), BattleAction.move(0), new Random(2));
 		assertTrue(turn2.stream().anyMatch(e -> e.getType() == BattleEvent.Type.BATTLE_END));
 		assertEquals(BattleState.Phase.PLAYER_WON, state.getPhase());
+	}
+
+	/** Mimics the session applying deferred enemy send-outs at animation time. */
+	private static void applyDeferredSwitches(BattleState state, List<BattleEvent> events)
+	{
+		for (BattleEvent e : events)
+		{
+			if (e.isDeferredSwitch())
+			{
+				state.setActive(e.getSide(), e.getValue());
+			}
+		}
 	}
 
 	@Test

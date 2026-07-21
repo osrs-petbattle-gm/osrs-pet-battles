@@ -74,23 +74,19 @@ public class BattleEngine
 		}
 		int second = BattleState.opponent(first);
 
-		// If the first attacker faints the second side's pet, that side gets a fresh pet:
-		// the enemy auto-picks (below), the player is prompted (PLAYER_MUST_SWITCH). Either
-		// way the replacement does not act with the fainted pet's queued move this turn.
-		int secondActiveBefore = state.activeIndex(second);
+		// A pet fainted by the first attacker stays the (fainted) active pet for the rest of
+		// this turn: act() and endOfTurn() both no-op on a fainted pet, so the replacement
+		// never acts with the fainted pet's queued move. The enemy's swap is deferred to
+		// animation time; the player is prompted (PLAYER_MUST_SWITCH).
 		act(state, first, actionFor(first, playerAction, enemyAction), events, rng);
 		if (haltAfterStep(state))
 		{
 			return events;
 		}
-		boolean secondReplaced = state.activeIndex(second) != secondActiveBefore;
-		if (!secondReplaced)
+		act(state, second, actionFor(second, playerAction, enemyAction), events, rng);
+		if (haltAfterStep(state))
 		{
-			act(state, second, actionFor(second, playerAction, enemyAction), events, rng);
-			if (haltAfterStep(state))
-			{
-				return events;
-			}
+			return events;
 		}
 
 		endOfTurn(state, first, events);
@@ -340,11 +336,13 @@ public class BattleEngine
 		}
 		else
 		{
-			// Enemy auto-sends its next pet; its queued action is spent by the send-out
-			state.sendNext(BattleState.ENEMY);
-			BattlePet next = state.active(BattleState.ENEMY);
-			events.add(BattleEvent.of(BattleEvent.Type.PET_SENT_OUT, BattleState.ENEMY,
-				"Enemy sends out " + next.getDisplayName() + "!"));
+			// Enemy auto-sends its next pet, but the actual swap is deferred until the UI
+			// shows this event — so the fainted pet plays its faint animation first instead
+			// of the replacement popping in to take the hit.
+			int next = state.nextAliveIndex(BattleState.ENEMY);
+			BattlePet nextPet = state.team(BattleState.ENEMY).get(next);
+			events.add(BattleEvent.deferredSendOut(BattleState.ENEMY, next,
+				"Enemy sends out " + nextPet.getDisplayName() + "!"));
 		}
 	}
 

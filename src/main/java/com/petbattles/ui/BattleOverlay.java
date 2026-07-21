@@ -156,14 +156,21 @@ public class BattleOverlay extends Overlay
 		MoveDef currentMove = session.getCurrentMove();
 		float progress = session.getAnimationProgress();
 
+		// A fainted pet is "settled" (drawn as a faint ghost) once it's no longer the
+		// subject of the current event — i.e. after its damage + faint lines have played.
+		boolean enemySettled = enemy.isFainted() && (current == null || current.getSide() != BattleState.ENEMY);
+		boolean playerSettled = player.isFainted() && (current == null || current.getSide() != BattleState.PLAYER);
+
 		// Enemy: info card top-left, sprite top-right
 		drawPetInfo(g, enemy, 10, 22, false);
 		drawPetSprite(g, enemy, ENEMY_SPRITE,
-			AttackAnimator.spriteTransform(current, currentMove, progress, BattleState.ENEMY, ENEMY_SPRITE, PLAYER_SPRITE));
+			AttackAnimator.spriteTransform(current, currentMove, progress, BattleState.ENEMY, ENEMY_SPRITE, PLAYER_SPRITE),
+			enemySettled);
 
 		// Player: sprite mid-left, info card mid-right
 		drawPetSprite(g, player, PLAYER_SPRITE,
-			AttackAnimator.spriteTransform(current, currentMove, progress, BattleState.PLAYER, PLAYER_SPRITE, ENEMY_SPRITE));
+			AttackAnimator.spriteTransform(current, currentMove, progress, BattleState.PLAYER, PLAYER_SPRITE, ENEMY_SPRITE),
+			playerSettled);
 		drawPetInfo(g, player, WIDTH - 150, 92, true);
 
 		// Attack effects and hit splats ride the current event
@@ -597,33 +604,28 @@ public class BattleOverlay extends Overlay
 		}
 	}
 
-	private void drawPetSprite(Graphics2D g, BattlePet pet, Rectangle rect, AttackAnimator.Transform t)
+	private void drawPetSprite(Graphics2D g, BattlePet pet, Rectangle rect, AttackAnimator.Transform t, boolean settledFaint)
 	{
 		int size = Math.round(rect.width * t.scale);
 		int x = rect.x + t.dx + (rect.width - size) / 2;
 		int y = rect.y + t.dy + (rect.height - size) / 2;
 		Image img = sprites.itemImage(pet.getDisplayItemId());
-		// A partial alpha means the pet is mid-faint (collapse/fade); draw translucent and
-		// skip the static dim so the fade reads cleanly.
-		boolean fading = t.alpha < 1f;
-		Composite prev = g.getComposite();
-		if (fading)
+		if (img == null)
 		{
-			g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, t.alpha));
+			return;
 		}
-		if (img != null)
+		// A settled-fainted pet lingers as a faint ghost (no opaque dim box); otherwise the
+		// transform alpha drives the mid-faint collapse and normal full opacity.
+		float alpha = settledFaint ? 0.2f : t.alpha;
+		if (alpha >= 1f)
 		{
 			g.drawImage(img, x, y, size, size, null);
+			return;
 		}
-		if (fading)
-		{
-			g.setComposite(prev);
-		}
-		else if (pet.isFainted())
-		{
-			g.setColor(new Color(0, 0, 0, 140));
-			g.fillRect(x, y, size, size);
-		}
+		Composite prev = g.getComposite();
+		g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, Math.max(0f, alpha)));
+		g.drawImage(img, x, y, size, size, null);
+		g.setComposite(prev);
 	}
 
 	private void drawButton(Graphics2D g, Rectangle r, String label, boolean enabled, Color accent)

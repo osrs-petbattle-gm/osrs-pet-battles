@@ -127,21 +127,34 @@ public class BattleState
 	}
 
 	/**
-	 * Switch the active pet to the next non-fainted team member; returns false if none remain.
+	 * Team slot of the next non-fainted pet on this side, or -1 if the whole team is down.
+	 * Does not change the active pet.
 	 */
-	public boolean sendNext(int side)
+	public int nextAliveIndex(int side)
 	{
 		List<BattlePet> team = team(side);
 		for (int i = 0; i < team.size(); i++)
 		{
 			if (!team.get(i).isFainted())
 			{
-				activeIndex[side] = i;
-				participated[side].add(i);
-				return true;
+				return i;
 			}
 		}
-		return false;
+		return -1;
+	}
+
+	/**
+	 * Switch the active pet to the next non-fainted team member; returns false if none remain.
+	 */
+	public boolean sendNext(int side)
+	{
+		int next = nextAliveIndex(side);
+		if (next < 0)
+		{
+			return false;
+		}
+		setActive(side, next);
+		return true;
 	}
 
 	/**

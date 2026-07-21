@@ -335,6 +335,12 @@ public class BattleSession
 				// Remembered through the following DAMAGE/STATUS events for tinting
 				currentMove = event.getMove();
 			}
+			if (event.isDeferredSwitch())
+			{
+				// Apply the enemy's on-faint swap now, so the fainted pet was shown through
+				// its faint animation and the replacement appears exactly on this line
+				state.setActive(event.getSide(), event.getValue());
+			}
 			pushLog(event.getText());
 			return;
 		}

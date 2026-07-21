@@ -32,13 +32,23 @@ public class BattleEvent
 	private final double effectiveness; // for DAMAGE
 	private final String text;
 	private final MoveDef move; // for MOVE_USED: drives the attack animation
+	// PET_SENT_OUT only: when true, the active-pet swap to team slot `value` is applied by
+	// the UI when this event is shown, not during resolution — so the fainted pet stays
+	// on screen through its faint animation before the replacement appears.
+	private final boolean deferredSwitch;
 
 	public BattleEvent(Type type, int side, int value, double effectiveness, String text)
 	{
-		this(type, side, value, effectiveness, text, null);
+		this(type, side, value, effectiveness, text, null, false);
 	}
 
 	private BattleEvent(Type type, int side, int value, double effectiveness, String text, MoveDef move)
+	{
+		this(type, side, value, effectiveness, text, move, false);
+	}
+
+	private BattleEvent(Type type, int side, int value, double effectiveness, String text, MoveDef move,
+		boolean deferredSwitch)
 	{
 		this.type = type;
 		this.side = side;
@@ -46,11 +56,21 @@ public class BattleEvent
 		this.effectiveness = effectiveness;
 		this.text = text;
 		this.move = move;
+		this.deferredSwitch = deferredSwitch;
 	}
 
 	public static BattleEvent of(Type type, int side, String text)
 	{
 		return new BattleEvent(type, side, 0, 1.0, text);
+	}
+
+	/**
+	 * A send-out whose active-pet swap (to team slot {@code teamIndex}) is deferred until
+	 * the UI shows this event — used for the enemy's on-faint replacement.
+	 */
+	public static BattleEvent deferredSendOut(int side, int teamIndex, String text)
+	{
+		return new BattleEvent(Type.PET_SENT_OUT, side, teamIndex, 1.0, text, null, true);
 	}
 
 	public static BattleEvent moveUsed(int side, MoveDef move, String text)
@@ -96,6 +116,15 @@ public class BattleEvent
 	public MoveDef getMove()
 	{
 		return move;
+	}
+
+	/**
+	 * Whether this PET_SENT_OUT applies its active-pet swap when shown rather than during
+	 * resolution (see {@link #deferredSendOut}).
+	 */
+	public boolean isDeferredSwitch()
+	{
+		return deferredSwitch;
 	}
 
 	@Override
