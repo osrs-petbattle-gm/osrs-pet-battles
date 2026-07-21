@@ -19,6 +19,11 @@ public class SpeciesDef
 	private Stats base;
 	private List<LearnsetEntry> learnset = new ArrayList<>();
 	private List<EasterEggDef> easterEggs = new ArrayList<>();
+	// Always-owned freebie (the OSRS starter cat): granted to every player, never gated
+	// by the collection log, and the player only ever has one.
+	private boolean starter;
+	// Optional evolution stages (kitten -> cat -> ...); empty for non-growing species.
+	private List<GrowthStage> growthStages = new ArrayList<>();
 
 	public String getId()
 	{
@@ -68,6 +73,55 @@ public class SpeciesDef
 	public List<EasterEggDef> getEasterEggs()
 	{
 		return easterEggs == null ? Collections.emptyList() : easterEggs;
+	}
+
+	/**
+	 * Whether this is an always-owned starter (granted to every player regardless of the
+	 * collection log). Starters never need npcIds and are limited to one per player.
+	 */
+	public boolean isStarter()
+	{
+		return starter;
+	}
+
+	public List<GrowthStage> getGrowthStages()
+	{
+		return growthStages == null ? Collections.emptyList() : growthStages;
+	}
+
+	/**
+	 * The growth stage active at the given level (the highest stage whose level threshold
+	 * has been reached), or null if this species doesn't evolve.
+	 */
+	public GrowthStage stageAt(int level)
+	{
+		GrowthStage current = null;
+		for (GrowthStage stage : getGrowthStages())
+		{
+			if (stage.getLevel() <= level)
+			{
+				current = stage;
+			}
+		}
+		return current;
+	}
+
+	/**
+	 * Display name at the given level: the active growth stage's name, else the base name.
+	 */
+	public String nameAt(int level)
+	{
+		GrowthStage stage = stageAt(level);
+		return stage != null && stage.getName() != null ? stage.getName() : name;
+	}
+
+	/**
+	 * Sprite item id at the given level: the active growth stage's item, else the base item.
+	 */
+	public int itemIdAt(int level)
+	{
+		GrowthStage stage = stageAt(level);
+		return stage != null && stage.getItemId() > 0 ? stage.getItemId() : itemId;
 	}
 
 	/**

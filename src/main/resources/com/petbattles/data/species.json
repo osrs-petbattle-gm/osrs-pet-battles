@@ -1172,5 +1172,28 @@
       { "level": 48, "move": "soul_rend" }
     ],
     "easterEggs": []
+  },
+  {
+    "id": "cat", "name": "Cat",
+    "itemId": 1555, "altItemIds": [],
+    "npcIds": [],
+    "npcXpTags": [],
+    "starter": true,
+    "types": ["MELEE"],
+    "base": { "hp": 45, "atk": 48, "def": 42, "spd": 58 },
+    "growthStages": [
+      { "level": 1, "name": "Kitten", "itemId": 1555 },
+      { "level": 15, "name": "Cat", "itemId": 1561 },
+      { "level": 40, "name": "Overgrown Cat", "itemId": 1567 }
+    ],
+    "learnset": [
+      { "level": 1, "move": "scratch" },
+      { "level": 7, "move": "quick_feet" },
+      { "level": 14, "move": "slash" },
+      { "level": 22, "move": "bulk_up" },
+      { "level": 32, "move": "crush" },
+      { "level": 44, "move": "whirlwind" }
+    ],
+    "easterEggs": []
   }
 ]

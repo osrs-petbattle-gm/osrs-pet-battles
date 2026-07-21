@@ -1,6 +1,7 @@
 package com.petbattles.engine;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import org.junit.Test;
@@ -128,6 +129,38 @@ public class BattleEngineTest
 	}
 
 	@Test
+	public void onlyActivatedPetsAreMarkedAsFought()
+	{
+		BattlePet lead = TestPets.fastPet("lead", PetType.MELEE, 99,
+			new MoveDef("smash", "Smash", PetType.MELEE, 250, 100, MoveEffect.NONE, 0));
+		BattlePet bench = TestPets.slowPet("bench", PetType.MELEE, 20, TestPets.TACKLE);
+		BattlePet enemy = TestPets.slowPet("enemy", PetType.SKILLING, 1, TestPets.TACKLE);
+
+		List<BattleEvent> events = new ArrayList<>();
+		BattleState state = start(TestPets.teamOf(lead, bench), TestPets.teamOf(enemy), events);
+		engine.resolveTurn(state, BattleAction.move(0), BattleAction.move(0), new Random(1));
+
+		assertEquals(BattleState.Phase.PLAYER_WON, state.getPhase());
+		assertTrue("lead that fought is marked", state.hasFought(BattleState.PLAYER, 0));
+		assertFalse("bench pet that never came out did not fight", state.hasFought(BattleState.PLAYER, 1));
+	}
+
+	@Test
+	public void switchingInMarksThePetAsFought()
+	{
+		BattlePet first = TestPets.fastPet("first", PetType.MELEE, 20, TestPets.TACKLE);
+		BattlePet second = TestPets.fastPet("second", PetType.RANGED, 20, TestPets.ARROW);
+		BattlePet enemy = TestPets.slowPet("enemy", PetType.MELEE, 20, TestPets.TACKLE);
+
+		List<BattleEvent> events = new ArrayList<>();
+		BattleState state = start(TestPets.teamOf(first, second), TestPets.teamOf(enemy), events);
+		assertFalse(state.hasFought(BattleState.PLAYER, 1));
+
+		engine.resolveTurn(state, BattleAction.switchTo(1), BattleAction.move(0), new Random(1));
+		assertTrue("switched-in pet counts as having fought", state.hasFought(BattleState.PLAYER, 1));
+	}
+
+	@Test
 	public void fleeEndsBattleImmediately()
 	{
 		List<BattleEvent> events = new ArrayList<>();
@@ -166,6 +199,77 @@ public class BattleEngineTest
 		}
 		assertEquals(BattlePet.MAX_STAGE, buffer.getAtkStage());
 		assertTrue(buffer.effectiveAtk() > baseAtk);
+	}
+
+	@Test
+	public void playerFaintPausesForForcedSwitchWithoutAutoSend()
+	{
+		MoveDef smash = new MoveDef("smash", "Smash", PetType.MELEE, 250, 100, MoveEffect.NONE, 0);
+		BattlePet lead = TestPets.slowPet("lead", PetType.SKILLING, 1, TestPets.TACKLE);
+		BattlePet bench = TestPets.pet("bench", PetType.RANGED, 20, TestPets.ARROW);
+		BattlePet enemy = TestPets.fastPet("enemy", PetType.MELEE, 99, smash);
+
+		List<BattleEvent> events = new ArrayList<>();
+		BattleState state = start(TestPets.teamOf(lead, bench), TestPets.teamOf(enemy), events);
+		List<BattleEvent> turn = engine.resolveTurn(state, BattleAction.move(0), BattleAction.move(0), new Random(1));
+
+		assertTrue("player pet fainted", turn.stream().anyMatch(
+			e -> e.getType() == BattleEvent.Type.FAINTED && e.getSide() == BattleState.PLAYER));
+		assertTrue("battle pauses for a forced switch", state.awaitingForcedSwitch());
+		assertFalse(state.isOver());
+		// No auto-advance to the bench, and the replacement neither was sent nor attacked
+		assertEquals("lead stays the active slot until the player picks", 0, state.activeIndex(BattleState.PLAYER));
+		assertFalse("no player send-out happens automatically", turn.stream().anyMatch(
+			e -> e.getType() == BattleEvent.Type.PET_SENT_OUT && e.getSide() == BattleState.PLAYER));
+		assertFalse("the incoming pet never inherits the fainted pet's queued move", turn.stream().anyMatch(
+			e -> e.getType() == BattleEvent.Type.MOVE_USED && e.getSide() == BattleState.PLAYER));
+		assertEquals("bench pet is untouched", bench.getMaxHp(), bench.getCurrentHp());
+	}
+
+	@Test
+	public void forcedSwitchSendsInChosenPetAndConsumesTheRound()
+	{
+		MoveDef smash = new MoveDef("smash", "Smash", PetType.MELEE, 250, 100, MoveEffect.NONE, 0);
+		BattlePet lead = TestPets.slowPet("lead", PetType.SKILLING, 1, TestPets.TACKLE);
+		BattlePet bench = TestPets.pet("bench", PetType.RANGED, 20, TestPets.ARROW);
+		BattlePet enemy = TestPets.fastPet("enemy", PetType.MELEE, 99, smash);
+
+		List<BattleEvent> events = new ArrayList<>();
+		BattleState state = start(TestPets.teamOf(lead, bench), TestPets.teamOf(enemy), events);
+		engine.resolveTurn(state, BattleAction.move(0), BattleAction.move(0), new Random(1));
+		assertTrue(state.awaitingForcedSwitch());
+
+		List<BattleEvent> sw = engine.resolveForcedSwitch(state, 1);
+		assertTrue("forced switch emits a send-out", sw.stream().anyMatch(
+			e -> e.getType() == BattleEvent.Type.PET_SENT_OUT && e.getSide() == BattleState.PLAYER));
+		assertEquals(1, state.activeIndex(BattleState.PLAYER));
+		assertFalse("play resumes after the pick", state.awaitingForcedSwitch());
+		assertTrue(state.hasFought(BattleState.PLAYER, 1));
+		// The incoming pet did not counter-attack this round: it and the enemy are unhurt
+		assertEquals(bench.getMaxHp(), bench.getCurrentHp());
+		assertEquals(enemy.getMaxHp(), enemy.getCurrentHp());
+	}
+
+	@Test
+	public void dotFaintRoutesThroughForcedSwitch()
+	{
+		// A no-damage enemy move plus a burn on a near-dead lead: the burn tick at
+		// end of turn is what faints the player, and it must pause for a forced switch.
+		BattlePet lead = new BattlePet(TestPets.species("lead", PetType.MELEE, 50, 50, 50, 50),
+			"lead", 5, Arrays.asList(TestPets.TACKLE), 3);
+		BattlePet bench = TestPets.pet("bench", PetType.MELEE, 20, TestPets.TACKLE);
+		BattlePet enemy = TestPets.pet("enemy", PetType.MELEE, 5, TestPets.BUFF_MOVE);
+		lead.applyStatus(BattlePet.Status.BURN, Integer.MAX_VALUE);
+
+		List<BattleEvent> events = new ArrayList<>();
+		BattleState state = start(TestPets.teamOf(lead, bench), TestPets.teamOf(enemy), events);
+		List<BattleEvent> turn = engine.resolveTurn(state, BattleAction.move(0), BattleAction.move(0), new Random(1));
+
+		assertTrue("burn chipped the lead", turn.stream().anyMatch(e -> e.getType() == BattleEvent.Type.STATUS_TICK));
+		assertTrue("the burn faint is the player's", turn.stream().anyMatch(
+			e -> e.getType() == BattleEvent.Type.FAINTED && e.getSide() == BattleState.PLAYER));
+		assertTrue("a DOT faint still pauses for a forced switch", state.awaitingForcedSwitch());
+		assertFalse(state.isOver());
 	}
 
 	@Test

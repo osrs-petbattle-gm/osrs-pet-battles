@@ -6,8 +6,10 @@ import com.petbattles.engine.BattlePet;
 import com.petbattles.engine.BattleState;
 import com.petbattles.engine.MoveDef;
 import com.petbattles.engine.PetType;
+import java.awt.AlphaComposite;
 import java.awt.BasicStroke;
 import java.awt.Color;
+import java.awt.Composite;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.FontMetrics;
@@ -136,6 +138,19 @@ public class BattleOverlay extends Overlay
 		String title = session.getTrainer() != null ? "vs " + session.getTrainer().getName() : "Battle";
 		g.drawString(title, 10, 14);
 
+		// The end-of-battle summary replaces the battle scene entirely
+		if (session.getPhase() == BattleSession.Phase.ENDED)
+		{
+			List<Button> endButtons = new ArrayList<>();
+			drawSummary(g, state, endButtons);
+			synchronized (this)
+			{
+				buttons.clear();
+				buttons.addAll(endButtons);
+			}
+			return new Dimension(WIDTH, HEIGHT);
+		}
+
 		BattleEvent current = session.getPhase() == BattleSession.Phase.ANIMATING
 			? session.getCurrentEvent() : null;
 		MoveDef currentMove = session.getCurrentMove();
@@ -183,15 +198,17 @@ public class BattleOverlay extends Overlay
 
 			// Buttons
 			int btnY = HEIGHT - 44;
-			if (session.getPhase() == BattleSession.Phase.ENDED)
+			if (session.getPhase() == BattleSession.Phase.FORCED_SWITCH)
 			{
-				Rectangle close = new Rectangle(WIDTH / 2 - 40, btnY + 8, 80, 24);
-				drawButton(g, close, "Close", true, null);
-				newButtons.add(new Button(close, "close"));
+				// Active pet fainted: a replacement must be chosen before play resumes
+				g.setFont(FontManager.getRunescapeSmallFont());
+				g.setColor(new Color(240, 210, 120));
+				g.drawString("Send out your next pet!", 12, btnY - 4);
+				drawSwapMenu(g, state, btnY, newButtons, true);
 			}
 			else if (swapMenuOpen && session.isAwaitingInput())
 			{
-				drawSwapMenu(g, state, btnY, newButtons);
+				drawSwapMenu(g, state, btnY, newButtons, false);
 			}
 			else
 			{
@@ -237,6 +254,103 @@ public class BattleOverlay extends Overlay
 		return new Dimension(WIDTH, HEIGHT);
 	}
 
+	/**
+	 * Post-battle summary: the outcome headline, then a row per pet that fought with its
+	 * ending HP, XP gained and any level-ups / moves learned, and a Close button.
+	 */
+	private void drawSummary(Graphics2D g, BattleState state, List<Button> newButtons)
+	{
+		BattleState.Phase phase = state.getPhase();
+		String headline;
+		Color headlineColor;
+		if (phase == BattleState.Phase.PLAYER_WON)
+		{
+			headline = "Victory!";
+			headlineColor = HP_GREEN;
+		}
+		else if (phase == BattleState.Phase.FLED)
+		{
+			headline = "You fled the battle";
+			headlineColor = HP_YELLOW;
+		}
+		else
+		{
+			headline = "Defeat...";
+			headlineColor = HP_RED;
+		}
+		g.setFont(FontManager.getRunescapeBoldFont());
+		g.setColor(headlineColor);
+		FontMetrics hm = g.getFontMetrics();
+		g.drawString(headline, (WIDTH - hm.stringWidth(headline)) / 2, 40);
+
+		List<BattleSession.SummaryEntry> entries = session.getSummary();
+		int y = 56;
+		if (entries.isEmpty())
+		{
+			g.setFont(FontManager.getRunescapeSmallFont());
+			g.setColor(LOG_TEXT);
+			g.drawString("No pets took part.", 16, y + 12);
+		}
+		int rowH = Math.min(52, (HEIGHT - 56 - 44) / Math.max(1, entries.size()));
+		for (BattleSession.SummaryEntry e : entries)
+		{
+			drawSummaryRow(g, e, y, rowH);
+			y += rowH;
+		}
+
+		Rectangle close = new Rectangle(WIDTH / 2 - 40, HEIGHT - 34, 80, 24);
+		drawButton(g, close, "Close", true, null);
+		newButtons.add(new Button(close, "close"));
+	}
+
+	private void drawSummaryRow(Graphics2D g, BattleSession.SummaryEntry e, int y, int rowH)
+	{
+		g.setColor(new Color(0, 0, 0, 90));
+		g.fillRoundRect(8, y, WIDTH - 16, rowH - 4, 6, 6);
+
+		g.setFont(FontManager.getRunescapeSmallFont());
+		g.setColor(Color.WHITE);
+		String name = e.getName() + "  Lv" + e.getLevel() + (e.getLevelsGained() > 0 ? " ▲" : "");
+		g.drawString(name, 14, y + 13);
+
+		// XP gained, right-aligned on the name line
+		if (e.getXpGained() > 0)
+		{
+			g.setColor(new Color(150, 220, 150));
+			String xp = "+" + e.getXpGained() + " XP";
+			g.drawString(xp, WIDTH - 14 - g.getFontMetrics().stringWidth(xp), y + 13);
+		}
+
+		// HP bar
+		int barY = y + 18;
+		int barW = WIDTH - 28;
+		double frac = e.getMaxHp() > 0 ? (double) e.getCurrentHp() / e.getMaxHp() : 0;
+		g.setColor(new Color(40, 40, 40));
+		g.fillRect(14, barY, barW, 5);
+		g.setColor(e.isFainted() ? HP_RED : hpColor(frac));
+		g.fillRect(14, barY, (int) (barW * Math.max(0, frac)), 5);
+		g.setFont(FontManager.getRunescapeSmallFont().deriveFont(Font.PLAIN, 9f));
+		g.setColor(e.isFainted() ? HP_RED : LOG_TEXT);
+		String hp = e.isFainted() ? "Knocked out" : e.getCurrentHp() + " / " + e.getMaxHp() + " HP";
+		g.drawString(hp, 14, barY + 15);
+
+		// Level-up / moves-learned note when there's room in the row
+		if (rowH >= 44 && (e.getLevelsGained() > 0 || !e.getLearnedMoves().isEmpty()))
+		{
+			StringBuilder note = new StringBuilder();
+			if (e.getLevelsGained() > 0)
+			{
+				note.append("Grew ").append(e.getLevelsGained()).append(e.getLevelsGained() == 1 ? " level" : " levels");
+			}
+			if (!e.getLearnedMoves().isEmpty())
+			{
+				note.append(note.length() > 0 ? ", learned " : "Learned ").append(String.join(", ", e.getLearnedMoves()));
+			}
+			g.setColor(new Color(210, 200, 160));
+			g.drawString(clip(g, note.toString(), WIDTH - 28), 14, barY + 27);
+		}
+	}
+
 	private static boolean hasBenchTarget(BattleState state)
 	{
 		List<BattlePet> team = state.team(BattleState.PLAYER);
@@ -252,9 +366,11 @@ public class BattleOverlay extends Overlay
 
 	/**
 	 * Bench picker shown in place of the move grid: each healthy bench pet with its
-	 * offensive type match-up against the current enemy.
+	 * offensive type match-up against the current enemy. When {@code forced} (after a
+	 * mid-turn faint) the pick is mandatory: rows submit a forced switch and there is no
+	 * Back button.
 	 */
-	private void drawSwapMenu(Graphics2D g, BattleState state, int btnY, List<Button> newButtons)
+	private void drawSwapMenu(Graphics2D g, BattleState state, int btnY, List<Button> newButtons, boolean forced)
 	{
 		BattlePet enemy = state.active(BattleState.ENEMY);
 		List<BattlePet> team = state.team(BattleState.PLAYER);
@@ -278,12 +394,15 @@ public class BattleOverlay extends Overlay
 			Color accent = best >= 2.0 ? HP_GREEN : best <= 0.5 ? HP_RED : null;
 			Rectangle r = new Rectangle(12, rowY, WIDTH - 24, 18);
 			drawButton(g, r, label, true, accent);
-			newButtons.add(new Button(r, "switch:" + i));
+			newButtons.add(new Button(r, (forced ? "forceswitch:" : "switch:") + i));
 			rowY += 22;
 		}
-		Rectangle back = new Rectangle(WIDTH - 60, 4, 50, 14);
-		drawButton(g, back, "Back", true, null);
-		newButtons.add(new Button(back, "swapcancel"));
+		if (!forced)
+		{
+			Rectangle back = new Rectangle(WIDTH - 60, 4, 50, 14);
+			drawButton(g, back, "Back", true, null);
+			newButtons.add(new Button(back, "swapcancel"));
+		}
 	}
 
 	/**
@@ -321,6 +440,14 @@ public class BattleOverlay extends Overlay
 	private static Rectangle spriteRect(int side)
 	{
 		return side == BattleState.PLAYER ? PLAYER_SPRITE : ENEMY_SPRITE;
+	}
+
+	/**
+	 * HP-bar fill colour by remaining fraction: green &gt; 50%, yellow &gt; 20%, else red.
+	 */
+	private static Color hpColor(double frac)
+	{
+		return frac > 0.5 ? HP_GREEN : frac > 0.2 ? HP_YELLOW : HP_RED;
 	}
 
 	/**
@@ -460,7 +587,7 @@ public class BattleOverlay extends Overlay
 		double frac = pet.getMaxHp() > 0 ? (double) pet.getCurrentHp() / pet.getMaxHp() : 0;
 		g.setColor(new Color(40, 40, 40));
 		g.fillRect(x + 6, barY, barW, 5);
-		g.setColor(frac > 0.5 ? HP_GREEN : frac > 0.2 ? HP_YELLOW : HP_RED);
+		g.setColor(hpColor(frac));
 		g.fillRect(x + 6, barY, (int) (barW * frac), 5);
 		if (showExactHp)
 		{
@@ -475,12 +602,24 @@ public class BattleOverlay extends Overlay
 		int size = Math.round(rect.width * t.scale);
 		int x = rect.x + t.dx + (rect.width - size) / 2;
 		int y = rect.y + t.dy + (rect.height - size) / 2;
-		Image img = sprites.itemImage(pet.getSpecies().getItemId());
+		Image img = sprites.itemImage(pet.getDisplayItemId());
+		// A partial alpha means the pet is mid-faint (collapse/fade); draw translucent and
+		// skip the static dim so the fade reads cleanly.
+		boolean fading = t.alpha < 1f;
+		Composite prev = g.getComposite();
+		if (fading)
+		{
+			g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, t.alpha));
+		}
 		if (img != null)
 		{
 			g.drawImage(img, x, y, size, size, null);
 		}
-		if (pet.isFainted())
+		if (fading)
+		{
+			g.setComposite(prev);
+		}
+		else if (pet.isFainted())
 		{
 			g.setColor(new Color(0, 0, 0, 140));
 			g.fillRect(x, y, size, size);

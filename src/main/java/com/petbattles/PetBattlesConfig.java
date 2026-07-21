@@ -78,4 +78,16 @@ public interface PetBattlesConfig extends Config
 	{
 		return false;
 	}
+
+	@ConfigItem(
+		keyName = "devFullXpCurve",
+		name = "Full OSRS XP curve (dev)",
+		description = "Testing option: use the full, unscaled OSRS experience table (~13M XP to level 99) instead of the "
+			+ "default 20x-faster pacing. Changes the effective level of every pet while enabled.",
+		hidden = true
+	)
+	default boolean devFullXpCurve()
+	{
+		return false;
+	}
 }

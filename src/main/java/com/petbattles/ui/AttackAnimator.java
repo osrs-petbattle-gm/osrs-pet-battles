@@ -19,17 +19,24 @@ public final class AttackAnimator
 	 */
 	public static final class Transform
 	{
-		public static final Transform IDENTITY = new Transform(0, 0, 1f);
+		public static final Transform IDENTITY = new Transform(0, 0, 1f, 1f);
 
 		public final int dx;
 		public final int dy;
 		public final float scale;
+		public final float alpha;
 
 		private Transform(int dx, int dy, float scale)
+		{
+			this(dx, dy, scale, 1f);
+		}
+
+		private Transform(int dx, int dy, float scale, float alpha)
 		{
 			this.dx = dx;
 			this.dy = dy;
 			this.scale = scale;
+			this.alpha = alpha;
 		}
 	}
 
@@ -112,6 +119,14 @@ public final class AttackAnimator
 				// Horizontal jitter on the afflicted pet, settling as the event ends
 				return new Transform(
 					(int) (4 * Math.sin(progress * 6 * Math.PI) * (1 - progress)), 0, 1f);
+			case FAINTED:
+				if (event.getSide() != side)
+				{
+					return Transform.IDENTITY;
+				}
+				// Collapse: the fainted pet sinks, shrinks and fades before the next line
+				return new Transform(0, (int) (self.height * 0.35f * progress),
+					1f - 0.30f * progress, Math.max(0f, 1f - 0.85f * progress));
 			default:
 				return Transform.IDENTITY;
 		}

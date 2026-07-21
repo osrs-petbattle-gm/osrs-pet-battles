@@ -37,10 +37,80 @@ public class BattleSession
 		IDLE,
 		ANIMATING,
 		AWAITING_INPUT,
+		// Player's active pet fainted mid-turn; they must pick a replacement to continue
+		FORCED_SWITCH,
 		ENDED
 	}
 
 	private static final int MAX_LOG_LINES = 4;
+
+	/**
+	 * One row of the post-battle summary: a pet that fought, its ending state and rewards.
+	 */
+	public static final class SummaryEntry
+	{
+		private final String name;
+		private final int level;
+		private final int currentHp;
+		private final int maxHp;
+		private final boolean fainted;
+		private final long xpGained;
+		private final int levelsGained;
+		private final List<String> learnedMoves;
+
+		SummaryEntry(String name, int level, int currentHp, int maxHp, boolean fainted,
+			long xpGained, int levelsGained, List<String> learnedMoves)
+		{
+			this.name = name;
+			this.level = level;
+			this.currentHp = currentHp;
+			this.maxHp = maxHp;
+			this.fainted = fainted;
+			this.xpGained = xpGained;
+			this.levelsGained = levelsGained;
+			this.learnedMoves = learnedMoves;
+		}
+
+		public String getName()
+		{
+			return name;
+		}
+
+		public int getLevel()
+		{
+			return level;
+		}
+
+		public int getCurrentHp()
+		{
+			return currentHp;
+		}
+
+		public int getMaxHp()
+		{
+			return maxHp;
+		}
+
+		public boolean isFainted()
+		{
+			return fainted;
+		}
+
+		public long getXpGained()
+		{
+			return xpGained;
+		}
+
+		public int getLevelsGained()
+		{
+			return levelsGained;
+		}
+
+		public List<String> getLearnedMoves()
+		{
+			return learnedMoves;
+		}
+	}
 
 	private final PetDatabase db;
 	private final RosterManager roster;
@@ -55,6 +125,8 @@ public class BattleSession
 	private Random rng;
 	private final Deque<BattleEvent> pendingEvents = new ArrayDeque<>();
 	private final LinkedList<String> visibleLog = new LinkedList<>();
+	// Per-pet results for the end-of-battle summary screen, built when XP is awarded
+	private final List<SummaryEntry> summary = new ArrayList<>();
 	private int tickCounter;
 	private boolean xpAwarded;
 	private BattleEvent currentEvent;
@@ -104,7 +176,7 @@ public class BattleSession
 		for (TrainerDef.PartyEntry entry : def.getParty())
 		{
 			SpeciesDef species = db.species(entry.getSpecies());
-			enemyTeam.add(new BattlePet(species, species.getName(), entry.getLevel(),
+			enemyTeam.add(new BattlePet(species, species.nameAt(entry.getLevel()), entry.getLevel(),
 				enemyMoves(species, entry.getLevel())));
 		}
 
@@ -156,7 +228,7 @@ public class BattleSession
 				}
 			}
 		}
-		String name = instance.getNickname() != null ? instance.getNickname() : species.getName();
+		String name = instance.getNickname() != null ? instance.getNickname() : species.nameAt(instance.getLevel());
 		return new BattlePet(species, name, instance.getLevel(), moves, instance.getCurrentHp());
 	}
 
@@ -267,7 +339,9 @@ public class BattleSession
 			return;
 		}
 		currentEvent = null;
-		phase = state.isOver() ? Phase.ENDED : Phase.AWAITING_INPUT;
+		phase = state.isOver() ? Phase.ENDED
+			: state.awaitingForcedSwitch() ? Phase.FORCED_SWITCH
+			: Phase.AWAITING_INPUT;
 	}
 
 	/**
@@ -304,6 +378,21 @@ public class BattleSession
 		beginAnimating();
 	}
 
+	/**
+	 * Player picked a replacement after their active pet fainted mid-turn. Unlike a
+	 * voluntary switch this doesn't run a full turn — the incoming pet just takes over,
+	 * and the next real turn is the player's to command.
+	 */
+	public void submitForcedSwitch(int teamIndex)
+	{
+		if (phase != Phase.FORCED_SWITCH)
+		{
+			return;
+		}
+		pendingEvents.addAll(engine.resolveForcedSwitch(state, teamIndex));
+		beginAnimating();
+	}
+
 	public void submitFlee()
 	{
 		if (phase != Phase.AWAITING_INPUT)
@@ -332,6 +421,7 @@ public class BattleSession
 		trainer = null;
 		pendingEvents.clear();
 		visibleLog.clear();
+		summary.clear();
 		currentEvent = null;
 		currentMove = null;
 	}
@@ -341,38 +431,52 @@ public class BattleSession
 		xpAwarded = true;
 		// Battle damage survives the fight: heal at a bank to restore it
 		persistTeamHp();
-		if (state.getPhase() != BattleState.Phase.PLAYER_WON)
-		{
-			roster.petChanged();
-			onRosterChanged.run();
-			return;
-		}
+		summary.clear();
+		boolean won = state.getPhase() == BattleState.Phase.PLAYER_WON;
 		int enemyLevel = trainer.getParty().stream()
 			.mapToInt(TrainerDef.PartyEntry::getLevel).max().orElse(1);
 		// Repeat wins against an already-beaten trainer award reduced XP
-		boolean firstWin = !roster.isTrainerDefeated(trainer.getId());
-		for (String speciesId : roster.getTeam())
+		boolean firstWin = won && !roster.isTrainerDefeated(trainer.getId());
+		// Only pets that actually fought earn XP, not the whole selected team. Iterate
+		// the battle roster (fainted-benched pets were never built into it) and skip any
+		// slot that never became the active pet.
+		List<BattlePet> battled = state.team(BattleState.PLAYER);
+		for (int i = 0; i < battled.size(); i++)
 		{
-			PetInstance pet = roster.getPet(speciesId);
-			SpeciesDef species = db.species(speciesId);
+			if (!state.hasFought(BattleState.PLAYER, i))
+			{
+				continue;
+			}
+			BattlePet bp = battled.get(i);
+			PetInstance pet = roster.getPet(bp.getSpecies().getId());
+			SpeciesDef species = db.species(bp.getSpecies().getId());
 			if (pet == null || species == null)
 			{
 				continue;
 			}
 			int oldLevel = pet.getLevel();
-			long xp = Leveling.battleWinXp(enemyLevel, oldLevel, firstWin);
-			int gained = pet.addXp(xp);
-			pendingEvents.add(BattleEvent.value(BattleEvent.Type.XP_GAINED, BattleState.PLAYER, (int) xp,
-				displayName(pet, species) + " gained " + xp + " XP!"));
-			if (gained > 0)
+			long xp = won ? Leveling.battleWinXp(enemyLevel, oldLevel, firstWin) : 0;
+			List<String> learned = new ArrayList<>();
+			if (xp > 0)
 			{
-				int newLevel = pet.getLevel();
-				pendingEvents.add(BattleEvent.value(BattleEvent.Type.LEVEL_UP, BattleState.PLAYER, newLevel,
-					displayName(pet, species) + " grew to level " + newLevel + "!"));
-				announceNewMoves(pet, species, oldLevel, newLevel);
+				int gained = pet.addXp(xp);
+				pendingEvents.add(BattleEvent.value(BattleEvent.Type.XP_GAINED, BattleState.PLAYER, (int) xp,
+					displayName(pet, species) + " gained " + xp + " XP!"));
+				if (gained > 0)
+				{
+					int newLevel = pet.getLevel();
+					pendingEvents.add(BattleEvent.value(BattleEvent.Type.LEVEL_UP, BattleState.PLAYER, newLevel,
+						displayName(pet, species) + " grew to level " + newLevel + "!"));
+					announceNewMoves(pet, species, oldLevel, newLevel, learned);
+				}
 			}
+			summary.add(new SummaryEntry(displayName(pet, species), pet.getLevel(),
+				bp.getCurrentHp(), bp.getMaxHp(), bp.isFainted(), xp, pet.getLevel() - oldLevel, learned));
 		}
-		roster.recordTrainerDefeated(trainer.getId());
+		if (won)
+		{
+			roster.recordTrainerDefeated(trainer.getId());
+		}
 		roster.petChanged();
 		onRosterChanged.run();
 	}
@@ -396,7 +500,8 @@ public class BattleSession
 		}
 	}
 
-	private void announceNewMoves(PetInstance pet, SpeciesDef species, int oldLevel, int newLevel)
+	private void announceNewMoves(PetInstance pet, SpeciesDef species, int oldLevel, int newLevel,
+		List<String> learnedInto)
 	{
 		for (LearnsetEntry entry : species.getLearnset())
 		{
@@ -412,6 +517,7 @@ public class BattleSession
 				{
 					pet.equipMove(entry.getMove());
 				}
+				learnedInto.add(move.getName());
 				pendingEvents.add(BattleEvent.of(BattleEvent.Type.MOVE_LEARNED, BattleState.PLAYER,
 					displayName(pet, species) + " learned " + move.getName() + "!"));
 			}
@@ -473,6 +579,14 @@ public class BattleSession
 	}
 
 	/**
+	 * Per-pet results for the end-of-battle summary screen (only pets that fought).
+	 */
+	public List<SummaryEntry> getSummary()
+	{
+		return Collections.unmodifiableList(summary);
+	}
+
+	/**
 	 * The event currently on display (drives the dialog box and animations), or null.
 	 */
 	public BattleEvent getCurrentEvent()
@@ -520,7 +634,7 @@ public class BattleSession
 			case HEALED:
 				return 700;
 			case FAINTED:
-				return 600;
+				return 900;
 			default:
 				return 400;
 		}

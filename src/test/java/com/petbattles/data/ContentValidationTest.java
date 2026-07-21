@@ -2,6 +2,7 @@ package com.petbattles.data;
 
 import com.google.gson.Gson;
 import com.petbattles.engine.EasterEggDef;
+import com.petbattles.engine.GrowthStage;
 import com.petbattles.engine.LearnsetEntry;
 import com.petbattles.engine.MoveDef;
 import com.petbattles.engine.PetType;
@@ -50,7 +51,11 @@ public class ContentValidationTest
 			assertTrue(ctx + " unique id", ids.add(s.getId()));
 			assertNotNull(ctx + " name", s.getName());
 			assertTrue(ctx + " itemId", s.getItemId() > 0);
-			assertFalse(ctx + " needs npcIds for follower detection", s.getNpcIds().isEmpty());
+			// Starters are always-owned freebies with no in-world follower unlock path
+			if (!s.isStarter())
+			{
+				assertFalse(ctx + " needs npcIds for follower detection", s.getNpcIds().isEmpty());
+			}
 			assertFalse(ctx + " needs at least one type", s.getTypes().isEmpty());
 			assertTrue(ctx + " at most two types", s.getTypes().size() <= 2);
 			assertNotNull(ctx + " base stats", s.getBase());
@@ -114,6 +119,44 @@ public class ContentValidationTest
 			}
 		}
 		assertTrue("at least 5 easter eggs authored", eggCount >= 5);
+	}
+
+	@Test
+	public void growthStagesAreWellFormed()
+	{
+		for (SpeciesDef s : db.allSpecies())
+		{
+			int prev = 0;
+			for (GrowthStage stage : s.getGrowthStages())
+			{
+				String ctx = "species " + s.getId() + " stage " + stage.getName();
+				assertNotNull(ctx + " name", stage.getName());
+				assertTrue(ctx + " itemId", stage.getItemId() > 0);
+				assertTrue(ctx + " stages sorted by level", stage.getLevel() >= prev);
+				prev = stage.getLevel();
+			}
+			if (!s.getGrowthStages().isEmpty())
+			{
+				assertEquals("species " + s.getId() + " first growth stage at level 1",
+					1, s.getGrowthStages().get(0).getLevel());
+				assertEquals(s.getGrowthStages().get(0).getName(), s.nameAt(1));
+			}
+		}
+	}
+
+	@Test
+	public void exactlyOneStarterCatWithEvolution()
+	{
+		long starters = db.allSpecies().stream().filter(SpeciesDef::isStarter).count();
+		assertEquals("exactly one always-owned starter", 1, starters);
+		SpeciesDef cat = db.species("cat");
+		assertNotNull(cat);
+		assertTrue(cat.isStarter());
+		assertFalse("starter cat evolves", cat.getGrowthStages().isEmpty());
+		assertEquals("Kitten", cat.nameAt(1));
+		assertEquals(1555, cat.itemIdAt(1));
+		assertEquals("Cat", cat.nameAt(15));
+		assertEquals("Overgrown Cat", cat.nameAt(40));
 	}
 
 	@Test

@@ -15,6 +15,7 @@ import java.awt.Font;
 import java.util.List;
 import java.util.Locale;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -46,6 +47,9 @@ public class PetBattlesPanel extends PluginPanel
 	private final Sprites sprites;
 	private final Consumer<String> fightAction;
 	private final Runnable onRest;
+	// "Is the player currently standing near this trainer in the world?" — unlocks the
+	// first panel Fight against an undefeated trainer.
+	private final Predicate<String> isNearTrainer;
 
 	private final JLabel statusLabel = new JLabel();
 	private final JLabel teamTitle = new JLabel();
@@ -75,13 +79,14 @@ public class PetBattlesPanel extends PluginPanel
 	}
 
 	public PetBattlesPanel(PetDatabase db, RosterManager roster, Sprites sprites,
-		Consumer<String> fightAction, Runnable onRest)
+		Consumer<String> fightAction, Runnable onRest, Predicate<String> isNearTrainer)
 	{
 		this.db = db;
 		this.roster = roster;
 		this.sprites = sprites;
 		this.fightAction = fightAction;
 		this.onRest = onRest;
+		this.isNearTrainer = isNearTrainer;
 
 		setLayout(new BorderLayout());
 		setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
@@ -241,17 +246,20 @@ public class PetBattlesPanel extends PluginPanel
 			: !canEditTeam ? "Visit a bank to rest your pets"
 			: !injured ? "All pets are rested" : "Restore every pet to full HP");
 
-		// Remote (panel) fights are earned: beat the trainer in the world first,
-		// unless the dev remote-battles toggle is on
+		// The first fight against a trainer must be earned in the world: stand near them,
+		// or beat them once (remote re-fights then unlock permanently). The dev
+		// remote-battles toggle bypasses this entirely.
 		TrainerItem selected = (TrainerItem) trainerBox.getSelectedItem();
-		boolean remoteUnlocked = selected != null
-			&& (roster.isTrainerDefeated(selected.trainer.getId()) || roster.isDevRemoteBattlesEnabled());
-		boolean canFight = loggedIn && !team.isEmpty() && roster.teamCanFight() && remoteUnlocked;
+		boolean unlocked = selected != null
+			&& (roster.isTrainerDefeated(selected.trainer.getId())
+				|| roster.isDevRemoteBattlesEnabled()
+				|| isNearTrainer.test(selected.trainer.getId()));
+		boolean canFight = loggedIn && !team.isEmpty() && roster.teamCanFight() && unlocked;
 		fightButton.setEnabled(canFight);
 		fightButton.setToolTipText(team.isEmpty() ? "Add a pet to your team first"
 			: loggedIn && !roster.teamCanFight() ? "Your team is knocked out — rest at a bank"
-			: loggedIn && !remoteUnlocked && selected != null
-				? "Find and Challenge " + selected.trainer.getName() + " in the world first"
+			: loggedIn && !unlocked && selected != null
+				? "Get near " + selected.trainer.getName() + " to challenge them for the first time"
 			: null);
 
 		rebuildAvailableList(team, loggedIn, canEditTeam);
@@ -293,7 +301,8 @@ public class PetBattlesPanel extends PluginPanel
 		PetInstance pet = roster.getPet(speciesId);
 		boolean fainted = pet != null && pet.isFainted();
 		boolean hurt = pet != null && !fainted && pet.getCurrentHp() != null;
-		JLabel name = new JLabel((index + 1) + ". " + species.getName()
+		String rowName = pet != null ? species.nameAt(pet.getLevel()) : species.getName();
+		JLabel name = new JLabel((index + 1) + ". " + rowName
 			+ (pet != null ? "  Lv " + pet.getLevel() : "")
 			+ (fainted ? "  — KO" : hurt ? "  (" + pet.getCurrentHp() + " hp)" : ""));
 		name.setFont(FontManager.getRunescapeSmallFont());

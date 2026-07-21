@@ -84,6 +84,10 @@ public class BattleInputHandler extends MouseAdapter
 		{
 			session.submitMove(Integer.parseInt(action.substring(5)));
 		}
+		else if (action.startsWith("forceswitch:"))
+		{
+			session.submitForcedSwitch(Integer.parseInt(action.substring(12)));
+		}
 		else if (action.startsWith("switch:"))
 		{
 			overlay.setSwapMenuOpen(false);

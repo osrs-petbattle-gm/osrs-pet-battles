@@ -60,6 +60,14 @@ public class BattlePet
 		return displayName;
 	}
 
+	/**
+	 * Sprite item id for this pet at its current level, honouring growth-stage evolution.
+	 */
+	public int getDisplayItemId()
+	{
+		return species.itemIdAt(level);
+	}
+
 	public int getLevel()
 	{
 		return level;

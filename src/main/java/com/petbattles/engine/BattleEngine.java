@@ -40,7 +40,7 @@ public class BattleEngine
 	public List<BattleEvent> resolveTurn(BattleState state, BattleAction playerAction, BattleAction enemyAction, Random rng)
 	{
 		List<BattleEvent> events = new ArrayList<>();
-		if (state.isOver())
+		if (state.isOver() || state.awaitingForcedSwitch())
 		{
 			return events;
 		}
@@ -74,19 +74,66 @@ public class BattleEngine
 		}
 		int second = BattleState.opponent(first);
 
+		// If the first attacker faints the second side's pet, that side gets a fresh pet:
+		// the enemy auto-picks (below), the player is prompted (PLAYER_MUST_SWITCH). Either
+		// way the replacement does not act with the fainted pet's queued move this turn.
+		int secondActiveBefore = state.activeIndex(second);
 		act(state, first, actionFor(first, playerAction, enemyAction), events, rng);
-		if (!state.isOver())
+		if (haltAfterStep(state))
+		{
+			return events;
+		}
+		boolean secondReplaced = state.activeIndex(second) != secondActiveBefore;
+		if (!secondReplaced)
 		{
 			act(state, second, actionFor(second, playerAction, enemyAction), events, rng);
-		}
-		if (!state.isOver())
-		{
-			endOfTurn(state, first, events);
-			if (!state.isOver())
+			if (haltAfterStep(state))
 			{
-				endOfTurn(state, second, events);
+				return events;
 			}
 		}
+
+		endOfTurn(state, first, events);
+		if (haltAfterStep(state))
+		{
+			return events;
+		}
+		endOfTurn(state, second, events);
+		return events;
+	}
+
+	/**
+	 * Whether turn resolution must stop here: the battle ended, or the player owes a
+	 * forced switch. In the forced-switch case the round is over; the incoming pet plays
+	 * from the next turn.
+	 */
+	private static boolean haltAfterStep(BattleState state)
+	{
+		return state.isOver() || state.awaitingForcedSwitch();
+	}
+
+	/**
+	 * Resolve the player's forced replacement after a mid-turn faint. Consumes the round:
+	 * the incoming pet does not attack now; normal play resumes next turn.
+	 */
+	public List<BattleEvent> resolveForcedSwitch(BattleState state, int teamIndex)
+	{
+		List<BattleEvent> events = new ArrayList<>();
+		if (!state.awaitingForcedSwitch())
+		{
+			return events;
+		}
+		List<BattlePet> team = state.team(BattleState.PLAYER);
+		if (teamIndex < 0 || teamIndex >= team.size() || team.get(teamIndex).isFainted())
+		{
+			// Invalid target: the UI only offers legal ones, so just keep waiting
+			return events;
+		}
+		state.setActive(BattleState.PLAYER, teamIndex);
+		BattlePet incoming = state.active(BattleState.PLAYER);
+		state.setPhase(BattleState.Phase.IN_PROGRESS);
+		events.add(BattleEvent.of(BattleEvent.Type.PET_SENT_OUT, BattleState.PLAYER,
+			"Go, " + incoming.getDisplayName() + "!"));
 		return events;
 	}
 
@@ -285,14 +332,19 @@ public class BattleEngine
 			events.add(BattleEvent.of(BattleEvent.Type.BATTLE_END, -1,
 				playerWon ? "You won the battle!" : "You were defeated..."));
 		}
+		else if (faintedSide == BattleState.PLAYER)
+		{
+			// Stop and let the player pick a replacement; the forced switch consumes the
+			// round, so the incoming pet never inherits the fainted pet's queued move.
+			state.setPhase(BattleState.Phase.PLAYER_MUST_SWITCH);
+		}
 		else
 		{
-			state.sendNext(faintedSide);
-			BattlePet next = state.active(faintedSide);
-			String text = faintedSide == BattleState.PLAYER
-				? "Go, " + next.getDisplayName() + "!"
-				: "Enemy sends out " + next.getDisplayName() + "!";
-			events.add(BattleEvent.of(BattleEvent.Type.PET_SENT_OUT, faintedSide, text));
+			// Enemy auto-sends its next pet; its queued action is spent by the send-out
+			state.sendNext(BattleState.ENEMY);
+			BattlePet next = state.active(BattleState.ENEMY);
+			events.add(BattleEvent.of(BattleEvent.Type.PET_SENT_OUT, BattleState.ENEMY,
+				"Enemy sends out " + next.getDisplayName() + "!"));
 		}
 	}
 

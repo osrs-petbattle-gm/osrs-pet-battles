@@ -77,7 +77,9 @@ public class RosterManager
 
 	public synchronized boolean isOwned(String speciesId)
 	{
-		return config.devUnlockAll()
+		SpeciesDef species = db.species(speciesId);
+		return (species != null && species.isStarter())
+			|| config.devUnlockAll()
 			|| data.ownedSpecies.contains(speciesId)
 			|| (config.devSelectLockedPets() && data.devUnlocked.contains(speciesId));
 	}

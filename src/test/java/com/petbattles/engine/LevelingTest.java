@@ -42,6 +42,24 @@ public class LevelingTest
 	}
 
 	@Test
+	public void fullCurveMatchesUnscaledOsrs()
+	{
+		try
+		{
+			Leveling.setFullCurve(true);
+			// Full curve is the real OSRS table (level 99 = 13,034,431 xp), ~20x the default
+			assertEquals(13034431L, Leveling.xpForLevel(99), 20);
+			assertTrue(Leveling.xpForLevel(99) > 10_000_000L);
+		}
+		finally
+		{
+			Leveling.setFullCurve(false);
+		}
+		// Default pacing restored for the rest of the suite
+		assertEquals(13034431L / 20, Leveling.xpForLevel(99), 1);
+	}
+
+	@Test
 	public void statsGrowWithLevel()
 	{
 		assertTrue(Leveling.statAtLevel(50, 99) > Leveling.statAtLevel(50, 1));

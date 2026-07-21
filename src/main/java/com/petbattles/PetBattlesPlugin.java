@@ -30,8 +30,9 @@ import com.petbattles.collection.CollectionLogSync;
 import com.petbattles.data.ContentLoader;
 import com.petbattles.data.PetDatabase;
 import com.petbattles.easteregg.EasterEggTracker;
+import com.petbattles.engine.Leveling;
 import com.petbattles.follower.FollowerTracker;
-import com.petbattles.npc.NpcTrainerTracker;
+import com.petbattles.npc.NearTrainerTracker;
 import com.petbattles.persist.RosterManager;
 import com.petbattles.persist.RosterStore;
 import com.petbattles.ui.BattleOverlay;
@@ -92,7 +93,7 @@ public class PetBattlesPlugin extends Plugin
 	private BattleInputHandler inputHandler;
 	private BattleKeyListener keyListener;
 	private AtBankTracker atBankTracker;
-	private NpcTrainerTracker npcTrainerTracker;
+	private NearTrainerTracker nearTrainerTracker;
 	private CollectionLogSync collectionLogSync;
 	private FollowerTracker followerTracker;
 	private KillXpTracker killXpTracker;
@@ -102,6 +103,7 @@ public class PetBattlesPlugin extends Plugin
 	protected void startUp() throws Exception
 	{
 		db = PetDatabase.load(new ContentLoader(gson));
+		Leveling.setFullCurve(config.devFullXpCurve());
 		roster = new RosterManager(db, config, new RosterStore(configManager, gson));
 		atBankTracker = new AtBankTracker(client, () ->
 		{
@@ -111,8 +113,16 @@ public class PetBattlesPlugin extends Plugin
 			}
 		});
 		roster.setTeamEditGate(atBankTracker::isAtBank);
+		nearTrainerTracker = new NearTrainerTracker(client, db, () ->
+		{
+			if (panel != null)
+			{
+				panel.refresh();
+			}
+		});
 		restOverlay = new RestOverlay();
-		panel = new PetBattlesPanel(db, roster, sprites, this::startTrainerBattle, () -> restOverlay.play());
+		panel = new PetBattlesPanel(db, roster, sprites, this::startTrainerBattle,
+			() -> restOverlay.play(), nearTrainerTracker::isNear);
 		session = new BattleSession(db, roster, config, () -> panel.refresh());
 		overlay = new BattleOverlay(session, sprites);
 		inputHandler = new BattleInputHandler(session, overlay, clientThread);
@@ -127,9 +137,8 @@ public class PetBattlesPlugin extends Plugin
 		followerTracker = new FollowerTracker(client, db, roster, refreshPanel);
 		killXpTracker = new KillXpTracker(client, db, roster, followerTracker, config, refreshPanel);
 		easterEggTracker = new EasterEggTracker(client, db, roster, followerTracker, refreshPanel);
-		npcTrainerTracker = new NpcTrainerTracker(client, db, this::startTrainerBattle);
 		eventBus.register(atBankTracker);
-		eventBus.register(npcTrainerTracker);
+		eventBus.register(nearTrainerTracker);
 		eventBus.register(collectionLogSync);
 		eventBus.register(followerTracker);
 		eventBus.register(killXpTracker);
@@ -162,7 +171,7 @@ public class PetBattlesPlugin extends Plugin
 		if (collectionLogSync != null)
 		{
 			eventBus.unregister(atBankTracker);
-			eventBus.unregister(npcTrainerTracker);
+			eventBus.unregister(nearTrainerTracker);
 			eventBus.unregister(collectionLogSync);
 			eventBus.unregister(followerTracker);
 			eventBus.unregister(killXpTracker);
@@ -202,7 +211,7 @@ public class PetBattlesPlugin extends Plugin
 		inputHandler = null;
 		keyListener = null;
 		atBankTracker = null;
-		npcTrainerTracker = null;
+		nearTrainerTracker = null;
 		collectionLogSync = null;
 		followerTracker = null;
 		killXpTracker = null;
@@ -243,6 +252,7 @@ public class PetBattlesPlugin extends Plugin
 	{
 		if (PetBattlesConfig.GROUP.equals(e.getGroup()))
 		{
+			Leveling.setFullCurve(config.devFullXpCurve());
 			panel.refresh();
 		}
 	}
@@ -259,8 +269,7 @@ public class PetBattlesPlugin extends Plugin
 			if (!session.startTrainerBattle(trainerId))
 			{
 				log.debug("Could not start battle vs {}", trainerId);
-				// Most likely cause: empty or fully-fainted team (e.g. via the
-				// in-world Challenge entry, which has no panel tooltip to explain)
+				// Most likely cause: empty or fully-fainted team
 				String reason = roster.getTeam().isEmpty()
 					? "Add a pet to your team first."
 					: !roster.teamCanFight()

@@ -41,9 +41,13 @@ public class PetCard extends JPanel
 			BorderFactory.createEmptyBorder(6, 6, 6, 6)));
 		setBackground(owned ? ColorScheme.DARKER_GRAY_COLOR : ColorScheme.DARKER_GRAY_HOVER_COLOR);
 
+		// Owned pets show their current growth-stage sprite/name (e.g. kitten vs cat)
+		int iconItemId = owned && pet != null ? species.itemIdAt(pet.getLevel()) : species.getItemId();
+		String displayName = owned && pet != null ? species.nameAt(pet.getLevel()) : species.getName();
+
 		JLabel icon = new JLabel();
 		icon.setPreferredSize(new Dimension(36, 32));
-		sprites.applyItemIcon(icon, species.getItemId());
+		sprites.applyItemIcon(icon, iconItemId);
 		icon.setEnabled(owned);
 		add(icon, BorderLayout.WEST);
 
@@ -51,7 +55,7 @@ public class PetCard extends JPanel
 		center.setOpaque(false);
 		center.setLayout(new GridLayout(0, 1, 0, 2));
 
-		JLabel name = new JLabel(species.getName()
+		JLabel name = new JLabel(displayName
 			+ (owned && pet != null ? "  Lv " + pet.getLevel() : "")
 			+ (devUnlocked ? "  (dev)" : ""));
 		name.setFont(FontManager.getRunescapeSmallFont());

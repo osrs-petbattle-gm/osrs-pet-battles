@@ -1,29 +1,52 @@
 package com.petbattles.engine;
 
 /**
- * XP curve and stat scaling. The curve is the real OSRS experience table divided by 20,
- * so a level-99 pet takes ~650k pet-XP instead of 13M.
+ * XP curve and stat scaling. By default the curve is the real OSRS experience table
+ * divided by 20, so a level-99 pet takes ~650k pet-XP instead of 13M. A dev toggle
+ * ({@link #setFullCurve}) swaps in the full, unscaled OSRS table for authentic pacing.
  */
 public final class Leveling
 {
 	public static final int MAX_LEVEL = 99;
-	private static final long[] XP_FOR_LEVEL = new long[MAX_LEVEL + 1];
+	/** Default shipped pacing: the OSRS table divided by 20 (~650k xp to 99). */
+	private static final long[] XP_FAST = buildTable(20);
+	/** Full unscaled OSRS table (~13M xp to 99), behind the dev toggle. */
+	private static final long[] XP_FULL = buildTable(1);
+	// Read on the client thread by pet-level lookups; written from config changes.
+	private static volatile boolean fullCurve;
 
-	static
+	private static long[] buildTable(int divisor)
 	{
 		// OSRS formula: points(n) = floor(n + 300 * 2^(n/7)); xp(level) = floor(sum(points 1..level-1) / 4)
+		long[] table = new long[MAX_LEVEL + 1];
 		double points = 0;
-		XP_FOR_LEVEL[1] = 0;
+		table[1] = 0;
 		for (int lvl = 2; lvl <= MAX_LEVEL; lvl++)
 		{
 			int n = lvl - 1;
 			points += Math.floor(n + 300.0 * Math.pow(2.0, n / 7.0));
-			XP_FOR_LEVEL[lvl] = (long) Math.floor(points / 4.0) / 20;
+			table[lvl] = (long) Math.floor(points / 4.0) / divisor;
 		}
+		return table;
 	}
 
 	private Leveling()
 	{
+	}
+
+	/**
+	 * Select the XP curve: false (default) uses the ÷20 fast pacing, true uses the full
+	 * unscaled OSRS table. Changes the effective level of every pet, so callers should
+	 * refresh any level-derived UI after flipping it.
+	 */
+	public static void setFullCurve(boolean full)
+	{
+		fullCurve = full;
+	}
+
+	private static long[] table()
+	{
+		return fullCurve ? XP_FULL : XP_FAST;
 	}
 
 	public static long xpForLevel(int level)
@@ -36,14 +59,15 @@ public final class Leveling
 		{
 			level = MAX_LEVEL;
 		}
-		return XP_FOR_LEVEL[level];
+		return table()[level];
 	}
 
 	public static int levelForXp(long xp)
 	{
+		long[] table = table();
 		for (int lvl = MAX_LEVEL; lvl >= 1; lvl--)
 		{
-			if (xp >= XP_FOR_LEVEL[lvl])
+			if (xp >= table[lvl])
 			{
 				return lvl;
 			}
