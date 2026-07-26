@@ -170,5 +170,207 @@
       { "species": "gull", "level": 7 },
       { "species": "scurry", "level": 9 }
     ]
+  },
+  {
+    "id": "man", "name": "Man", "theme": "Wandering townsperson",
+    "difficulty": "EASY", "npcIds": [3106, 3107, 3108],
+    "party": [
+      { "species": "gull", "level": 8 },
+      { "species": "scurry", "level": 10 }
+    ]
+  },
+  {
+    "id": "guard", "name": "Guard", "theme": "City watch on patrol",
+    "difficulty": "EASY", "npcIds": [3269, 3270, 3271],
+    "party": [
+      { "species": "rocky", "level": 12 },
+      { "species": "gull", "level": 12 }
+    ]
+  },
+  {
+    "id": "ajjat", "name": "Ajjat", "theme": "Attack cape master, Warriors' Guild",
+    "difficulty": "HARD", "npcIds": [2460],
+    "party": [
+      { "species": "prince_black_dragon", "level": 30 },
+      { "species": "hellpuppy", "level": 33 }
+    ]
+  },
+  {
+    "id": "sloane", "name": "Sloane", "theme": "Strength cape master, Warriors' Guild",
+    "difficulty": "MEDIUM", "npcIds": [13616],
+    "party": [
+      { "species": "rocky", "level": 24 },
+      { "species": "butch", "level": 27 }
+    ]
+  },
+  {
+    "id": "melee_combat_tutor", "name": "Melee Combat Tutor", "theme": "Defence cape master, Lumbridge",
+    "difficulty": "MEDIUM", "npcIds": [3216],
+    "party": [
+      { "species": "rock_golem", "level": 22 },
+      { "species": "baron", "level": 25 }
+    ]
+  },
+  {
+    "id": "surgeon_tafani", "name": "Surgeon General Tafani", "theme": "Hitpoints cape master, Emir's Arena",
+    "difficulty": "MEDIUM", "npcIds": [3343],
+    "party": [
+      { "species": "baby_mole", "level": 24 },
+      { "species": "muphin", "level": 26 }
+    ]
+  },
+  {
+    "id": "armour_salesman", "name": "Armour Salesman", "theme": "Ranged cape master, Ranging Guild",
+    "difficulty": "MEDIUM", "npcIds": [6059],
+    "party": [
+      { "species": "baby_chinchompa", "level": 24 },
+      { "species": "kalphite_princess", "level": 27 }
+    ]
+  },
+  {
+    "id": "brother_jered", "name": "Brother Jered", "theme": "Prayer cape master, Edgeville Monastery",
+    "difficulty": "MEDIUM", "npcIds": [2578],
+    "party": [
+      { "species": "phoenix", "level": 25 },
+      { "species": "lil_creator", "level": 28 }
+    ]
+  },
+  {
+    "id": "wizard_sinina", "name": "Wizard Sinina", "theme": "Magic cape master, Wizards' Guild",
+    "difficulty": "MEDIUM", "npcIds": [3249],
+    "party": [
+      { "species": "pet_snakeling", "level": 24 },
+      { "species": "abyssal_orphan", "level": 27 }
+    ]
+  },
+  {
+    "id": "aubury", "name": "Aubury", "theme": "Runecraft cape master, Varrock",
+    "difficulty": "MEDIUM", "npcIds": [2886],
+    "party": [
+      { "species": "rift_guardian", "level": 25 },
+      { "species": "abyssal_protector", "level": 28 }
+    ]
+  },
+  {
+    "id": "estate_agent", "name": "Estate Agent", "theme": "Construction cape master",
+    "difficulty": "EASY", "npcIds": [3097, 13343],
+    "party": [
+      { "species": "rocky", "level": 16 },
+      { "species": "rock_golem", "level": 18 }
+    ]
+  },
+  {
+    "id": "izzy_no_beard", "name": "Cap'n Izzy No-Beard", "theme": "Agility cape master, Brimhaven Arena",
+    "difficulty": "EASY", "npcIds": [5789],
+    "party": [
+      { "species": "giant_squirrel", "level": 14 },
+      { "species": "scurry", "level": 16 }
+    ]
+  },
+  {
+    "id": "kaqemeex", "name": "Kaqemeex", "theme": "Herblore cape master, Taverley",
+    "difficulty": "MEDIUM", "npcIds": [5045],
+    "party": [
+      { "species": "herbi", "level": 22 },
+      { "species": "tangleroot", "level": 24 }
+    ]
+  },
+  {
+    "id": "martin_thwait", "name": "Martin Thwait", "theme": "Thieving cape master, Rogues' Den",
+    "difficulty": "MEDIUM", "npcIds": [3193],
+    "party": [
+      { "species": "gull", "level": 20 },
+      { "species": "sraracha", "level": 22 }
+    ]
+  },
+  {
+    "id": "master_crafter", "name": "Master Crafter", "theme": "Crafting cape master, Crafting Guild",
+    "difficulty": "EASY", "npcIds": [5810, 5811, 5812],
+    "party": [
+      { "species": "beaver", "level": 16 },
+      { "species": "rocky", "level": 18 }
+    ]
+  },
+  {
+    "id": "hickton", "name": "Hickton", "theme": "Fletching cape master, Catherby",
+    "difficulty": "EASY", "npcIds": [3212],
+    "party": [
+      { "species": "heron", "level": 15 },
+      { "species": "beaver", "level": 17 }
+    ]
+  },
+  {
+    "id": "kuradal", "name": "Kuradal", "theme": "Slayer cape master, Slayer Tower",
+    "difficulty": "HARD", "npcIds": [13623],
+    "party": [
+      { "species": "skotos", "level": 35 },
+      { "species": "ikkle_hydra", "level": 38 },
+      { "species": "nexling", "level": 40 }
+    ]
+  },
+  {
+    "id": "hunting_expert", "name": "Hunting Expert", "theme": "Hunter cape master, Feldip Hills",
+    "difficulty": "MEDIUM", "npcIds": [1504],
+    "party": [
+      { "species": "herbi", "level": 22 },
+      { "species": "huberte", "level": 24 }
+    ]
+  },
+  {
+    "id": "gadrin", "name": "Gadrin", "theme": "Mining cape master, Mining Guild",
+    "difficulty": "MEDIUM", "npcIds": [7716],
+    "party": [
+      { "species": "rock_golem", "level": 22 },
+      { "species": "rocky", "level": 24 }
+    ]
+  },
+  {
+    "id": "thurgo", "name": "Thurgo", "theme": "Smithing cape master, Mudskipper Point",
+    "difficulty": "MEDIUM", "npcIds": [4733],
+    "party": [
+      { "species": "rock_golem", "level": 24 },
+      { "species": "baron", "level": 26 }
+    ]
+  },
+  {
+    "id": "master_fisher", "name": "Master Fisher", "theme": "Fishing cape master, Fishing Guild",
+    "difficulty": "MEDIUM", "npcIds": [2913],
+    "party": [
+      { "species": "pet_kraken", "level": 26 },
+      { "species": "lilviathan", "level": 28 }
+    ]
+  },
+  {
+    "id": "head_chef", "name": "Head Chef", "theme": "Cooking cape master, Cooks' Guild",
+    "difficulty": "EASY", "npcIds": [2658],
+    "party": [
+      { "species": "chompy_chick", "level": 14 },
+      { "species": "gull", "level": 15 }
+    ]
+  },
+  {
+    "id": "ignatius_vulcan", "name": "Ignatius Vulcan", "theme": "Firemaking cape master, Seers' Village",
+    "difficulty": "MEDIUM", "npcIds": [118],
+    "party": [
+      { "species": "phoenix", "level": 26 },
+      { "species": "smolcano", "level": 28 }
+    ]
+  },
+  {
+    "id": "woodsman_tutor", "name": "Woodsman Tutor", "theme": "Woodcutting cape master, Lumbridge",
+    "difficulty": "EASY", "npcIds": [3226],
+    "party": [
+      { "species": "beaver", "level": 15 },
+      { "species": "tangleroot", "level": 17 }
+    ]
+  },
+  {
+    "id": "master_gardener", "name": "Martin the Master Gardener", "theme": "Farming cape master, Draynor",
+    "difficulty": "MEDIUM", "npcIds": [5832],
+    "party": [
+      { "species": "tangleroot", "level": 22 },
+      { "species": "herbi", "level": 24 },
+      { "species": "bran", "level": 20 }
+    ]
   }
 ]
