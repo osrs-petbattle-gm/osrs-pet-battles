@@ -213,6 +213,11 @@ public class BattleOverlay extends Overlay
 				g.drawString("Send out your next pet!", 12, btnY - 4);
 				drawSwapMenu(g, state, btnY, newButtons, true);
 			}
+			else if (session.getPhase() == BattleSession.Phase.LEARN_MOVE)
+			{
+				// A pet levelled into a new move with a full moveset: forget one or skip
+				drawLearnPrompt(g, btnY, newButtons);
+			}
 			else if (swapMenuOpen && session.isAwaitingInput())
 			{
 				drawSwapMenu(g, state, btnY, newButtons, false);
@@ -262,8 +267,10 @@ public class BattleOverlay extends Overlay
 	}
 
 	/**
-	 * Post-battle summary: the outcome headline, then a row per pet that fought with its
-	 * ending HP, XP gained and any level-ups / moves learned, and a Close button.
+	 * Post-battle summary: the outcome headline, then a dedicated slot for every pet on the
+	 * battle team — its icon, ending HP, XP gained and any level-ups / moves learned — and a
+	 * Close button. Level-up fireworks play over the pet's own icon here, so the celebration
+	 * always lands on the pet that actually grew rather than whoever was last on the field.
 	 */
 	private void drawSummary(Graphics2D g, BattleState state, List<Button> newButtons)
 	{
@@ -288,61 +295,99 @@ public class BattleOverlay extends Overlay
 		g.setFont(FontManager.getRunescapeBoldFont());
 		g.setColor(headlineColor);
 		FontMetrics hm = g.getFontMetrics();
-		g.drawString(headline, (WIDTH - hm.stringWidth(headline)) / 2, 40);
+		g.drawString(headline, (WIDTH - hm.stringWidth(headline)) / 2, 36);
 
 		List<BattleSession.SummaryEntry> entries = session.getSummary();
-		int y = 56;
+		int top = 44;
+		int bottom = HEIGHT - 40;
 		if (entries.isEmpty())
 		{
 			g.setFont(FontManager.getRunescapeSmallFont());
 			g.setColor(LOG_TEXT);
-			g.drawString("No pets took part.", 16, y + 12);
+			g.drawString("No pets took part.", 16, top + 12);
 		}
-		int rowH = Math.min(52, (HEIGHT - 56 - 44) / Math.max(1, entries.size()));
-		for (BattleSession.SummaryEntry e : entries)
+		else
 		{
-			drawSummaryRow(g, e, y, rowH);
-			y += rowH;
+			int slotH = Math.min(58, (bottom - top) / entries.size());
+			int y = top;
+			for (BattleSession.SummaryEntry e : entries)
+			{
+				drawSummarySlot(g, e, y, slotH);
+				y += slotH;
+			}
 		}
 
-		Rectangle close = new Rectangle(WIDTH / 2 - 40, HEIGHT - 34, 80, 24);
+		Rectangle close = new Rectangle(WIDTH / 2 - 40, HEIGHT - 32, 80, 24);
 		drawButton(g, close, "Close", true, null);
 		newButtons.add(new Button(close, "close"));
 	}
 
-	private void drawSummaryRow(Graphics2D g, BattleSession.SummaryEntry e, int y, int rowH)
+	/**
+	 * One pet's dedicated summary slot: growth-stage icon on the left, then name/level, an
+	 * HP bar and a status/rewards line. Pets that levelled up get a looping firework burst
+	 * over their icon.
+	 */
+	private void drawSummarySlot(Graphics2D g, BattleSession.SummaryEntry e, int y, int slotH)
 	{
+		int cardH = slotH - 4;
 		g.setColor(new Color(0, 0, 0, 90));
-		g.fillRoundRect(8, y, WIDTH - 16, rowH - 4, 6, 6);
+		g.fillRoundRect(8, y, WIDTH - 16, cardH, 6, 6);
 
+		// Icon slot on the left
+		int iconSize = Math.min(40, cardH - 8);
+		int iconX = 14;
+		int iconY = y + (cardH - iconSize) / 2;
+		Rectangle iconRect = new Rectangle(iconX, iconY, iconSize, iconSize);
+		g.setColor(new Color(255, 255, 255, 18));
+		g.fillRoundRect(iconX, iconY, iconSize, iconSize, 4, 4);
+		Image img = sprites.itemImage(e.getDisplayItemId());
+		if (img != null)
+		{
+			// A knocked-out or benched pet's icon is dimmed to read as "out of the fight".
+			float iconAlpha = e.isFainted() ? 0.3f : e.isFought() ? 1f : 0.5f;
+			Composite prev = g.getComposite();
+			g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, iconAlpha));
+			g.drawImage(img, iconX, iconY, iconSize, iconSize, null);
+			g.setComposite(prev);
+		}
+
+		int textX = iconX + iconSize + 8;
+		int textRight = WIDTH - 14;
+		int textW = textRight - textX;
+
+		// Name + level line
 		g.setFont(FontManager.getRunescapeSmallFont());
 		g.setColor(Color.WHITE);
 		String name = e.getName() + "  Lv" + e.getLevel() + (e.getLevelsGained() > 0 ? " ▲" : "");
-		g.drawString(name, 14, y + 13);
+		g.drawString(clip(g, name, textW - 46), textX, y + 13);
 
 		// XP gained, right-aligned on the name line
 		if (e.getXpGained() > 0)
 		{
 			g.setColor(new Color(150, 220, 150));
 			String xp = "+" + e.getXpGained() + " XP";
-			g.drawString(xp, WIDTH - 14 - g.getFontMetrics().stringWidth(xp), y + 13);
+			g.drawString(xp, textRight - g.getFontMetrics().stringWidth(xp), y + 13);
 		}
 
 		// HP bar
 		int barY = y + 18;
-		int barW = WIDTH - 28;
 		double frac = e.getMaxHp() > 0 ? (double) e.getCurrentHp() / e.getMaxHp() : 0;
 		g.setColor(new Color(40, 40, 40));
-		g.fillRect(14, barY, barW, 5);
+		g.fillRect(textX, barY, textW, 5);
 		g.setColor(e.isFainted() ? HP_RED : hpColor(frac));
-		g.fillRect(14, barY, (int) (barW * Math.max(0, frac)), 5);
-		g.setFont(FontManager.getRunescapeSmallFont().deriveFont(Font.PLAIN, 9f));
-		g.setColor(e.isFainted() ? HP_RED : LOG_TEXT);
-		String hp = e.isFainted() ? "Knocked out" : e.getCurrentHp() + " / " + e.getMaxHp() + " HP";
-		g.drawString(hp, 14, barY + 15);
+		g.fillRect(textX, barY, (int) (textW * Math.max(0, frac)), 5);
 
-		// Level-up / moves-learned note when there's room in the row
-		if (rowH >= 44 && (e.getLevelsGained() > 0 || !e.getLearnedMoves().isEmpty()))
+		// Status / rewards line: HP text on the right, level-up + moves note on the left
+		int lineY = barY + 17;
+		g.setFont(FontManager.getRunescapeSmallFont());
+		String hp = e.isFainted() ? "Knocked out"
+			: !e.isFought() ? "Didn't battle"
+			: e.getCurrentHp() + " / " + e.getMaxHp() + " HP";
+		g.setColor(e.isFainted() ? HP_RED : LOG_TEXT);
+		int hpW = g.getFontMetrics().stringWidth(hp);
+		g.drawString(hp, textRight - hpW, lineY);
+
+		if (e.getLevelsGained() > 0 || !e.getLearnedMoves().isEmpty())
 		{
 			StringBuilder note = new StringBuilder();
 			if (e.getLevelsGained() > 0)
@@ -354,7 +399,14 @@ public class BattleOverlay extends Overlay
 				note.append(note.length() > 0 ? ", learned " : "Learned ").append(String.join(", ", e.getLearnedMoves()));
 			}
 			g.setColor(new Color(210, 200, 160));
-			g.drawString(clip(g, note.toString(), WIDTH - 28), 14, barY + 27);
+			g.drawString(clip(g, note.toString(), textW - hpW - 6), textX, lineY);
+		}
+
+		// Looping level-up fireworks over this pet's own icon
+		if (e.getLevelsGained() > 0)
+		{
+			float progress = (System.currentTimeMillis() % 1300L) / 1300f;
+			ParticleBurst.render(g, iconRect, progress, e.getLevel(), ParticleBurst.FIREWORKS);
 		}
 	}
 
@@ -413,6 +465,50 @@ public class BattleOverlay extends Overlay
 	}
 
 	/**
+	 * The forget-a-move chooser shown when a pet levels into a new move with all four slots
+	 * full: a header naming the new move, the four current moves as "forget" buttons, and a
+	 * "Keep moves" button to decline. Mirrors the move grid's layout and hit-test idiom.
+	 */
+	private void drawLearnPrompt(Graphics2D g, int btnY, List<Button> newButtons)
+	{
+		BattleSession.LearnPrompt prompt = session.getLearnPrompt();
+		if (prompt == null)
+		{
+			return;
+		}
+		MoveDef newMove = prompt.getNewMove();
+		String stats = newMove.getType().getDisplayName()
+			+ (newMove.isStatusMove() ? ", status" : ", " + newMove.getPower() + " pow");
+		g.setFont(FontManager.getRunescapeSmallFont());
+		g.setColor(new Color(240, 210, 120));
+		String header = prompt.getPetName() + " learns " + newMove.getName() + " [" + stats + "] - forget:";
+		g.drawString(clip(g, header, WIDTH - 96), 12, btnY - 4);
+
+		List<MoveDef> moves = prompt.getCurrentMoves();
+		int bw = (WIDTH - 24 - 8) / 2;
+		int bh = 18;
+		for (int i = 0; i < 4; i++)
+		{
+			int col = i % 2;
+			int row = i / 2;
+			Rectangle r = new Rectangle(12 + col * (bw + 8), btnY + row * (bh + 4), bw, bh);
+			if (i < moves.size())
+			{
+				MoveDef m = moves.get(i);
+				drawButton(g, r, m.getName(), true, new Color(m.getType().getColorRgb()));
+				newButtons.add(new Button(r, "learn:" + i));
+			}
+			else
+			{
+				drawButton(g, r, "—", false, null);
+			}
+		}
+		Rectangle keep = new Rectangle(WIDTH - 84, 4, 74, 14);
+		drawButton(g, keep, "Keep moves", true, null);
+		newButtons.add(new Button(keep, "learnskip"));
+	}
+
+	/**
 	 * Per-event effect layer: OSRS-style hit splats over the affected pet sprite.
 	 */
 	private void drawEventEffects(Graphics2D g, BattleEvent event, float progress)
@@ -431,9 +527,9 @@ public class BattleOverlay extends Overlay
 				drawHitsplat(g, spriteRect(BattleState.opponent(event.getSide())), "0", SPLAT_BLUE, progress);
 				break;
 			case LEVEL_UP:
-				// OSRS-style level-up fireworks over the levelling pet
-				ParticleBurst.render(g, spriteRect(event.getSide()), progress,
-					event.getValue(), ParticleBurst.FIREWORKS);
+				// Deliberately no field fireworks here: the levelling pet may be benched, and
+				// the field only shows the active pet. Level-ups are celebrated in the
+				// post-battle summary, over the correct pet's slot (see drawSummarySlot).
 				break;
 			case HEALED:
 				ParticleBurst.render(g, spriteRect(event.getSide()), progress,

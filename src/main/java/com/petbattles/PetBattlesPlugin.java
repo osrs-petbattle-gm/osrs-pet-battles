@@ -37,7 +37,10 @@ import com.petbattles.npc.NearTrainerTracker;
 import com.petbattles.persist.RosterManager;
 import com.petbattles.persist.RosterStore;
 import com.petbattles.ui.BattleOverlay;
+import com.petbattles.ui.HubInputHandler;
+import com.petbattles.ui.HubOverlay;
 import com.petbattles.ui.PetBattlesPanel;
+import com.petbattles.ui.Portraits;
 import com.petbattles.ui.RestOverlay;
 import com.petbattles.ui.Sprites;
 import com.petbattles.xp.KillXpTracker;
@@ -91,6 +94,8 @@ public class PetBattlesPlugin extends Plugin
 	private BattleSession session;
 	private BattleOverlay overlay;
 	private RestOverlay restOverlay;
+	private HubOverlay hubOverlay;
+	private HubInputHandler hubInputHandler;
 	private BattleInputHandler inputHandler;
 	private BattleKeyListener keyListener;
 	private AtBankTracker atBankTracker;
@@ -129,9 +134,15 @@ public class PetBattlesPlugin extends Plugin
 		overlay = new BattleOverlay(session, sprites);
 		inputHandler = new BattleInputHandler(session, overlay, clientThread);
 		keyListener = new BattleKeyListener(client, session, clientThread);
+		hubOverlay = new HubOverlay(db, roster, sprites, new Portraits(), session,
+			atBankTracker::isAtBank, nearTrainerTracker::getNearTrainerIds);
+		hubInputHandler = new HubInputHandler(hubOverlay, roster, session,
+			this::startTrainerBattle, restOverlay::play, clientThread);
 		overlayManager.add(overlay);
 		overlayManager.add(restOverlay);
+		overlayManager.add(hubOverlay);
 		mouseManager.registerMouseListener(inputHandler);
+		mouseManager.registerMouseListener(hubInputHandler);
 		keyManager.registerKeyListener(keyListener);
 
 		Runnable refreshPanel = () -> panel.refresh();
@@ -190,6 +201,14 @@ public class PetBattlesPlugin extends Plugin
 		{
 			overlayManager.remove(restOverlay);
 		}
+		if (hubOverlay != null)
+		{
+			overlayManager.remove(hubOverlay);
+		}
+		if (hubInputHandler != null)
+		{
+			mouseManager.unregisterMouseListener(hubInputHandler);
+		}
 		if (inputHandler != null)
 		{
 			mouseManager.unregisterMouseListener(inputHandler);
@@ -213,6 +232,8 @@ public class PetBattlesPlugin extends Plugin
 		session = null;
 		overlay = null;
 		restOverlay = null;
+		hubOverlay = null;
+		hubInputHandler = null;
 		inputHandler = null;
 		keyListener = null;
 		atBankTracker = null;

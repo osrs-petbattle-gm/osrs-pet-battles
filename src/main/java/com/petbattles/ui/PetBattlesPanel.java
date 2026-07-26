@@ -56,6 +56,7 @@ public class PetBattlesPanel extends PluginPanel
 	private final JPanel teamPanel = new JPanel();
 	private final JLabel bankHintLabel = new JLabel();
 	private final JButton restButton = new JButton("Rest pets");
+	private final JButton resetProgressionButton = new JButton("Reset progression (dev)");
 	private final JComboBox<TrainerItem> trainerBox = new JComboBox<>();
 	private final JButton fightButton = new JButton("Fight!");
 	private final JTextField searchField = new JTextField();
@@ -136,6 +137,26 @@ public class PetBattlesPanel extends PluginPanel
 			refresh();
 		});
 		north.add(restButton);
+
+		resetProgressionButton.setAlignmentX(Component.LEFT_ALIGNMENT);
+		resetProgressionButton.setFont(FontManager.getRunescapeSmallFont());
+		resetProgressionButton.setToolTipText("Testing: wipe every pet's level, XP and moveset back to level 1. "
+			+ "Keeps which pets you own and your team.");
+		resetProgressionButton.setVisible(false);
+		resetProgressionButton.addActionListener(e ->
+		{
+			int confirm = JOptionPane.showConfirmDialog(this,
+				"Reset ALL pets to level 1?\nThis wipes every pet's XP, level and moveset.\n"
+					+ "Owned pets and your team are kept.",
+				"Reset progression", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+			if (confirm == JOptionPane.YES_OPTION)
+			{
+				roster.resetProgression();
+				refresh();
+			}
+		});
+		north.add(Box.createVerticalStrut(2));
+		north.add(resetProgressionButton);
 		north.add(Box.createVerticalStrut(6));
 
 		trainerBox.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -239,6 +260,8 @@ public class PetBattlesPanel extends PluginPanel
 		bankHintLabel.setText(canEditTeam || !loggedIn ? " " : BANK_HINT);
 
 		rebuildTeamRows(team, canEditTeam);
+
+		resetProgressionButton.setVisible(loggedIn && roster.isDevSelectEnabled());
 
 		boolean injured = loggedIn && roster.anyPetInjured();
 		restButton.setEnabled(canEditTeam && injured);

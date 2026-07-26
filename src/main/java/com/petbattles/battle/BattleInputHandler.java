@@ -101,6 +101,14 @@ public class BattleInputHandler extends MouseAdapter
 		{
 			overlay.setSwapMenuOpen(false);
 		}
+		else if (action.startsWith("learn:"))
+		{
+			session.submitLearnChoice(Integer.parseInt(action.substring(6)));
+		}
+		else if ("learnskip".equals(action))
+		{
+			session.submitLearnChoice(-1);
+		}
 		else if ("flee".equals(action))
 		{
 			session.submitFlee();

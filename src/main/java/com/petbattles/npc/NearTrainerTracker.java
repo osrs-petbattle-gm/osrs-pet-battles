@@ -56,6 +56,16 @@ public class NearTrainerTracker
 		return nearTrainerIds.contains(trainerId);
 	}
 
+	/**
+	 * Snapshot of every trainer id currently within a few tiles of the player. The
+	 * challenge overlay needs the whole set (not just a single-id test) to list who
+	 * you can battle right now.
+	 */
+	public Set<String> getNearTrainerIds()
+	{
+		return new LinkedHashSet<>(nearTrainerIds);
+	}
+
 	@Subscribe
 	public void onNpcSpawned(NpcSpawned e)
 	{

@@ -8,14 +8,28 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.BooleanSupplier;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Runtime roster state: which species are owned, per-pet progression, and the battle team.
  * All mutations save through the store immediately (the blob is small).
  */
+@Slf4j
 public class RosterManager
 {
 	public static final int MAX_TEAM_SIZE = 3;
+
+	/**
+	 * Bump this whenever a content change (balance pass, movepool/level retune, XP-curve
+	 * change) makes stored pet progression stale enough that every roster should be wiped
+	 * back to a clean level-1 state on next load. Not every release needs this -- only bump
+	 * when old progression would otherwise be invalid or misleading. Add a changelog line
+	 * below each time you bump it, so it's clear which versions triggered a reset.
+	 *
+	 * Reset changelog:
+	 *   (none yet -- bump to 1 and add a line here to trigger the first reset)
+	 */
+	public static final int PROGRESSION_RESET_VERSION = 0;
 
 	private final PetDatabase db;
 	private final PetBattlesConfig config;
@@ -49,6 +63,15 @@ public class RosterManager
 		data.ownedSpecies.removeIf(id -> db.species(id) == null);
 		data.devUnlocked.removeIf(id -> db.species(id) == null);
 		data.defeatedTrainers.removeIf(id -> db.trainer(id) == null);
+		// One-shot progression wipe when the code constant outruns what this roster has seen.
+		if (data.progressionResetVersion < PROGRESSION_RESET_VERSION)
+		{
+			log.debug("Applying progression reset v{} (was v{}); wiping {} pet record(s)",
+				PROGRESSION_RESET_VERSION, data.progressionResetVersion, data.pets.size());
+			data.pets.clear();
+			data.progressionResetVersion = PROGRESSION_RESET_VERSION;
+			store.save(data);
+		}
 		loaded = true;
 	}
 
@@ -143,6 +166,30 @@ public class RosterManager
 			save();
 		}
 		return owned;
+	}
+
+	/**
+	 * Testing aid: wipe all per-pet progression. Every pet drops back to level 1 with its
+	 * starter moveset and full HP (records are recreated on demand by getOrCreatePet).
+	 * Ownership, team composition and trainer wins are kept. Returns the number of pet
+	 * records cleared.
+	 */
+	public synchronized int resetProgression()
+	{
+		int cleared = data.pets.size();
+		log.debug("resetProgression invoked; clearing {} pet record(s), team={}", cleared, data.team);
+		if (cleared > 0)
+		{
+			data.pets.clear();
+			// Recreate team members' records now (fresh level-1) so the panel shows them
+			// immediately rather than waiting for the next lazy getOrCreatePet.
+			for (String speciesId : data.team)
+			{
+				getOrCreatePet(speciesId);
+			}
+			save();
+		}
+		return cleared;
 	}
 
 	/**

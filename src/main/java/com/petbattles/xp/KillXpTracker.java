@@ -149,7 +149,7 @@ public class KillXpTracker
 			if (entry.getLevel() > oldLevel && entry.getLevel() <= newLevel)
 			{
 				MoveDef move = db.move(entry.getMove());
-				if (move == null)
+				if (move == null || pet.getEquippedMoves().contains(entry.getMove()))
 				{
 					continue;
 				}
@@ -157,8 +157,15 @@ public class KillXpTracker
 				{
 					pet.equipMove(entry.getMove());
 					roster.petChanged();
+					message(species.getName() + " learned " + move.getName() + "!");
 				}
-				message(species.getName() + " learned " + move.getName() + "!");
+				else
+				{
+					// Moveset is full. Outside a battle there's no overlay to prompt on, so just
+					// point the player at the Moves editor; the move is already available there.
+					message(species.getName() + " can learn " + move.getName()
+						+ "! Its moveset is full - open Moves to swap it in.");
+				}
 			}
 		}
 	}

@@ -90,4 +90,17 @@ public interface PetBattlesConfig extends Config
 	{
 		return false;
 	}
+
+	@ConfigItem(
+		keyName = "devXpMultiplier",
+		name = "Dev: XP boost",
+		description = "Testing option: multiply battle XP rewards so pets level up quickly, to reach new abilities and "
+			+ "growth stages sooner. Leave at 1 for normal pacing.",
+		position = 6
+	)
+	@Range(min = 1, max = 1000)
+	default int devXpMultiplier()
+	{
+		return 1;
+	}
 }
