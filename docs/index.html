@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pet Battles — Trainers &amp; Type Chart</title>
+<style>
+  :root {
+    --bg: #0f0d0a;
+    --panel: #1c1813;
+    --panel-2: #26211a;
+    --border: #3a3125;
+    --gold: #e5b567;
+    --gold-dim: #b8935a;
+    --ink: #e8e0d0;
+    --ink-dim: #a89f8c;
+    --good: #4c9a4c;
+    --bad: #b04a3f;
+    --easy: #4c9a4c;
+    --medium: #c8912f;
+    --hard: #b04a3f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+    line-height: 1.5;
+  }
+  a { color: var(--gold); }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px 80px; }
+
+  /* Hero */
+  header.hero {
+    text-align: center;
+    padding: 56px 20px 40px;
+    background:
+      radial-gradient(120% 90% at 50% -10%, rgba(229,181,103,0.12), transparent 60%),
+      var(--bg);
+    border-bottom: 1px solid var(--border);
+  }
+  .hero h1 {
+    margin: 0;
+    font-size: clamp(2.2rem, 6vw, 3.6rem);
+    letter-spacing: 0.5px;
+    color: var(--gold);
+    text-shadow: 0 2px 0 #000, 0 0 24px rgba(229,181,103,0.25);
+  }
+  .hero p.tag { margin: 12px auto 0; max-width: 640px; color: var(--ink-dim); font-size: 1.05rem; }
+  .badges { margin-top: 22px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+  .badge {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-size: 0.82rem;
+    color: var(--ink);
+  }
+  .badge b { color: var(--gold); }
+
+  figure.shot {
+    margin: 34px auto 0;
+    max-width: 860px;
+  }
+  figure.shot img {
+    width: 100%;
+    height: auto;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+    display: block;
+  }
+  figure.shot figcaption { color: var(--ink-dim); font-size: 0.85rem; text-align: center; margin-top: 10px; }
+
+  section { margin-top: 64px; }
+  h2 {
+    font-size: 1.7rem;
+    color: var(--gold);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px;
+    margin-bottom: 8px;
+  }
+  .lead { color: var(--ink-dim); margin: 0 0 24px; max-width: 720px; }
+
+  /* Type chart */
+  .chart-scroll { overflow-x: auto; padding-bottom: 6px; }
+  table.chart { border-collapse: collapse; margin: 0 auto; font-size: 0.8rem; }
+  table.chart th, table.chart td {
+    width: 34px; height: 34px; text-align: center; border: 1px solid var(--border);
+  }
+  table.chart th.corner { background: transparent; border: none; }
+  table.chart th.axis {
+    font-weight: 700; color: #1a1610; padding: 4px 6px; white-space: nowrap;
+  }
+  table.chart th.col { height: auto; padding: 8px 4px; }
+  table.chart th.col span {
+    writing-mode: vertical-rl; transform: rotate(180deg); display: inline-block;
+  }
+  table.chart td.cell { color: #fff; font-weight: 700; }
+  td.x2 { background: var(--good); }
+  td.x2::after { content: "2×"; }
+  td.half { background: var(--bad); }
+  td.half::after { content: "½"; }
+  td.neutral { background: var(--panel); color: var(--ink-dim); }
+  td.self { background: var(--panel-2); }
+  .axis-label { color: var(--ink-dim); font-size: 0.82rem; margin: 4px 0 14px; }
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; margin: 16px 0 0; font-size: 0.85rem; color: var(--ink-dim); }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .swatch { width: 16px; height: 16px; border-radius: 3px; border: 1px solid var(--border); display: inline-block; }
+
+  /* Trainers */
+  .group-title { font-size: 1.15rem; color: var(--gold-dim); margin: 34px 0 14px; display: flex; align-items: baseline; gap: 10px; }
+  .group-title .count { font-size: 0.8rem; color: var(--ink-dim); font-weight: 400; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
+  .card {
+    background: linear-gradient(180deg, var(--panel-2), var(--panel));
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    border-top: 3px solid var(--border);
+  }
+  .card.easy   { border-top-color: var(--easy); }
+  .card.medium { border-top-color: var(--medium); }
+  .card.hard   { border-top-color: var(--hard); }
+  .card h4 { margin: 0; font-size: 1.05rem; color: var(--ink); }
+  .card .theme { color: var(--ink-dim); font-size: 0.82rem; margin: 3px 0 10px; font-style: italic; }
+  .diff {
+    font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.5px;
+    padding: 2px 8px; border-radius: 999px; font-weight: 700; float: right;
+  }
+  .diff.easy { background: rgba(76,154,76,0.18); color: #7ac77a; }
+  .diff.medium { background: rgba(200,145,47,0.18); color: #e0b25a; }
+  .diff.hard { background: rgba(176,74,63,0.2); color: #de8478; }
+  .party { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+  .party li { display: flex; justify-content: space-between; font-size: 0.86rem; padding: 3px 0; border-top: 1px dashed var(--border); }
+  .party li:first-child { border-top: none; }
+  .party .lvl { color: var(--gold-dim); font-variant-numeric: tabular-nums; }
+
+  footer { margin-top: 72px; text-align: center; color: var(--ink-dim); font-size: 0.85rem; border-top: 1px solid var(--border); padding-top: 24px; }
+</style>
+</head>
+<body>
+<header class="hero">
+  <h1>⚔️ Pet Battles</h1>
+  <p class="tag">A RuneLite plugin that turns your Old School RuneScape collection-log pets into
+  a turn-based battle team. Collect pets in-game, level them with your gameplay, and challenge
+  themed AI trainers across Gielinor.</p>
+  <div class="badges">
+    <span class="badge"><b id="b-trainers">–</b> trainers</span>
+    <span class="badge"><b>10</b> combat types</span>
+    <span class="badge"><b>23</b> skillcape masters</span>
+    <span class="badge"><b>Lv 50</b> endgame cap</span>
+  </div>
+  <figure class="shot">
+    <img src="plans/battle-example.png" alt="A Pet Battles fight overlaid on the OSRS client: an Olmlet (Dragon/Magic) faces the Wise Old Man's Heron, with move buttons and HP bars.">
+    <figcaption>A battle against the Wise Old Man, drawn over the live game client.</figcaption>
+  </figure>
+</header>
+
+<div class="wrap">
+
+  <section id="typechart">
+    <h2>Type effectiveness</h2>
+    <p class="lead">Ten OSRS-flavoured types built on the classic combat triangle — Melee &gt;
+    Ranged &gt; Magic &gt; Melee — extended with Fire, Ice, Nature, Undead, Demon, Dragon, and
+    Skilling. Read a row as the <em>attacker</em>: green cells are the types it hits for double
+    damage, red cells are the types that resist it.</p>
+    <p class="axis-label">Rows attack ↓ &nbsp;·&nbsp; Columns defend →</p>
+    <div class="chart-scroll">
+      <table class="chart" id="chart"></table>
+    </div>
+    <div class="legend">
+      <span><i class="swatch" style="background:var(--good)"></i> 2× super-effective</span>
+      <span><i class="swatch" style="background:var(--bad)"></i> ½× resisted</span>
+      <span><i class="swatch" style="background:var(--panel)"></i> 1× neutral</span>
+    </div>
+  </section>
+
+  <section id="trainers">
+    <h2>Trainers</h2>
+    <p class="lead">Every trainer runs a themed party of real OSRS pets. Beat the story ladder from
+    Party Pete to the Wise Old Man, catch random-event challengers when they appear, or hunt down
+    all 23 skillcape masters for the toughest matchups.</p>
+    <div id="trainer-groups"></div>
+  </section>
+
+  <footer>
+    Pet Battles is a fan-made RuneLite plugin. Not affiliated with Jagex.
+    &nbsp;·&nbsp; <a href="../README.md">Back to the README</a>
+  </footer>
+</div>
+
+<script>
+const TYPES = ["MELEE","RANGED","MAGIC","FIRE","ICE","NATURE","UNDEAD","DEMON","DRAGON","SKILLING"];
+const TYPE_COLORS = {
+  MELEE:"#c0392b", RANGED:"#2f9e44", MAGIC:"#2f7fd1", FIRE:"#e67e22", ICE:"#5dade2",
+  NATURE:"#7cb342", UNDEAD:"#8a8f98", DEMON:"#9b59b6", DRAGON:"#b7950b", SKILLING:"#d4ac0d"
+};
+const CHART = {"MELEE":{"RANGED":2,"MAGIC":0.5,"ICE":2,"UNDEAD":0.5,"DRAGON":0.5},"RANGED":{"MELEE":0.5,"MAGIC":2,"NATURE":0.5,"DRAGON":2},"MAGIC":{"MELEE":2,"RANGED":0.5,"FIRE":0.5,"DEMON":2,"SKILLING":2},"FIRE":{"MAGIC":0.5,"FIRE":0.5,"ICE":2,"NATURE":2,"UNDEAD":2,"DEMON":0.5,"DRAGON":0.5},"ICE":{"RANGED":0.5,"FIRE":0.5,"ICE":0.5,"NATURE":2,"DRAGON":2},"NATURE":{"RANGED":2,"MAGIC":0.5,"FIRE":0.5,"NATURE":0.5,"UNDEAD":2,"SKILLING":0.5},"UNDEAD":{"FIRE":0.5,"NATURE":2,"UNDEAD":0.5,"DEMON":2,"SKILLING":2},"DEMON":{"MELEE":2,"MAGIC":0.5,"FIRE":2,"ICE":0.5,"DEMON":0.5,"SKILLING":2},"DRAGON":{"RANGED":0.5,"FIRE":0.5,"ICE":0.5,"NATURE":2,"DEMON":2,"DRAGON":0.5,"SKILLING":2},"SKILLING":{"NATURE":2,"ICE":2,"UNDEAD":2}};
+const TRAINERS = [{"id":"party_pete","name":"Party Pete","theme":"Falador Party Room host","difficulty":"EASY","npcIds":[5792],"randomEvent":true,"party":[{"species":"giant_squirrel","level":5},{"species":"beaver","level":6}]},{"id":"gertrude","name":"Gertrude","theme":"Varrock's famous pet keeper","difficulty":"EASY","npcIds":[7284],"party":[{"species":"heron","level":8},{"species":"rocky","level":8},{"species":"baby_chinchompa","level":10}]},{"id":"wyson","name":"Wyson the Gardener","theme":"Falador Park groundskeeper","difficulty":"MEDIUM","npcIds":[5422],"party":[{"species":"tangleroot","level":15},{"species":"giant_squirrel","level":14},{"species":"baby_mole","level":18}]},{"id":"oziach","name":"Oziach","theme":"Seller of rune platebodies, slayer of dragons","difficulty":"MEDIUM","npcIds":[822],"party":[{"species":"prince_black_dragon","level":20},{"species":"vorki","level":22}]},{"id":"tzhaar_mej","name":"TzHaar-Mej","theme":"Mor Ul Rek mystic","difficulty":"MEDIUM","npcIds":[2154,2155,2156,2157,2158,2159,2160],"party":[{"species":"jal_nib_rek","level":25},{"species":"tzrek_jad","level":28}]},{"id":"sergeant_damien","name":"Sergeant Damien","theme":"Abyssal drill demon","difficulty":"HARD","npcIds":[337],"party":[{"species":"hellpuppy","level":32},{"species":"abyssal_orphan","level":35}]},{"id":"duradel","name":"Duradel","theme":"Master Slayer","difficulty":"HARD","npcIds":[13622],"party":[{"species":"skotos","level":38},{"species":"vetion_jr","level":40},{"species":"ikkle_hydra","level":42}]},{"id":"wise_old_man","name":"The Wise Old Man","theme":"Draynor's most dangerous retiree","difficulty":"HARD","npcIds":[2108],"party":[{"species":"rocky","level":45},{"species":"olmlet","level":48},{"species":"lil_zik","level":50}]},{"id":"freaky_forester","name":"Freaky Forester","theme":"Random event: forester of the wilds","difficulty":"EASY","npcIds":[],"randomEvent":true,"party":[{"species":"giant_squirrel","level":8},{"species":"tangleroot","level":10}]},{"id":"genie","name":"Genie","theme":"Random event: wish-granting spirit","difficulty":"EASY","npcIds":[],"randomEvent":true,"party":[{"species":"wisp","level":9},{"species":"baby_chinchompa","level":11}]},{"id":"drunken_dwarf","name":"Drunken Dwarf","theme":"Random event: jovial, intoxicated brawler","difficulty":"EASY","npcIds":[],"randomEvent":true,"party":[{"species":"rock_golem","level":10},{"species":"rocky","level":12}]},{"id":"evil_bob","name":"Evil Bob","theme":"Random event: sinister feline schemer","difficulty":"EASY","npcIds":[],"randomEvent":true,"party":[{"species":"cat","level":9},{"species":"youngllef","level":11}]},{"id":"mysterious_old_man","name":"Mysterious Old Man","theme":"Random event: cryptic sage","difficulty":"EASY","npcIds":[],"randomEvent":true,"party":[{"species":"wisp","level":10},{"species":"herbi","level":12}]},{"id":"quiz_master","name":"Quiz Master","theme":"Random event: keeper of trivia","difficulty":"EASY","npcIds":[],"randomEvent":true,"party":[{"species":"heron","level":8},{"species":"beaver","level":9}]},{"id":"gravedigger","name":"Leo","theme":"Random event: solemn keeper of the dead","difficulty":"EASY","npcIds":[],"randomEvent":true,"party":[{"species":"bran","level":9},{"species":"nid","level":11}]},{"id":"dr_jekyll","name":"Dr Jekyll","theme":"Random event: potion-brewing doctor","difficulty":"EASY","npcIds":[],"randomEvent":true,"party":[{"species":"herbi","level":9},{"species":"sraracha","level":11}]},{"id":"pillory_guard","name":"Pillory Guard","theme":"Random event: enforcer of the stocks","difficulty":"EASY","npcIds":[],"randomEvent":true,"party":[{"species":"rocky","level":8},{"species":"gull","level":9}]},{"id":"frog_prince","name":"Frog Prince","theme":"Random event: cursed fairytale royal","difficulty":"EASY","npcIds":[],"randomEvent":true,"party":[{"species":"tangleroot","level":8},{"species":"huberte","level":10}]},{"id":"sandwich_lady","name":"Sandwich Lady","theme":"Random event: insistent food vendor","difficulty":"EASY","npcIds":[],"randomEvent":true,"party":[{"species":"chompy_chick","level":7},{"species":"gull","level":8}]},{"id":"prison_pete","name":"Prison Pete","theme":"Random event: warden of the cells","difficulty":"EASY","npcIds":[],"randomEvent":true,"party":[{"species":"scurry","level":9},{"species":"rock_golem","level":11}]},{"id":"rick_turpentine","name":"Rick Turpentine","theme":"Random event: elusive wanderer","difficulty":"EASY","npcIds":[],"randomEvent":true,"party":[{"species":"gull","level":7},{"species":"scurry","level":9}]},{"id":"man","name":"Man","theme":"Wandering townsperson","difficulty":"EASY","npcIds":[3106,3107,3108],"party":[{"species":"gull","level":8},{"species":"scurry","level":10}]},{"id":"guard","name":"Guard","theme":"City watch on patrol","difficulty":"EASY","npcIds":[3269,3270,3271,3274,3254],"party":[{"species":"rocky","level":12},{"species":"gull","level":12}]},{"id":"ajjat","name":"Ajjat","theme":"Attack cape master, Warriors' Guild","difficulty":"HARD","npcIds":[2460],"party":[{"species":"prince_black_dragon","level":30},{"species":"hellpuppy","level":33}]},{"id":"sloane","name":"Sloane","theme":"Strength cape master, Warriors' Guild","difficulty":"MEDIUM","npcIds":[13616],"party":[{"species":"rocky","level":24},{"species":"butch","level":27}]},{"id":"melee_combat_tutor","name":"Melee Combat Tutor","theme":"Defence cape master, Lumbridge","difficulty":"MEDIUM","npcIds":[3216],"party":[{"species":"rock_golem","level":22},{"species":"baron","level":25}]},{"id":"surgeon_tafani","name":"Surgeon General Tafani","theme":"Hitpoints cape master, Emir's Arena","difficulty":"MEDIUM","npcIds":[3343],"party":[{"species":"baby_mole","level":24},{"species":"muphin","level":26}]},{"id":"armour_salesman","name":"Armour Salesman","theme":"Ranged cape master, Ranging Guild","difficulty":"MEDIUM","npcIds":[6059],"party":[{"species":"baby_chinchompa","level":24},{"species":"kalphite_princess","level":27}]},{"id":"brother_jered","name":"Brother Jered","theme":"Prayer cape master, Edgeville Monastery","difficulty":"MEDIUM","npcIds":[2578],"party":[{"species":"phoenix","level":25},{"species":"lil_creator","level":28}]},{"id":"wizard_sinina","name":"Wizard Sinina","theme":"Magic cape master, Wizards' Guild","difficulty":"MEDIUM","npcIds":[3249],"party":[{"species":"pet_snakeling","level":24},{"species":"abyssal_orphan","level":27}]},{"id":"aubury","name":"Aubury","theme":"Runecraft cape master, Varrock","difficulty":"MEDIUM","npcIds":[2886],"party":[{"species":"rift_guardian","level":25},{"species":"abyssal_protector","level":28}]},{"id":"estate_agent","name":"Estate Agent","theme":"Construction cape master","difficulty":"EASY","npcIds":[3097,13343],"party":[{"species":"rocky","level":16},{"species":"rock_golem","level":18}]},{"id":"izzy_no_beard","name":"Cap'n Izzy No-Beard","theme":"Agility cape master, Brimhaven Arena","difficulty":"EASY","npcIds":[5789],"party":[{"species":"giant_squirrel","level":14},{"species":"scurry","level":16}]},{"id":"kaqemeex","name":"Kaqemeex","theme":"Herblore cape master, Taverley","difficulty":"MEDIUM","npcIds":[5045],"party":[{"species":"herbi","level":22},{"species":"tangleroot","level":24}]},{"id":"martin_thwait","name":"Martin Thwait","theme":"Thieving cape master, Rogues' Den","difficulty":"MEDIUM","npcIds":[3193],"party":[{"species":"gull","level":20},{"species":"sraracha","level":22}]},{"id":"master_crafter","name":"Master Crafter","theme":"Crafting cape master, Crafting Guild","difficulty":"EASY","npcIds":[5810,5811,5812],"party":[{"species":"beaver","level":16},{"species":"rocky","level":18}]},{"id":"hickton","name":"Hickton","theme":"Fletching cape master, Catherby","difficulty":"EASY","npcIds":[3212],"party":[{"species":"heron","level":15},{"species":"beaver","level":17}]},{"id":"kuradal","name":"Kuradal","theme":"Slayer cape master, Slayer Tower","difficulty":"HARD","npcIds":[13623],"party":[{"species":"skotos","level":35},{"species":"ikkle_hydra","level":38},{"species":"nexling","level":40}]},{"id":"hunting_expert","name":"Hunting Expert","theme":"Hunter cape master, Feldip Hills","difficulty":"MEDIUM","npcIds":[1504],"party":[{"species":"herbi","level":22},{"species":"huberte","level":24}]},{"id":"gadrin","name":"Gadrin","theme":"Mining cape master, Mining Guild","difficulty":"MEDIUM","npcIds":[7716],"party":[{"species":"rock_golem","level":22},{"species":"rocky","level":24}]},{"id":"thurgo","name":"Thurgo","theme":"Smithing cape master, Mudskipper Point","difficulty":"MEDIUM","npcIds":[4733],"party":[{"species":"rock_golem","level":24},{"species":"baron","level":26}]},{"id":"master_fisher","name":"Master Fisher","theme":"Fishing cape master, Fishing Guild","difficulty":"MEDIUM","npcIds":[2913],"party":[{"species":"pet_kraken","level":26},{"species":"lilviathan","level":28}]},{"id":"head_chef","name":"Head Chef","theme":"Cooking cape master, Cooks' Guild","difficulty":"EASY","npcIds":[2658],"party":[{"species":"chompy_chick","level":14},{"species":"gull","level":15}]},{"id":"ignatius_vulcan","name":"Ignatius Vulcan","theme":"Firemaking cape master, Seers' Village","difficulty":"MEDIUM","npcIds":[118],"party":[{"species":"phoenix","level":26},{"species":"smolcano","level":28}]},{"id":"woodsman_tutor","name":"Woodsman Tutor","theme":"Woodcutting cape master, Lumbridge","difficulty":"EASY","npcIds":[3226],"party":[{"species":"beaver","level":15},{"species":"tangleroot","level":17}]},{"id":"master_gardener","name":"Martin the Master Gardener","theme":"Farming cape master, Draynor","difficulty":"MEDIUM","npcIds":[5832],"party":[{"species":"tangleroot","level":22},{"species":"herbi","level":24},{"species":"bran","level":20}]}];
+
+const titleCase = s => s.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+
+// ---- Type chart ----
+(function buildChart() {
+  const t = document.getElementById("chart");
+  const head = document.createElement("tr");
+  head.innerHTML = '<th class="corner"></th>';
+  TYPES.forEach(def => {
+    const th = document.createElement("th");
+    th.className = "col axis";
+    th.style.background = TYPE_COLORS[def];
+    th.innerHTML = '<span>' + titleCase(def) + '</span>';
+    head.appendChild(th);
+  });
+  t.appendChild(head);
+
+  TYPES.forEach(atk => {
+    const tr = document.createElement("tr");
+    const rowHead = document.createElement("th");
+    rowHead.className = "axis";
+    rowHead.style.background = TYPE_COLORS[atk];
+    rowHead.textContent = titleCase(atk);
+    tr.appendChild(rowHead);
+    TYPES.forEach(def => {
+      const td = document.createElement("td");
+      const mult = (CHART[atk] || {})[def];
+      if (atk === def && mult === undefined) td.className = "cell self";
+      else if (mult === 2) td.className = "cell x2";
+      else if (mult === 0.5) td.className = "cell half";
+      else td.className = "cell neutral";
+      tr.appendChild(td);
+    });
+    t.appendChild(tr);
+  });
+})();
+
+// ---- Trainers ----
+(function buildTrainers() {
+  document.getElementById("b-trainers").textContent = TRAINERS.length;
+  const groupsEl = document.getElementById("trainer-groups");
+
+  const groupOf = tr => {
+    if (/cape master/i.test(tr.theme)) return "Skillcape masters";
+    if (tr.randomEvent) return "Random-event challengers";
+    if (tr.id === "man" || tr.id === "guard") return "World trainers";
+    return "Story ladder";
+  };
+  const ORDER = ["Story ladder", "Random-event challengers", "World trainers", "Skillcape masters"];
+  const BLURB = {
+    "Story ladder": "The core difficulty ladder — start at Party Pete and climb to the Wise Old Man.",
+    "Random-event challengers": "Appear on the Random Battle cadence, echoing OSRS's random-event rhythm.",
+    "World trainers": "Everyday NPCs you'll pass in any city.",
+    "Skillcape masters": "One master per skill — the deepest bench of matchups in the game."
+  };
+  const diffRank = { EASY: 0, MEDIUM: 1, HARD: 2 };
+
+  const groups = {};
+  TRAINERS.forEach(tr => { (groups[groupOf(tr)] ||= []).push(tr); });
+
+  ORDER.forEach(name => {
+    const list = groups[name];
+    if (!list) return;
+    list.sort((a, b) => diffRank[a.difficulty] - diffRank[b.difficulty]);
+
+    const h = document.createElement("h3");
+    h.className = "group-title";
+    h.innerHTML = name + ' <span class="count">' + list.length + ' · ' + BLURB[name] + '</span>';
+    groupsEl.appendChild(h);
+
+    const grid = document.createElement("div");
+    grid.className = "grid";
+    list.forEach(tr => {
+      const d = tr.difficulty.toLowerCase();
+      const card = document.createElement("div");
+      card.className = "card " + d;
+      const party = tr.party.map(p =>
+        '<li><span>' + titleCase(p.species) + '</span><span class="lvl">Lv ' + p.level + '</span></li>'
+      ).join("");
+      card.innerHTML =
+        '<span class="diff ' + d + '">' + tr.difficulty + '</span>' +
+        '<h4>' + tr.name + '</h4>' +
+        '<p class="theme">' + tr.theme + '</p>' +
+        '<ul class="party">' + party + '</ul>';
+      grid.appendChild(card);
+    });
+    groupsEl.appendChild(grid);
+  });
+})();
+</script>
+</body>
+</html>

@@ -4,6 +4,13 @@ A RuneLite plugin that turns your Old School RuneScape collection log pets into 
 turn-based battle team. Collect pets in-game to unlock them, level them up by
 playing the game with them out, and pit them against themed AI trainers.
 
+![A Pet Battles fight drawn over the OSRS client — an Olmlet faces the Wise Old Man's Heron.](docs/plans/battle-example.png)
+
+> **[Browse all trainers and the full type chart →](docs/index.html)**
+> A standalone reference page ([`docs/index.html`](docs/index.html)) listing every trainer, their
+> party, and the type-effectiveness matrix. View it locally in a browser, or via GitHub Pages if
+> the `docs/` folder is published.
+
 ## Features
 
 - **Real collection log sync** — open your Collection Log in-game (any pets page)
@@ -21,9 +28,16 @@ playing the game with them out, and pit them against themed AI trainers.
   equip up to 4 at a time from the side panel.
 - **Hidden easter egg moves** — certain actions with the right pet following unlock
   secret moves. Try chopping a tree with your Beaver out... there are more.
+- **Pet metamorphosis** — pets that can be metamorphosed in-game (a white Phoenix, a
+  different-altar Rift guardian, and friends) declare alternate *variants*. Perform the
+  metamorphosis in OSRS and the plugin detects it, swapping in the variant's sprite and name
+  across every screen automatically.
+- **46 themed trainers** — an eight-fight story ladder from Party Pete (easy) to the Wise Old
+  Man (endgame), all 23 skillcape masters, wandering Men and Guards, plus random-event
+  challengers (Genie, Drunken Dwarf, Evil Bob, …) that surface on a periodic **Random Battle**
+  cadence echoing OSRS's own random events. [See the full roster.](docs/index.html)
 - **Interactive battle overlay** — a turn-based battle scene drawn over the game:
-  HP bars, type badges, a battle log, and clickable move buttons. Battles run
-  against 8 themed trainers from Party Pete (easy) to the Wise Old Man (endgame).
+  HP bars, type badges, a battle log, and clickable move buttons.
 
 ## Getting started
 
@@ -55,5 +69,14 @@ be added later. Content (species, moves, trainers, type chart) lives in JSON
 resources under `src/main/resources/com/petbattles/data/` and is validated by
 `ContentValidationTest`.
 
-A hidden dev config key `petbattles.devUnlockAll` (set via the RuneLite config
-export or temporarily unhide it) treats every pet as owned for testing.
+### Developer mode
+
+Dev-only affordances (unlock-all, XP multipliers, remote battles, the progression-reset
+button) are gated behind a runtime flag so a normal user never sees them. Launch the client
+in dev mode with:
+
+```
+gradlew.bat run -Pdev        # sets -Dpetbattles.dev=true
+```
+
+Without the flag the dev config section is empty and inert — matching what ships to the plugin hub.
