@@ -24,7 +24,6 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -50,8 +49,6 @@ public class BattleSession
 		LEARN_MOVE,
 		ENDED
 	}
-
-	private static final int MAX_LOG_LINES = 4;
 
 	// The DAMAGE/HEALED HP bar drains over this window of the event's 0->1 progress, so the
 	// hit-splat pops first (0 -> HP_DRAIN_START) and the bar then animates to the new value.
@@ -154,7 +151,6 @@ public class BattleSession
 	private TrainerDef trainer;
 	private Random rng;
 	private final Deque<BattleEvent> pendingEvents = new ArrayDeque<>();
-	private final LinkedList<String> visibleLog = new LinkedList<>();
 	// Per-pet results for the end-of-battle summary screen, built when the battle ends.
 	private final List<SummaryEntry> summary = new ArrayList<>();
 	// XP/levels/moves accrued per participating pet across the battle (keyed by species id).
@@ -236,7 +232,6 @@ public class BattleSession
 		enemyController = new AiController(def.getDifficulty(), db.getTypeChart());
 		rng = new Random();
 		pendingEvents.clear();
-		visibleLog.clear();
 		summary.clear();
 		pendingLearns.clear();
 		progress.clear();
@@ -451,7 +446,6 @@ public class BattleSession
 				log.debug("[battle] event {} side={} phase={} queue={} : {}",
 					event.getType(), event.getSide(), phase, pendingEvents.size(), event.getText());
 			}
-			pushLog(event.getText());
 			return;
 		}
 		currentEvent = null;
@@ -545,7 +539,6 @@ public class BattleSession
 		state = null;
 		trainer = null;
 		pendingEvents.clear();
-		visibleLog.clear();
 		summary.clear();
 		pendingLearns.clear();
 		progress.clear();
@@ -855,15 +848,6 @@ public class BattleSession
 		return pet.getNickname() != null ? pet.getNickname() : species.getName();
 	}
 
-	private void pushLog(String line)
-	{
-		visibleLog.add(line);
-		while (visibleLog.size() > MAX_LOG_LINES)
-		{
-			visibleLog.removeFirst();
-		}
-	}
-
 	// --- accessors for the overlay ---
 
 	public Phase getPhase()
@@ -920,11 +904,6 @@ public class BattleSession
 	public TypeChart getTypeChart()
 	{
 		return engine.getTypeChart();
-	}
-
-	public List<String> getVisibleLog()
-	{
-		return Collections.unmodifiableList(visibleLog);
 	}
 
 	/**
@@ -1003,20 +982,30 @@ public class BattleSession
 
 	/**
 	 * If {@code event} changes a pet's HP (damage, status chip, heal), start animating that
-	 * pet's displayed HP from where it rests now toward the freshly resolved model value.
+	 * pet's displayed HP from where it rests now by the event's OWN delta. Crucially the target
+	 * is derived from {@code event.getValue()}, not the live model: the engine resolves the whole
+	 * turn up front, so the model already holds the end-of-turn HP. Using the per-event delta lets
+	 * each of a pet's several changes in one turn (e.g. a hit then its burn/poison tick) animate
+	 * its own step in order. {@code shownHp} tracks the displayed value, so deltas accumulate.
 	 */
 	private void beginHpAnimation(BattleEvent event)
 	{
 		BattlePet affected;
+		int delta;
 		switch (event.getType())
 		{
 			case DAMAGE:
 			case STATUS_TICK:
+				affected = event.getSide() >= 0 ? state.active(event.getSide()) : null;
+				delta = -event.getValue();
+				break;
 			case HEALED:
 				affected = event.getSide() >= 0 ? state.active(event.getSide()) : null;
+				delta = event.getValue();
 				break;
 			default:
 				affected = null;
+				delta = 0;
 				break;
 		}
 		if (affected == null)
@@ -1026,10 +1015,10 @@ public class BattleSession
 		hpAnimPet = affected;
 		Float rest = shownHp.get(affected);
 		hpAnimFrom = rest != null ? rest : affected.getCurrentHp();
-		hpAnimTo = affected.getCurrentHp();
+		hpAnimTo = Math.max(0f, Math.min(affected.getMaxHp(), hpAnimFrom + delta));
 		if (config.devBattleTrace())
 		{
-			log.debug("[battle] hp {} {} -> {}", affected.getDisplayName(), hpAnimFrom, hpAnimTo);
+			log.debug("[battle] hp {} {} -> {} (d={})", affected.getDisplayName(), hpAnimFrom, hpAnimTo, delta);
 		}
 	}
 

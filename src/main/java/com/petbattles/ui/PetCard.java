@@ -67,7 +67,7 @@ public class PetCard extends JPanel
 		for (PetType type : species.getTypes())
 		{
 			JLabel badge = new JLabel(type.getDisplayName());
-			badge.setFont(FontManager.getRunescapeSmallFont().deriveFont(Font.PLAIN, 10f));
+			badge.setFont(FontManager.getRunescapeSmallFont().deriveFont(Font.PLAIN, 12f));
 			badge.setForeground(Color.WHITE);
 			badge.setOpaque(true);
 			badge.setBackground(new Color(type.getColorRgb()));
@@ -95,10 +95,10 @@ public class PetCard extends JPanel
 				xpBar.setString((pet.getXp() - floor) + " / " + (ceil - floor) + " xp");
 			}
 			xpBar.setStringPainted(true);
-			xpBar.setFont(FontManager.getRunescapeSmallFont().deriveFont(Font.PLAIN, 9f));
+			xpBar.setFont(FontManager.getRunescapeSmallFont().deriveFont(Font.PLAIN, 11f));
 			xpBar.setForeground(ColorScheme.PROGRESS_COMPLETE_COLOR);
 			xpBar.setBackground(ColorScheme.DARK_GRAY_COLOR);
-			xpBar.setPreferredSize(new Dimension(100, 14));
+			xpBar.setPreferredSize(new Dimension(100, 16));
 			center.add(xpBar);
 
 			JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
@@ -133,7 +133,7 @@ public class PetCard extends JPanel
 			JLabel locked = new JLabel(devMode
 				? "Locked — not in your collection log"
 				: "Not in your collection log yet");
-			locked.setFont(FontManager.getRunescapeSmallFont().deriveFont(Font.ITALIC, 10f));
+			locked.setFont(FontManager.getRunescapeSmallFont().deriveFont(Font.ITALIC, 12f));
 			locked.setForeground(ColorScheme.LIGHT_GRAY_COLOR.darker());
 			center.add(locked);
 

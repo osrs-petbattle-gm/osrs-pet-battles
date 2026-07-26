@@ -120,7 +120,7 @@ public class PetBattlesPanel extends PluginPanel
 		teamPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 		north.add(teamPanel);
 
-		bankHintLabel.setFont(FontManager.getRunescapeSmallFont().deriveFont(Font.ITALIC, 10f));
+		bankHintLabel.setFont(FontManager.getRunescapeSmallFont().deriveFont(Font.ITALIC, 12f));
 		bankHintLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR.darker());
 		bankHintLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 		north.add(bankHintLabel);
@@ -294,7 +294,7 @@ public class PetBattlesPanel extends PluginPanel
 		if (team.isEmpty())
 		{
 			JLabel empty = new JLabel("No pets on the team yet");
-			empty.setFont(FontManager.getRunescapeSmallFont().deriveFont(Font.ITALIC, 10f));
+			empty.setFont(FontManager.getRunescapeSmallFont().deriveFont(Font.ITALIC, 12f));
 			empty.setForeground(ColorScheme.LIGHT_GRAY_COLOR.darker());
 			teamPanel.add(empty);
 		}
@@ -463,7 +463,7 @@ public class PetBattlesPanel extends PluginPanel
 				+ (move.getPower() > 0 ? ", " + move.getPower() + " pow" : ", status")
 				+ ", " + move.getAccuracy() + "% acc]";
 			JCheckBox box = new JCheckBox(label, pet.getEquippedMoves().contains(moveId));
-			box.setFont(FontManager.getRunescapeSmallFont().deriveFont(Font.PLAIN, 11f));
+			box.setFont(FontManager.getRunescapeSmallFont().deriveFont(Font.PLAIN, 12f));
 			box.addActionListener(e ->
 			{
 				if (box.isSelected())

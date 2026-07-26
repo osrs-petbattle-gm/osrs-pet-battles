@@ -191,19 +191,6 @@ public class BattleOverlay extends Overlay
 		}
 		else
 		{
-			// Log strip
-			int logY = 168;
-			g.setColor(new Color(0, 0, 0, 120));
-			g.fillRect(6, logY - 12, WIDTH - 12, 46);
-			g.setFont(FontManager.getRunescapeSmallFont());
-			g.setColor(LOG_TEXT);
-			int y = logY;
-			for (String line : session.getVisibleLog())
-			{
-				g.drawString(clip(g, line, WIDTH - 24), 12, y);
-				y += 11;
-			}
-
 			// Buttons
 			int btnY = HEIGHT - 44;
 			if (session.getPhase() == BattleSession.Phase.FORCED_SWITCH)
@@ -656,7 +643,7 @@ public class BattleOverlay extends Overlay
 	{
 		int w = 140;
 		g.setColor(new Color(0, 0, 0, 130));
-		g.fillRoundRect(x, y, w, showExactHp ? 44 : 36, 8, 8);
+		g.fillRoundRect(x, y, w, showExactHp ? 46 : 36, 8, 8);
 
 		g.setFont(FontManager.getRunescapeSmallFont());
 		g.setColor(Color.WHITE);
@@ -669,11 +656,11 @@ public class BattleOverlay extends Overlay
 		int tx = x + 6;
 		for (PetType type : pet.getSpecies().getTypes())
 		{
-			g.setFont(FontManager.getRunescapeSmallFont().deriveFont(Font.PLAIN, 9f));
+			g.setFont(FontManager.getRunescapeSmallFont().deriveFont(Font.PLAIN, 11f));
 			FontMetrics fm = g.getFontMetrics();
 			int tw = fm.stringWidth(type.getDisplayName()) + 6;
 			g.setColor(new Color(type.getColorRgb()));
-			g.fillRoundRect(tx, y + 17, tw, 10, 4, 4);
+			g.fillRoundRect(tx, y + 16, tw, 12, 4, 4);
 			g.setColor(Color.WHITE);
 			g.drawString(type.getDisplayName(), tx + 3, y + 25);
 			tx += tw + 3;
@@ -697,7 +684,7 @@ public class BattleOverlay extends Overlay
 		g.fillRect(x + 6, barY, (int) (barW * frac), 5);
 		if (showExactHp)
 		{
-			g.setFont(FontManager.getRunescapeSmallFont().deriveFont(Font.PLAIN, 9f));
+			g.setFont(FontManager.getRunescapeSmallFont().deriveFont(Font.PLAIN, 11f));
 			g.setColor(Color.WHITE);
 			g.drawString(Math.max(0, Math.round(shownHp)) + " / " + pet.getMaxHp(), x + 6, barY + 13);
 		}
