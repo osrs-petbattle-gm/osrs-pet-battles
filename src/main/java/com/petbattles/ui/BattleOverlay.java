@@ -156,10 +156,11 @@ public class BattleOverlay extends Overlay
 		MoveDef currentMove = session.getCurrentMove();
 		float progress = session.getAnimationProgress();
 
-		// A fainted pet is "settled" (drawn as a faint ghost) once it's no longer the
-		// subject of the current event — i.e. after its damage + faint lines have played.
-		boolean enemySettled = enemy.isFainted() && (current == null || current.getSide() != BattleState.ENEMY);
-		boolean playerSettled = player.isFainted() && (current == null || current.getSide() != BattleState.PLAYER);
+		// A fainted pet is "settled" (drawn as a faint ghost) only once its faint line has
+		// actually played — the session gates this so the collapse never fires during the
+		// earlier attack/damage lines (which read the already-resolved model).
+		boolean enemySettled = session.isFaintSettled(enemy);
+		boolean playerSettled = session.isFaintSettled(player);
 
 		// Enemy: info card top-left, sprite top-right
 		drawPetInfo(g, enemy, 10, 22, false);
@@ -684,10 +685,12 @@ public class BattleOverlay extends Overlay
 			g.drawString(pet.getStatus().name(), tx + 2, y + 25);
 		}
 
-		// HP bar
+		// HP bar — drawn from the session's displayed HP, which lags the resolved model so the
+		// bar drains in step with the hit-splat instead of snapping the instant a turn resolves.
 		int barY = y + 30;
 		int barW = w - 12;
-		double frac = pet.getMaxHp() > 0 ? (double) pet.getCurrentHp() / pet.getMaxHp() : 0;
+		float shownHp = session.displayHp(pet);
+		double frac = pet.getMaxHp() > 0 ? Math.max(0, Math.min(1, shownHp / pet.getMaxHp())) : 0;
 		g.setColor(new Color(40, 40, 40));
 		g.fillRect(x + 6, barY, barW, 5);
 		g.setColor(hpColor(frac));
@@ -696,7 +699,7 @@ public class BattleOverlay extends Overlay
 		{
 			g.setFont(FontManager.getRunescapeSmallFont().deriveFont(Font.PLAIN, 9f));
 			g.setColor(Color.WHITE);
-			g.drawString(pet.getCurrentHp() + " / " + pet.getMaxHp(), x + 6, barY + 13);
+			g.drawString(Math.max(0, Math.round(shownHp)) + " / " + pet.getMaxHp(), x + 6, barY + 13);
 		}
 	}
 

@@ -103,4 +103,16 @@ public interface PetBattlesConfig extends Config
 	{
 		return 1;
 	}
+
+	@ConfigItem(
+		keyName = "devBattleTrace",
+		name = "Dev: battle trace",
+		description = "Testing option: log the battle event sequence (each surfaced event, XP/level-up, move learning, "
+			+ "HP-drain and faint reveals) at debug level, to diagnose animation/sequencing issues.",
+		position = 7
+	)
+	default boolean devBattleTrace()
+	{
+		return false;
+	}
 }

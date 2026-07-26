@@ -22,16 +22,21 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Client-side battle orchestration: builds teams, paces engine events out on game
  * ticks for the overlay, collects player input, and awards XP at the end.
  * All methods are called on the client thread (game ticks and consumed mouse input).
  */
+@Slf4j
 public class BattleSession
 {
 	public enum Phase
@@ -47,6 +52,11 @@ public class BattleSession
 	}
 
 	private static final int MAX_LOG_LINES = 4;
+
+	// The DAMAGE/HEALED HP bar drains over this window of the event's 0->1 progress, so the
+	// hit-splat pops first (0 -> HP_DRAIN_START) and the bar then animates to the new value.
+	private static final float HP_DRAIN_START = 0.15f;
+	private static final float HP_DRAIN_END = 0.55f;
 
 	/**
 	 * One row of the post-battle summary: a pet that fought, its ending state and rewards.
@@ -157,6 +167,23 @@ public class BattleSession
 	private MoveDef currentMove;
 	private long eventStartMs;
 
+	// --- presentation state: what the overlay draws, lagged behind the resolved model ---
+	// Displayed HP per pet (by identity): the value currently at rest on screen. Damage/heal
+	// events animate this toward the model value while their line is shown (see displayHp).
+	private final Map<BattlePet, Float> shownHp = new IdentityHashMap<>();
+	// Pets whose FAINTED line has already been surfaced, so the overlay may settle them to a
+	// faint ghost. A pet is NOT settled here until its faint line plays — that keeps the
+	// collapse from firing during the attacker's earlier MOVE_USED/DAMAGE lines.
+	private final Set<BattlePet> faintShown = Collections.newSetFromMap(new IdentityHashMap<>());
+	// The pet whose HP the current event is animating (or null), with its from/to endpoints.
+	private BattlePet hpAnimPet;
+	private float hpAnimFrom;
+	private float hpAnimTo;
+	// Player pets that have taken the field against the CURRENT enemy — the KO's XP is split
+	// evenly among them (shared experience). Reset each time a new enemy is sent out.
+	// LinkedHashSet gives identity semantics (BattlePet has no equals override) + stable order.
+	private final Set<BattlePet> enemyParticipants = new LinkedHashSet<>();
+
 	public BattleSession(PetDatabase db, RosterManager roster, PetBattlesConfig config,
 		Runnable onRosterChanged)
 	{
@@ -213,6 +240,19 @@ public class BattleSession
 		summary.clear();
 		pendingLearns.clear();
 		progress.clear();
+		shownHp.clear();
+		faintShown.clear();
+		enemyParticipants.clear();
+		hpAnimPet = null;
+		// Seed each pet's displayed HP with its starting HP so the first hit animates from full.
+		for (BattlePet bp : playerTeam)
+		{
+			shownHp.put(bp, (float) bp.getCurrentHp());
+		}
+		for (BattlePet bp : enemyTeam)
+		{
+			shownHp.put(bp, (float) bp.getCurrentHp());
+		}
 		// Snapshot starting levels so the summary can show levels gained across the fight.
 		for (BattlePet bp : playerTeam)
 		{
@@ -354,6 +394,8 @@ public class BattleSession
 	 */
 	private void advanceEvent()
 	{
+		// Leaving the previous line: rest its HP animation at the value it reached.
+		commitHpAnimation();
 		BattleEvent event = pendingEvents.poll();
 		if (event == null && state.isOver() && !finalized)
 		{
@@ -380,6 +422,34 @@ public class BattleSession
 				// Apply the enemy's on-faint swap now, so the fainted pet was shown through
 				// its faint animation and the replacement appears exactly on this line
 				state.setActive(event.getSide(), event.getValue());
+			}
+			// Shared-XP bookkeeping: a fresh enemy resets the participant pool; whoever the
+			// player has on the field (now, and as they swap) joins the pool for this enemy.
+			if (event.getType() == BattleEvent.Type.PET_SENT_OUT && event.getSide() == BattleState.ENEMY)
+			{
+				enemyParticipants.clear();
+			}
+			BattlePet activePlayer = state.active(BattleState.PLAYER);
+			if (activePlayer != null)
+			{
+				enemyParticipants.add(activePlayer);
+			}
+			// Damage/heal lines animate the affected pet's HP bar as they play.
+			beginHpAnimation(event);
+			// The faint only "reveals" (settles to a ghost) once its own line is shown, never
+			// during the earlier attack/damage lines that read the already-resolved model.
+			if (event.getType() == BattleEvent.Type.FAINTED)
+			{
+				BattlePet fainter = state.active(event.getSide());
+				if (fainter != null)
+				{
+					faintShown.add(fainter);
+				}
+			}
+			if (config.devBattleTrace())
+			{
+				log.debug("[battle] event {} side={} phase={} queue={} : {}",
+					event.getType(), event.getSide(), phase, pendingEvents.size(), event.getText());
 			}
 			pushLog(event.getText());
 			return;
@@ -479,55 +549,92 @@ public class BattleSession
 		summary.clear();
 		pendingLearns.clear();
 		progress.clear();
+		shownHp.clear();
+		faintShown.clear();
+		enemyParticipants.clear();
+		hpAnimPet = null;
 		currentEvent = null;
 		currentMove = null;
 	}
 
 	/**
-	 * Award XP to the player's active pet for the enemy pet that just fainted, and queue its
-	 * XP / level-up / move-learned lines to play immediately after the faint line. Full-moveset
-	 * learns are pushed onto {@link #pendingLearns} for an in-battle forget-or-skip prompt.
-	 * Called as each enemy faint is surfaced, so rewards land per-faint rather than in a lump.
+	 * Award XP for the enemy pet that just fainted, split evenly among every player pet that
+	 * took the field against it (shared experience), and queue each earner's XP / level-up /
+	 * move-learned lines to play right after the faint line. Full-moveset learns are pushed onto
+	 * {@link #pendingLearns} for an in-battle forget-or-skip prompt. Called per enemy faint, so
+	 * rewards land per-faint rather than in a lump.
 	 */
 	private void awardFaintXp()
 	{
-		BattlePet victor = state.active(BattleState.PLAYER);
 		BattlePet fallen = state.active(BattleState.ENEMY);
-		if (victor == null || fallen == null)
+		if (fallen == null)
 		{
 			return;
 		}
-		String speciesId = victor.getSpecies().getId();
-		PetInstance pet = roster.getPet(speciesId);
-		SpeciesDef species = db.species(speciesId);
-		if (pet == null || species == null || pet.getLevel() >= Leveling.MAX_LEVEL)
+		// The pets that were out against this enemy share its reward; fall back to the active
+		// pet if (defensively) the pool is somehow empty.
+		List<BattlePet> earners = new ArrayList<>(enemyParticipants);
+		if (earners.isEmpty())
 		{
-			return;
+			BattlePet active = state.active(BattleState.PLAYER);
+			if (active != null)
+			{
+				earners.add(active);
+			}
 		}
 		// Repeat wins against an already-beaten trainer award reduced XP (recorded at battle end,
 		// so every faint in a first-clear battle still pays the full first-win rate).
 		boolean firstWin = !roster.isTrainerDefeated(trainer.getId());
 		// Dev XP boost multiplies rewards so abilities/growth stages are quick to reach in testing
-		long xp = Leveling.battleWinXp(fallen.getLevel(), pet.getLevel(), firstWin) * Math.max(1, config.devXpMultiplier());
-		if (xp <= 0)
-		{
-			return;
-		}
-		int oldLevel = pet.getLevel();
-		int gained = pet.addXp(xp);
-		Progress p = progress.computeIfAbsent(speciesId, k -> new Progress(oldLevel));
-		p.xp += xp;
-		roster.petChanged();
+		int mult = Math.max(1, config.devXpMultiplier());
+		// Split evenly across everyone who was on the field, so a shared KO dilutes each share.
+		int share = Math.max(1, earners.size());
 
 		List<BattleEvent> inject = new ArrayList<>();
-		inject.add(BattleEvent.value(BattleEvent.Type.XP_GAINED, BattleState.PLAYER, (int) xp,
-			displayName(pet, species) + " gained " + xp + " XP!"));
-		if (gained > 0)
+		boolean anyAward = false;
+		for (BattlePet earner : earners)
 		{
-			int newLevel = pet.getLevel();
-			inject.add(BattleEvent.value(BattleEvent.Type.LEVEL_UP, BattleState.PLAYER, newLevel,
-				displayName(pet, species) + " grew to level " + newLevel + "!"));
-			learnMovesForLevelUp(pet, species, oldLevel, newLevel, p, inject);
+			String speciesId = earner.getSpecies().getId();
+			PetInstance pet = roster.getPet(speciesId);
+			SpeciesDef species = db.species(speciesId);
+			if (pet == null || species == null || pet.getLevel() >= Leveling.MAX_LEVEL)
+			{
+				continue;
+			}
+			long xp = Math.max(1,
+				Leveling.battleWinXp(fallen.getLevel(), pet.getLevel(), firstWin) * mult / share);
+			int oldLevel = pet.getLevel();
+			int gained = pet.addXp(xp);
+			Progress p = progress.computeIfAbsent(speciesId, k -> new Progress(oldLevel));
+			p.xp += xp;
+			anyAward = true;
+			if (config.devBattleTrace())
+			{
+				log.debug("[battle] {} shares KO of {} (Lv{}): +{} xp (1/{}), level {}->{}",
+					displayName(pet, species), fallen.getDisplayName(), fallen.getLevel(), xp, share,
+					oldLevel, pet.getLevel());
+			}
+			inject.add(BattleEvent.value(BattleEvent.Type.XP_GAINED, BattleState.PLAYER, (int) xp,
+				displayName(pet, species) + " gained " + xp + " XP!"));
+			if (gained > 0)
+			{
+				int newLevel = pet.getLevel();
+				// Grow the on-field battler too, so its level/HP/stats/sprite match the roster
+				// for the rest of this fight (the info card was showing the start-of-battle level).
+				int hpGain = earner.growTo(newLevel);
+				if (hpGain > 0)
+				{
+					// Keep the displayed HP in step with the level-up heal so the bar doesn't lag.
+					shownHp.merge(earner, (float) hpGain, Float::sum);
+				}
+				inject.add(BattleEvent.value(BattleEvent.Type.LEVEL_UP, BattleState.PLAYER, newLevel,
+					displayName(pet, species) + " grew to level " + newLevel + "!"));
+				learnMovesForLevelUp(pet, species, oldLevel, newLevel, p, inject);
+			}
+		}
+		if (anyAward)
+		{
+			roster.petChanged();
 		}
 		// Push in front of the queue, preserving order, so they follow the faint line just shown.
 		for (int i = inject.size() - 1; i >= 0; i--)
@@ -561,11 +668,55 @@ public class BattleSession
 				p.learned.add(move.getName());
 				inject.add(BattleEvent.of(BattleEvent.Type.MOVE_LEARNED, BattleState.PLAYER,
 					displayName(pet, species) + " learned " + move.getName() + "!"));
+				if (config.devBattleTrace())
+				{
+					log.debug("[battle] {} auto-learned {} (free slot)", displayName(pet, species), move.getName());
+				}
 			}
 			else
 			{
 				pendingLearns.add(new PendingLearn(pet, species, move));
+				if (config.devBattleTrace())
+				{
+					log.debug("[battle] {} defers {} (full moveset) -> pendingLearns", displayName(pet, species), move.getName());
+				}
 			}
+		}
+		// Make any auto-equipped move usable for the rest of THIS battle, not just the next one.
+		syncBattleMoves(pet);
+	}
+
+	/**
+	 * Re-sync a player pet's in-battle moveset from its (just-updated) persistent instance, so a
+	 * move learned or forgotten mid-battle takes effect immediately for the current fight.
+	 */
+	private void syncBattleMoves(PetInstance pet)
+	{
+		if (state == null)
+		{
+			return;
+		}
+		for (BattlePet bp : state.team(BattleState.PLAYER))
+		{
+			if (!bp.getSpecies().getId().equals(pet.getSpeciesId()))
+			{
+				continue;
+			}
+			List<MoveDef> moves = new ArrayList<>();
+			for (String moveId : pet.getEquippedMoves())
+			{
+				MoveDef m = db.move(moveId);
+				if (m != null)
+				{
+					moves.add(m);
+				}
+			}
+			bp.setMoves(moves);
+			if (config.devBattleTrace())
+			{
+				log.debug("[battle] resynced {} in-battle moves -> {}", bp.getDisplayName(), pet.getEquippedMoves());
+			}
+			return;
 		}
 	}
 
@@ -594,12 +745,20 @@ public class BattleSession
 				}
 				else if (moveIndex >= 0 && moveIndex < equipped.size())
 				{
-					pl.pet.unequipMove(equipped.get(moveIndex));
+					String forgotten = equipped.get(moveIndex);
+					pl.pet.unequipMove(forgotten);
 					pl.pet.equipMove(pl.newMove.getId());
 					recordLearned(pl);
+					if (config.devBattleTrace())
+					{
+						log.debug("[battle] {} forgot {} to learn {}", displayName(pl.pet, pl.species),
+							forgotten, pl.newMove.getName());
+					}
 				}
 				// moveIndex < 0 => player declined; learn nothing.
 			}
+			// Reflect the swap in the active battler's moveset for the rest of this fight.
+			syncBattleMoves(pl.pet);
 			roster.petChanged();
 			onRosterChanged.run();
 		}
@@ -828,6 +987,88 @@ public class BattleSession
 			default:
 				return 400;
 		}
+	}
+
+	/**
+	 * Rest the in-flight HP animation at its target, so the bar stays put once its line ends.
+	 */
+	private void commitHpAnimation()
+	{
+		if (hpAnimPet != null)
+		{
+			shownHp.put(hpAnimPet, hpAnimTo);
+			hpAnimPet = null;
+		}
+	}
+
+	/**
+	 * If {@code event} changes a pet's HP (damage, status chip, heal), start animating that
+	 * pet's displayed HP from where it rests now toward the freshly resolved model value.
+	 */
+	private void beginHpAnimation(BattleEvent event)
+	{
+		BattlePet affected;
+		switch (event.getType())
+		{
+			case DAMAGE:
+			case STATUS_TICK:
+			case HEALED:
+				affected = event.getSide() >= 0 ? state.active(event.getSide()) : null;
+				break;
+			default:
+				affected = null;
+				break;
+		}
+		if (affected == null)
+		{
+			return;
+		}
+		hpAnimPet = affected;
+		Float rest = shownHp.get(affected);
+		hpAnimFrom = rest != null ? rest : affected.getCurrentHp();
+		hpAnimTo = affected.getCurrentHp();
+		if (config.devBattleTrace())
+		{
+			log.debug("[battle] hp {} {} -> {}", affected.getDisplayName(), hpAnimFrom, hpAnimTo);
+		}
+	}
+
+	/**
+	 * Displayed HP for a pet's bar: the value currently on screen, which lags the resolved
+	 * model. While this pet's damage/heal line is showing, it interpolates over the drain
+	 * window (so the hit-splat lands first); otherwise it's the value the last line rested on.
+	 */
+	public float displayHp(BattlePet pet)
+	{
+		if (pet == null)
+		{
+			return 0f;
+		}
+		if (pet == hpAnimPet && currentEvent != null)
+		{
+			float p = getAnimationProgress();
+			float t = p <= HP_DRAIN_START ? 0f
+				: p >= HP_DRAIN_END ? 1f
+				: (p - HP_DRAIN_START) / (HP_DRAIN_END - HP_DRAIN_START);
+			return hpAnimFrom + (hpAnimTo - hpAnimFrom) * t;
+		}
+		Float rest = shownHp.get(pet);
+		return rest != null ? rest : pet.getCurrentHp();
+	}
+
+	/**
+	 * Whether a fainted pet should be drawn as a settled ghost: its faint line has played and
+	 * is no longer the current event (while it IS current, the collapse animation runs instead).
+	 */
+	public boolean isFaintSettled(BattlePet pet)
+	{
+		if (pet == null || !faintShown.contains(pet))
+		{
+			return false;
+		}
+		return currentEvent == null
+			|| currentEvent.getType() != BattleEvent.Type.FAINTED
+			|| state.active(currentEvent.getSide()) != pet;
 	}
 
 	/**

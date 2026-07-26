@@ -22,9 +22,9 @@ public class BattlePet
 
 	private final SpeciesDef species;
 	private final String displayName;
-	private final int level;
+	private int level;
 	private final List<MoveDef> moves;
-	private final int maxHp;
+	private int maxHp;
 	private int currentHp;
 	private int atkStage;
 	private int defStage;
@@ -73,9 +73,47 @@ public class BattlePet
 		return level;
 	}
 
+	/**
+	 * Grow this pet to a higher level mid-battle (from shared XP): raise max HP and add the
+	 * gained HP to current, so leveling heals by the growth rather than leaving the bar looking
+	 * emptier. Derived stats and the growth-stage sprite then reflect the new level for the rest
+	 * of the fight. Returns the max-HP gained (0 if the level didn't actually increase).
+	 */
+	public int growTo(int newLevel)
+	{
+		if (newLevel <= level)
+		{
+			return 0;
+		}
+		int oldMax = maxHp;
+		this.level = newLevel;
+		this.maxHp = Leveling.hpAtLevel(species.getBase().getHp(), newLevel);
+		int gain = maxHp - oldMax;
+		if (gain > 0)
+		{
+			currentHp = Math.min(maxHp, currentHp + gain);
+		}
+		return Math.max(0, gain);
+	}
+
 	public List<MoveDef> getMoves()
 	{
 		return moves;
+	}
+
+	/**
+	 * Replace this pet's in-battle moveset. Used to reflect a move learned/forgotten
+	 * mid-battle so the new move is usable for the rest of the fight, without rebuilding
+	 * the pet. The list is copied; empty replacements are ignored so a pet is never unarmed.
+	 */
+	public void setMoves(List<MoveDef> newMoves)
+	{
+		if (newMoves == null || newMoves.isEmpty())
+		{
+			return;
+		}
+		moves.clear();
+		moves.addAll(newMoves);
 	}
 
 	public int getMaxHp()
