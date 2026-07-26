@@ -23,12 +23,12 @@ public class PetBattlesConfigTest
 	@Test
 	public void everyDevAffordanceIsInertInProduction()
 	{
-		assertFalse("select locked pets", config.devSelectLockedPets());
-		assertFalse("remote battles", config.devRemoteBattles());
-		assertFalse("unlock all", config.devUnlockAll());
-		assertFalse("full xp curve", config.devFullXpCurve());
-		assertFalse("battle trace", config.devBattleTrace());
-		assertEquals("xp multiplier is neutral", 1, config.devXpMultiplier());
+		assertFalse("select locked pets", PetBattlesConfig.devSelectLockedPets());
+		assertFalse("remote battles", PetBattlesConfig.devRemoteBattles());
+		assertFalse("unlock all", PetBattlesConfig.devUnlockAll());
+		assertFalse("full xp curve", PetBattlesConfig.devFullXpCurve());
+		assertFalse("battle trace", PetBattlesConfig.devBattleTrace());
+		assertEquals("xp multiplier is neutral", 1, PetBattlesConfig.devXpMultiplier());
 	}
 
 	@Test

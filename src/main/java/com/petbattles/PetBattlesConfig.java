@@ -53,15 +53,18 @@ public interface PetBattlesConfig extends Config
 		return true;
 	}
 
-	// --- Developer-only affordances (gated on DEV; not config items) ---
-	// These read the DEV flag (and, for the graduated knobs, extra -D properties) rather than
-	// stored config, so a hub build can never show or enable them regardless of a user's profile.
+	// --- Developer-only affordances (gated on DEV; NOT config items) ---
+	// These are STATIC on purpose: RuneLite proxies the Config interface and returns null for any
+	// instance method that lacks @ConfigItem, so an instance `default` here would NPE at runtime.
+	// As statics they bypass the proxy entirely and read only the DEV flag (plus, for the graduated
+	// knobs, extra -D properties), so a hub build can never show or enable them. Call as
+	// PetBattlesConfig.devXxx().
 
 	/**
 	 * Adds per-card "Unlock (dev)" buttons and the "Reset progression (dev)" button so a developer
 	 * can build teams with unowned pets. Dev-only.
 	 */
-	default boolean devSelectLockedPets()
+	static boolean devSelectLockedPets()
 	{
 		return DEV;
 	}
@@ -69,7 +72,7 @@ public interface PetBattlesConfig extends Config
 	/**
 	 * Lets a developer fight any trainer from the panel without meeting them in-world first. Dev-only.
 	 */
-	default boolean devRemoteBattles()
+	static boolean devRemoteBattles()
 	{
 		return DEV;
 	}
@@ -78,7 +81,7 @@ public interface PetBattlesConfig extends Config
 	 * Treat every pet as owned, for testing without the collection log. Off unless the developer
 	 * additionally passes {@code -Dpetbattles.unlockAll=true}. Dev-only.
 	 */
-	default boolean devUnlockAll()
+	static boolean devUnlockAll()
 	{
 		return DEV && Boolean.getBoolean("petbattles.unlockAll");
 	}
@@ -87,7 +90,7 @@ public interface PetBattlesConfig extends Config
 	 * Use the full, unscaled OSRS experience table instead of the 20x-faster default pacing. Off
 	 * unless the developer passes {@code -Dpetbattles.fullXpCurve=true}. Dev-only.
 	 */
-	default boolean devFullXpCurve()
+	static boolean devFullXpCurve()
 	{
 		return DEV && Boolean.getBoolean("petbattles.fullXpCurve");
 	}
@@ -96,7 +99,7 @@ public interface PetBattlesConfig extends Config
 	 * Multiply battle XP rewards so pets level quickly in testing. Set with
 	 * {@code -Dpetbattles.xpMult=<n>} (clamped to at least 1). Dev-only; always 1 in production.
 	 */
-	default int devXpMultiplier()
+	static int devXpMultiplier()
 	{
 		return DEV ? Math.max(1, Integer.getInteger("petbattles.xpMult", 1)) : 1;
 	}
@@ -105,7 +108,7 @@ public interface PetBattlesConfig extends Config
 	 * Log the battle event sequence at debug level to diagnose animation/sequencing. Off unless the
 	 * developer passes {@code -Dpetbattles.trace=true}. Dev-only.
 	 */
-	default boolean devBattleTrace()
+	static boolean devBattleTrace()
 	{
 		return DEV && Boolean.getBoolean("petbattles.trace");
 	}

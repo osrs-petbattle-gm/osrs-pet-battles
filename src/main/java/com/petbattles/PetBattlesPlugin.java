@@ -112,8 +112,8 @@ public class PetBattlesPlugin extends Plugin
 	protected void startUp() throws Exception
 	{
 		db = PetDatabase.load(new ContentLoader(gson));
-		Leveling.setFullCurve(config.devFullXpCurve());
-		roster = new RosterManager(db, config, new RosterStore(configManager, gson));
+		Leveling.setFullCurve(PetBattlesConfig.devFullXpCurve());
+		roster = new RosterManager(db, new RosterStore(configManager, gson));
 		atBankTracker = new AtBankTracker(client, () ->
 		{
 			if (panel != null)
@@ -293,7 +293,7 @@ public class PetBattlesPlugin extends Plugin
 	{
 		if (PetBattlesConfig.GROUP.equals(e.getGroup()))
 		{
-			Leveling.setFullCurve(config.devFullXpCurve());
+			Leveling.setFullCurve(PetBattlesConfig.devFullXpCurve());
 			panel.refresh();
 		}
 	}

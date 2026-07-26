@@ -443,7 +443,7 @@ public class BattleSession
 					faintShown.add(fainter);
 				}
 			}
-			if (config.devBattleTrace())
+			if (PetBattlesConfig.devBattleTrace())
 			{
 				log.debug("[battle] event {} side={} phase={} queue={} : {}",
 					event.getType(), event.getSide(), phase, pendingEvents.size(), event.getText());
@@ -581,7 +581,7 @@ public class BattleSession
 		// so every faint in a first-clear battle still pays the full first-win rate).
 		boolean firstWin = !roster.isTrainerDefeated(trainer.getId());
 		// Dev XP boost multiplies rewards so abilities/growth stages are quick to reach in testing
-		int mult = Math.max(1, config.devXpMultiplier());
+		int mult = Math.max(1, PetBattlesConfig.devXpMultiplier());
 		// Split evenly across everyone who was on the field, so a shared KO dilutes each share.
 		int share = Math.max(1, earners.size());
 
@@ -603,7 +603,7 @@ public class BattleSession
 			Progress p = progress.computeIfAbsent(speciesId, k -> new Progress(oldLevel));
 			p.xp += xp;
 			anyAward = true;
-			if (config.devBattleTrace())
+			if (PetBattlesConfig.devBattleTrace())
 			{
 				log.debug("[battle] {} shares KO of {} (Lv{}): +{} xp (1/{}), level {}->{}",
 					displayName(pet, species), fallen.getDisplayName(), fallen.getLevel(), xp, share,
@@ -663,7 +663,7 @@ public class BattleSession
 				p.learned.add(move.getName());
 				inject.add(BattleEvent.of(BattleEvent.Type.MOVE_LEARNED, BattleState.PLAYER,
 					displayName(pet, species) + " learned " + move.getName() + "!"));
-				if (config.devBattleTrace())
+				if (PetBattlesConfig.devBattleTrace())
 				{
 					log.debug("[battle] {} auto-learned {} (free slot)", displayName(pet, species), move.getName());
 				}
@@ -671,7 +671,7 @@ public class BattleSession
 			else
 			{
 				pendingLearns.add(new PendingLearn(pet, species, move));
-				if (config.devBattleTrace())
+				if (PetBattlesConfig.devBattleTrace())
 				{
 					log.debug("[battle] {} defers {} (full moveset) -> pendingLearns", displayName(pet, species), move.getName());
 				}
@@ -707,7 +707,7 @@ public class BattleSession
 				}
 			}
 			bp.setMoves(moves);
-			if (config.devBattleTrace())
+			if (PetBattlesConfig.devBattleTrace())
 			{
 				log.debug("[battle] resynced {} in-battle moves -> {}", bp.getDisplayName(), pet.getEquippedMoves());
 			}
@@ -744,7 +744,7 @@ public class BattleSession
 					pl.pet.unequipMove(forgotten);
 					pl.pet.equipMove(pl.newMove.getId());
 					recordLearned(pl);
-					if (config.devBattleTrace())
+					if (PetBattlesConfig.devBattleTrace())
 					{
 						log.debug("[battle] {} forgot {} to learn {}", displayName(pl.pet, pl.species),
 							forgotten, pl.newMove.getName());
@@ -1020,7 +1020,7 @@ public class BattleSession
 		Float rest = shownHp.get(affected);
 		hpAnimFrom = rest != null ? rest : affected.getCurrentHp();
 		hpAnimTo = Math.max(0f, Math.min(affected.getMaxHp(), hpAnimFrom + delta));
-		if (config.devBattleTrace())
+		if (PetBattlesConfig.devBattleTrace())
 		{
 			log.debug("[battle] hp {} {} -> {} (d={})", affected.getDisplayName(), hpAnimFrom, hpAnimTo, delta);
 		}

@@ -33,7 +33,6 @@ public class RosterManager
 	public static final int PROGRESSION_RESET_VERSION = 0;
 
 	private final PetDatabase db;
-	private final PetBattlesConfig config;
 	private final RosterStore store;
 	private RosterStore.RosterData data = new RosterStore.RosterData();
 	private boolean loaded;
@@ -41,10 +40,9 @@ public class RosterManager
 	// re-checked here so a stale panel can't edit the team away from a bank.
 	private volatile BooleanSupplier teamEditGate = () -> true;
 
-	public RosterManager(PetDatabase db, PetBattlesConfig config, RosterStore store)
+	public RosterManager(PetDatabase db, RosterStore store)
 	{
 		this.db = db;
-		this.config = config;
 		this.store = store;
 	}
 
@@ -101,9 +99,9 @@ public class RosterManager
 
 	public synchronized boolean isOwned(String speciesId)
 	{
-		return config.devUnlockAll()
+		return PetBattlesConfig.devUnlockAll()
 			|| data.ownedSpecies.contains(speciesId)
-			|| (config.devSelectLockedPets() && data.devUnlocked.contains(speciesId));
+			|| (PetBattlesConfig.devSelectLockedPets() && data.devUnlocked.contains(speciesId));
 	}
 
 	/**
@@ -111,7 +109,7 @@ public class RosterManager
 	 */
 	public boolean isDevSelectEnabled()
 	{
-		return config.devSelectLockedPets();
+		return PetBattlesConfig.devSelectLockedPets();
 	}
 
 	/**
@@ -354,7 +352,7 @@ public class RosterManager
 	 */
 	public boolean isDevRemoteBattlesEnabled()
 	{
-		return config.devRemoteBattles();
+		return PetBattlesConfig.devRemoteBattles();
 	}
 
 	/**
