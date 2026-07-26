@@ -52,7 +52,9 @@ public class RandomBattleScheduler
 		this.onChange = onChange;
 		for (TrainerDef t : db.allTrainers())
 		{
-			if (t.isRandomEvent())
+			// A random "wild challenger" must be an accessible fight, so the pool is EASY-only —
+			// a flagged HARD boss would spring on an idle low-level player (roadmap/plan §1.2).
+			if (t.isRandomEvent() && t.getDifficulty() == TrainerDef.Difficulty.EASY)
 			{
 				eligible.add(t);
 			}

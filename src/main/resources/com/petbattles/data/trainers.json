@@ -1,7 +1,7 @@
 [
   {
     "id": "party_pete", "name": "Party Pete", "theme": "Falador Party Room host",
-    "difficulty": "EASY", "npcIds": [5792],
+    "difficulty": "EASY", "npcIds": [5792], "randomEvent": true,
     "party": [
       { "species": "giant_squirrel", "level": 5 },
       { "species": "beaver", "level": 6 }
@@ -43,7 +43,7 @@
   },
   {
     "id": "sergeant_damien", "name": "Sergeant Damien", "theme": "Abyssal drill demon",
-    "difficulty": "HARD", "npcIds": [337], "randomEvent": true,
+    "difficulty": "HARD", "npcIds": [337],
     "party": [
       { "species": "hellpuppy", "level": 32 },
       { "species": "abyssal_orphan", "level": 35 }

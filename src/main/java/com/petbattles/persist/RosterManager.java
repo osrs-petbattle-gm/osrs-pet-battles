@@ -7,6 +7,7 @@ import com.petbattles.engine.SpeciesDef;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.BooleanSupplier;
 import lombok.extern.slf4j.Slf4j;
 
@@ -253,7 +254,7 @@ public class RosterManager
 			return false;
 		}
 		PetInstance pet = getOrCreatePet(speciesId);
-		if (pet == null || java.util.Objects.equals(pet.getActiveVariantId(), variantId))
+		if (pet == null || Objects.equals(pet.getActiveVariantId(), variantId))
 		{
 			return false;
 		}

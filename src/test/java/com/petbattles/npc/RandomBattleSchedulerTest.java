@@ -28,15 +28,16 @@ public class RandomBattleSchedulerTest
 	public void onlyEligibleTrainersAreChosen()
 	{
 		PetDatabase db = PetDatabase.load(new ContentLoader(new Gson()));
+		// Mirror the scheduler's eligibility: random-event AND easy (an accessible wild challenger).
 		List<TrainerDef> eligible = new ArrayList<>();
 		for (TrainerDef t : db.allTrainers())
 		{
-			if (t.isRandomEvent())
+			if (t.isRandomEvent() && t.getDifficulty() == TrainerDef.Difficulty.EASY)
 			{
 				eligible.add(t);
 			}
 		}
-		assertFalse("at least one random-event trainer is authored", eligible.isEmpty());
+		assertFalse("at least one easy random-event trainer is authored", eligible.isEmpty());
 
 		Random rng = new Random(42);
 		for (int i = 0; i < 50; i++)
@@ -44,6 +45,22 @@ public class RandomBattleSchedulerTest
 			TrainerDef choice = RandomBattleScheduler.chooseChallenge(eligible, rng);
 			assertNotNull(choice);
 			assertTrue("chosen trainer must be random-event: " + choice.getId(), choice.isRandomEvent());
+			assertTrue("chosen trainer must be easy: " + choice.getId(),
+				choice.getDifficulty() == TrainerDef.Difficulty.EASY);
+		}
+	}
+
+	@Test
+	public void noHardTrainerIsFlaggedAsARandomEvent()
+	{
+		PetDatabase db = PetDatabase.load(new ContentLoader(new Gson()));
+		for (TrainerDef t : db.allTrainers())
+		{
+			if (t.isRandomEvent())
+			{
+				assertTrue("random-event trainers must be easy so the cadence stays accessible: " + t.getId(),
+					t.getDifficulty() == TrainerDef.Difficulty.EASY);
+			}
 		}
 	}
 }

@@ -86,7 +86,6 @@
       { "level": 44, "move": "snipe" }
     ],
     "easterEggs": [],
-    "_variantNote": "Reference metamorphosis migration (roadmap 0.6): the second form's item 12654, previously flattened into altItemIds, is now a sprite-only variant. Same display name, so only the icon changes when that form is held. Other metamorphosis pets (snakeling, chinchompa, vet'ion jr, etc.) still carry their forms in altItemIds pending wiki-verified per-form item/npc ids.",
     "variants": [
       { "id": "second_form", "itemId": 12654 }
     ]

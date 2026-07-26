@@ -498,7 +498,7 @@ public class PetBattlesPanel extends PluginPanel
 		}
 
 		JOptionPane.showMessageDialog(this, content,
-			species.getName() + " — Moves", JOptionPane.PLAIN_MESSAGE);
+			species.nameFor(pet.getActiveVariantId(), pet.getLevel()) + " — Moves", JOptionPane.PLAIN_MESSAGE);
 		refresh();
 	}
 }

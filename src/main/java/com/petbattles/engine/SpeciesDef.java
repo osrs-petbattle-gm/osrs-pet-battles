@@ -2,7 +2,9 @@ package com.petbattles.engine;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * A pet species loaded from species.json.
@@ -274,7 +276,7 @@ public class SpeciesDef
 	{
 		// LinkedHashSet: stable order, and a variant's itemId may also appear in its unlockItemIds
 		// (the sprite item is itself an ownership signal) — dedup so it isn't listed twice.
-		java.util.Set<Integer> ids = new java.util.LinkedHashSet<>();
+		Set<Integer> ids = new LinkedHashSet<>();
 		ids.add(itemId);
 		ids.addAll(getAltItemIds());
 		for (Variant v : getVariants())
