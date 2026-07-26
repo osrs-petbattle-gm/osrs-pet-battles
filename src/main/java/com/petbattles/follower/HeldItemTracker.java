@@ -101,12 +101,24 @@ public class HeldItemTracker
 				continue;
 			}
 			SpeciesDef species = db.speciesByItemId(itemId);
+			if (species == null)
+			{
+				continue;
+			}
 			// Only possession-gated pets unlock this way; collection-log pets keep to the log
-			if (species != null && species.isItemUnlock() && roster.unlock(species.getId()))
+			if (species.isItemUnlock() && roster.unlock(species.getId()))
 			{
 				roster.getOrCreatePet(species.getId());
 				log.debug("Held-item sync unlocked {}", species.getId());
 				announce(species);
+				any = true;
+			}
+			// Holding a metamorphosis form's item is proof that form is active — flip an owned
+			// pet's variant to match (no-op if not owned or already on that form). Read-only.
+			String variantId = db.variantByItemId(itemId);
+			if (variantId != null && roster.setActiveVariant(species.getId(), variantId))
+			{
+				log.debug("Held-item sync set {} variant {}", species.getId(), variantId);
 				any = true;
 			}
 		}

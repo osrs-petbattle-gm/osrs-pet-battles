@@ -41,9 +41,10 @@ public class PetCard extends JPanel
 			BorderFactory.createEmptyBorder(6, 6, 6, 6)));
 		setBackground(owned ? ColorScheme.DARKER_GRAY_COLOR : ColorScheme.DARKER_GRAY_HOVER_COLOR);
 
-		// Owned pets show their current growth-stage sprite/name (e.g. kitten vs cat)
-		int iconItemId = owned && pet != null ? species.itemIdAt(pet.getLevel()) : species.getItemId();
-		String displayName = owned && pet != null ? species.nameAt(pet.getLevel()) : species.getName();
+		// Owned pets show their current growth-stage / metamorphosis-variant sprite + name
+		String variantId = owned && pet != null ? pet.getActiveVariantId() : null;
+		int iconItemId = owned && pet != null ? species.itemIdFor(variantId, pet.getLevel()) : species.getItemId();
+		String displayName = owned && pet != null ? species.nameFor(variantId, pet.getLevel()) : species.getName();
 
 		JLabel icon = new JLabel();
 		icon.setPreferredSize(new Dimension(36, 32));
@@ -64,7 +65,7 @@ public class PetCard extends JPanel
 
 		JPanel badges = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
 		badges.setOpaque(false);
-		for (PetType type : species.getTypes())
+		for (PetType type : species.typesFor(variantId))
 		{
 			JLabel badge = new JLabel(type.getDisplayName());
 			badge.setFont(FontManager.getRunescapeSmallFont().deriveFont(Font.PLAIN, 12f));

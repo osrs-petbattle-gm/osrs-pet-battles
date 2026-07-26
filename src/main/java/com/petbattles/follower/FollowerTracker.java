@@ -70,7 +70,7 @@ public class FollowerTracker
 		SpeciesDef species = db.speciesByNpcId(npc.getId());
 		if (species != null && npc.getInteracting() == client.getLocalPlayer())
 		{
-			setActive(species);
+			setActive(species, db.variantByNpcId(npc.getId()));
 		}
 	}
 
@@ -89,24 +89,31 @@ public class FollowerTracker
 		SpeciesDef species = db.speciesByNpcId(npcId);
 		if (species != null)
 		{
-			setActive(species);
+			setActive(species, db.variantByNpcId(npcId));
 		}
 	}
 
-	private void setActive(SpeciesDef species)
+	private void setActive(SpeciesDef species, String variantId)
 	{
-		if (species.getId().equals(activeSpeciesId))
-		{
-			return;
-		}
-		activeSpeciesId = species.getId();
-		log.debug("Active follower pet: {}", species.getId());
+		boolean changed = false;
 		if (roster.isLoaded())
 		{
 			// Owning proof: it's following you
 			roster.unlock(species.getId());
 			roster.getOrCreatePet(species.getId());
+			// The follower npc id carries the active metamorphosis form; record it. Done even when
+			// the species is unchanged, so metamorphosing your current follower flips the form.
+			changed = roster.setActiveVariant(species.getId(), variantId);
 		}
-		onChange.run();
+		if (!species.getId().equals(activeSpeciesId))
+		{
+			activeSpeciesId = species.getId();
+			log.debug("Active follower pet: {} (variant {})", species.getId(), variantId);
+			changed = true;
+		}
+		if (changed)
+		{
+			onChange.run();
+		}
 	}
 }

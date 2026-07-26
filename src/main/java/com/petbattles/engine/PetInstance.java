@@ -20,6 +20,10 @@ public class PetInstance
 	// HP carried over from the last battle; null = fully rested. 0 = fainted (can't
 	// fight until rested at a bank). Absolute value, clamped to max HP on battle start.
 	private Integer currentHp;
+	// Active metamorphosis form (a SpeciesDef.Variant id), or null for the base form. Set from
+	// read-only follower/inventory detection; a lens over presentation (and later combat), not a
+	// separate roster entry — progression stays on this one instance.
+	private String activeVariantId;
 
 	public PetInstance()
 	{
@@ -63,6 +67,19 @@ public class PetInstance
 		int before = getLevel();
 		xp += Math.max(0, amount);
 		return getLevel() - before;
+	}
+
+	/**
+	 * Active metamorphosis form (a {@link SpeciesDef.Variant} id), or null for the base form.
+	 */
+	public String getActiveVariantId()
+	{
+		return activeVariantId;
+	}
+
+	public void setActiveVariantId(String activeVariantId)
+	{
+		this.activeVariantId = activeVariantId;
 	}
 
 	public Integer getCurrentHp()
@@ -123,11 +140,12 @@ public class PetInstance
 	}
 
 	/**
-	 * All move ids this pet can equip: learnset up to current level plus unlocked egg moves.
+	 * All move ids this pet can equip: learnset up to current level (for its active variant) plus
+	 * unlocked egg moves.
 	 */
 	public List<String> availableMoves(SpeciesDef species)
 	{
-		List<String> moves = new ArrayList<>(species.movesKnownAt(getLevel()));
+		List<String> moves = new ArrayList<>(species.movesKnownFor(activeVariantId, getLevel()));
 		for (String egg : getUnlockedEggMoves())
 		{
 			if (!moves.contains(egg))

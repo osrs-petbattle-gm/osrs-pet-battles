@@ -284,10 +284,11 @@ public class BattleSession
 				moves.add(move);
 			}
 		}
+		String variantId = instance.getActiveVariantId();
 		if (moves.isEmpty())
 		{
 			// Fallback: level-1 learnset move so a pet is never unarmed
-			for (String moveId : species.movesKnownAt(1))
+			for (String moveId : species.movesKnownFor(variantId, 1))
 			{
 				MoveDef move = db.move(moveId);
 				if (move != null)
@@ -297,8 +298,9 @@ public class BattleSession
 				}
 			}
 		}
-		String name = instance.getNickname() != null ? instance.getNickname() : species.nameAt(instance.getLevel());
-		return new BattlePet(species, name, instance.getLevel(), moves, instance.getCurrentHp());
+		String name = instance.getNickname() != null ? instance.getNickname()
+			: species.nameFor(variantId, instance.getLevel());
+		return new BattlePet(species, name, instance.getLevel(), moves, instance.getCurrentHp(), variantId);
 	}
 
 	private List<MoveDef> enemyMoves(SpeciesDef species, int level)
@@ -817,7 +819,8 @@ public class BattleSession
 			long xp = p != null ? p.xp : 0;
 			int startLevel = p != null ? p.startLevel : pet.getLevel();
 			List<String> learned = p != null ? p.learned : new ArrayList<>();
-			summary.add(new SummaryEntry(displayName(pet, species), species.itemIdAt(pet.getLevel()), fought,
+			summary.add(new SummaryEntry(displayName(pet, species),
+				species.itemIdFor(pet.getActiveVariantId(), pet.getLevel()), fought,
 				pet.getLevel(), bp.getCurrentHp(), bp.getMaxHp(), bp.isFainted(), xp,
 				pet.getLevel() - startLevel, learned));
 		}
@@ -845,7 +848,8 @@ public class BattleSession
 
 	private static String displayName(PetInstance pet, SpeciesDef species)
 	{
-		return pet.getNickname() != null ? pet.getNickname() : species.getName();
+		return pet.getNickname() != null ? pet.getNickname()
+			: species.nameFor(pet.getActiveVariantId(), pet.getLevel());
 	}
 
 	// --- accessors for the overlay ---

@@ -19,6 +19,9 @@ public class PetDatabase
 	private final Map<String, TrainerDef> trainersById;
 	private final Map<Integer, SpeciesDef> speciesByItemId;
 	private final Map<Integer, SpeciesDef> speciesByNpcId;
+	// item/npc id -> the variant id it identifies (base-form ids never appear here)
+	private final Map<Integer, String> variantIdByItemId;
+	private final Map<Integer, String> variantIdByNpcId;
 	private final TypeChart typeChart;
 
 	public PetDatabase(Collection<SpeciesDef> species, Collection<MoveDef> moves,
@@ -27,6 +30,8 @@ public class PetDatabase
 		Map<String, SpeciesDef> sById = new LinkedHashMap<>();
 		Map<Integer, SpeciesDef> sByItem = new LinkedHashMap<>();
 		Map<Integer, SpeciesDef> sByNpc = new LinkedHashMap<>();
+		Map<Integer, String> vByItem = new LinkedHashMap<>();
+		Map<Integer, String> vByNpc = new LinkedHashMap<>();
 		for (SpeciesDef s : species)
 		{
 			sById.put(s.getId(), s);
@@ -37,6 +42,26 @@ public class PetDatabase
 			for (int npcId : s.getNpcIds())
 			{
 				sByNpc.put(npcId, s);
+			}
+			// Variant ids resolve to the same species (for ownership) but also tag which form is
+			// active, so the follower/inventory trackers can flip the pet's variant on detection.
+			for (SpeciesDef.Variant v : s.getVariants())
+			{
+				for (int itemId : v.getUnlockItemIds())
+				{
+					sByItem.put(itemId, s);
+					vByItem.put(itemId, v.getId());
+				}
+				if (v.getItemId() > 0)
+				{
+					sByItem.put(v.getItemId(), s);
+					vByItem.put(v.getItemId(), v.getId());
+				}
+				for (int npcId : v.getNpcIds())
+				{
+					sByNpc.put(npcId, s);
+					vByNpc.put(npcId, v.getId());
+				}
 			}
 		}
 		Map<String, MoveDef> mById = new LinkedHashMap<>();
@@ -54,6 +79,8 @@ public class PetDatabase
 		this.trainersById = Collections.unmodifiableMap(tById);
 		this.speciesByItemId = Collections.unmodifiableMap(sByItem);
 		this.speciesByNpcId = Collections.unmodifiableMap(sByNpc);
+		this.variantIdByItemId = Collections.unmodifiableMap(vByItem);
+		this.variantIdByNpcId = Collections.unmodifiableMap(vByNpc);
 		this.typeChart = typeChart;
 	}
 
@@ -101,6 +128,22 @@ public class PetDatabase
 	public SpeciesDef speciesByNpcId(int npcId)
 	{
 		return speciesByNpcId.get(npcId);
+	}
+
+	/**
+	 * The variant id this item id identifies, or null if the id is a base-form (or unknown) id.
+	 */
+	public String variantByItemId(int itemId)
+	{
+		return variantIdByItemId.get(itemId);
+	}
+
+	/**
+	 * The variant id this npc id identifies, or null if the id is a base-form (or unknown) id.
+	 */
+	public String variantByNpcId(int npcId)
+	{
+		return variantIdByNpcId.get(npcId);
 	}
 
 	public TypeChart getTypeChart()

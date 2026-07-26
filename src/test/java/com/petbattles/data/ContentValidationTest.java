@@ -147,6 +147,59 @@ public class ContentValidationTest
 	}
 
 	@Test
+	public void variantsAreWellFormedAndOwnershipPreserved()
+	{
+		for (SpeciesDef s : db.allSpecies())
+		{
+			Set<String> variantIds = new HashSet<>();
+			Set<Integer> ownable = new HashSet<>(s.getAllItemIds());
+			for (SpeciesDef.Variant v : s.getVariants())
+			{
+				String ctx = "species " + s.getId() + " variant " + v.getId();
+				assertNotNull(ctx + " id", v.getId());
+				assertTrue(ctx + " unique id", variantIds.add(v.getId()));
+				assertTrue(ctx + " at most two types", v.getTypes().size() <= 2);
+				for (LearnsetEntry e : v.getLearnset())
+				{
+					assertNotNull(ctx + " references missing move " + e.getMove(), db.move(e.getMove()));
+				}
+				// Migration guard: a form id moved out of altItemIds into a variant must still be an
+				// ownership signal (reachable from getAllItemIds) and resolve back to this species.
+				if (v.getItemId() > 0)
+				{
+					assertTrue(ctx + " itemId is an ownership id", ownable.contains(v.getItemId()));
+					assertEquals(ctx + " item resolves to species", s.getId(),
+						db.speciesByItemId(v.getItemId()).getId());
+					assertEquals(ctx + " item tags this variant", v.getId(), db.variantByItemId(v.getItemId()));
+				}
+				for (int id : v.getUnlockItemIds())
+				{
+					assertTrue(ctx + " unlock id is an ownership id", ownable.contains(id));
+					assertEquals(ctx + " unlock resolves to species", s.getId(), db.speciesByItemId(id).getId());
+				}
+				for (int npcId : v.getNpcIds())
+				{
+					assertEquals(ctx + " npc resolves to species", s.getId(), db.speciesByNpcId(npcId).getId());
+					assertEquals(ctx + " npc tags this variant", v.getId(), db.variantByNpcId(npcId));
+				}
+			}
+		}
+	}
+
+	@Test
+	public void kalphitePrincessSecondFormIsASpriteVariant()
+	{
+		SpeciesDef kp = db.species("kalphite_princess");
+		assertNotNull(kp);
+		assertEquals("second_form", db.variantByItemId(12654));
+		// Ownership preserved after moving 12654 out of altItemIds into the variant
+		assertEquals("kalphite_princess", db.speciesByItemId(12654).getId());
+		// Sprite-only: same display name, the form's own icon
+		assertEquals(kp.getName(), kp.nameFor("second_form", 30));
+		assertEquals(12654, kp.itemIdFor("second_form", 30));
+	}
+
+	@Test
 	public void catIsPossessionGatedAndEvolves()
 	{
 		SpeciesDef cat = db.species("cat");

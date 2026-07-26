@@ -164,8 +164,8 @@ public class BattleOverlay extends Overlay
 		// Orient each pet toward its opponent: the player's pet should face right, the enemy's
 		// left. A left-facing sprite is mirrored on the player side; a right-facing one on the
 		// enemy side (spriteFacesLeft defaults true, so most pets flip only on the player side).
-		boolean enemyMirror = !enemy.getSpecies().isSpriteFacesLeft();
-		boolean playerMirror = player.getSpecies().isSpriteFacesLeft();
+		boolean enemyMirror = !enemy.isSpriteFacesLeft();
+		boolean playerMirror = player.isSpriteFacesLeft();
 
 		// Enemy: info card top-left, sprite top-right
 		drawPetInfo(g, enemy, 10, 22, false);
@@ -439,9 +439,9 @@ public class BattleOverlay extends Overlay
 			}
 			BattlePet bench = team.get(i);
 			double best = 0;
-			for (PetType type : bench.getSpecies().getTypes())
+			for (PetType type : bench.getTypes())
 			{
-				best = Math.max(best, session.getTypeChart().effectiveness(type, enemy.getSpecies().getTypes()));
+				best = Math.max(best, session.getTypeChart().effectiveness(type, enemy.getTypes()));
 			}
 			String label = bench.getDisplayName() + "  Lv" + bench.getLevel()
 				+ "  " + bench.getCurrentHp() + "/" + bench.getMaxHp()
@@ -671,7 +671,7 @@ public class BattleOverlay extends Overlay
 		int chipH = tfm.getAscent() + tfm.getDescent() + 2;
 		int chipBaseline = chipTop + tfm.getAscent() + 1;
 		int tx = x + 6;
-		for (PetType type : pet.getSpecies().getTypes())
+		for (PetType type : pet.getTypes())
 		{
 			int tw = tfm.stringWidth(type.getDisplayName()) + 8;
 			g.setColor(new Color(type.getColorRgb()));
@@ -790,7 +790,7 @@ public class BattleOverlay extends Overlay
 		// Offensive match-up multiplier against the enemy (attacks only), right-aligned
 		if (!m.isStatusMove() && enemy != null)
 		{
-			double eff = session.getTypeChart().effectiveness(m.getType(), enemy.getSpecies().getTypes());
+			double eff = session.getTypeChart().effectiveness(m.getType(), enemy.getTypes());
 			String effStr = "x" + trimEffectiveness(eff);
 			g.setColor(!enabled ? new Color(120, 120, 120)
 				: eff >= 2.0 ? HP_GREEN : eff <= 0.5 ? HP_RED : subColor);

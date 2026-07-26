@@ -241,6 +241,27 @@ public class RosterManager
 		return data.pets.get(speciesId);
 	}
 
+	/**
+	 * Record the active metamorphosis form for an owned pet (from read-only follower/inventory
+	 * detection). No-op unless the pet is owned and the form actually changed. Returns true if it
+	 * changed. Passing null reverts the pet to its base form (e.g. the player toggled back in-game).
+	 */
+	public synchronized boolean setActiveVariant(String speciesId, String variantId)
+	{
+		if (!isOwned(speciesId))
+		{
+			return false;
+		}
+		PetInstance pet = getOrCreatePet(speciesId);
+		if (pet == null || java.util.Objects.equals(pet.getActiveVariantId(), variantId))
+		{
+			return false;
+		}
+		pet.setActiveVariantId(variantId);
+		save();
+		return true;
+	}
+
 	public synchronized List<String> getTeam()
 	{
 		// Copy: callers iterate outside the lock

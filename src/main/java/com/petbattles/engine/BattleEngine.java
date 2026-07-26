@@ -219,7 +219,7 @@ public class BattleEngine
 
 		if (!move.isStatusMove())
 		{
-			double eff = typeChart.effectiveness(move.getType(), defender.getSpecies().getTypes());
+			double eff = typeChart.effectiveness(move.getType(), defender.getTypes());
 			int dmg = DamageCalc.damage(attacker.getLevel(), move.getPower(),
 				attacker.effectiveAtk(), defender.effectiveDef(),
 				attacker.hasStab(move.getType()), eff, rng);

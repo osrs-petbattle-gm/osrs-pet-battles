@@ -324,7 +324,7 @@ public class PetBattlesPanel extends PluginPanel
 		PetInstance pet = roster.getPet(speciesId);
 		boolean fainted = pet != null && pet.isFainted();
 		boolean hurt = pet != null && !fainted && pet.getCurrentHp() != null;
-		String rowName = pet != null ? species.nameAt(pet.getLevel()) : species.getName();
+		String rowName = pet != null ? species.nameFor(pet.getActiveVariantId(), pet.getLevel()) : species.getName();
 		JLabel name = new JLabel((index + 1) + ". " + rowName
 			+ (pet != null ? "  Lv " + pet.getLevel() : "")
 			+ (fainted ? "  — KO" : hurt ? "  (" + pet.getCurrentHp() + " hp)" : ""));

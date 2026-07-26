@@ -72,7 +72,7 @@ public class AiController implements OpponentController
 		for (int i = 0; i < moves.size(); i++)
 		{
 			MoveDef m = moves.get(i);
-			double eff = typeChart.effectiveness(m.getType(), target.getSpecies().getTypes());
+			double eff = typeChart.effectiveness(m.getType(), target.getTypes());
 			double stab = self.hasStab(m.getType()) ? 1.5 : 1.0;
 			double score = m.getPower() * eff * stab * (m.getAccuracy() / 100.0);
 			if (score > bestScore)

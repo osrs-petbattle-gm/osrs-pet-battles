@@ -21,6 +21,9 @@ public class BattlePet
 	public static final int MIN_STAGE = -4;
 
 	private final SpeciesDef species;
+	// Active metamorphosis form id (null = base). Folds into every species lookup below so the
+	// battler's sprite/orientation/types/base follow the form; falls through to base when unset.
+	private final String variantId;
 	private final String displayName;
 	private int level;
 	private final List<MoveDef> moves;
@@ -34,7 +37,7 @@ public class BattlePet
 
 	public BattlePet(SpeciesDef species, String displayName, int level, List<MoveDef> moves)
 	{
-		this(species, displayName, level, moves, null);
+		this(species, displayName, level, moves, null, null);
 	}
 
 	/**
@@ -42,11 +45,22 @@ public class BattlePet
 	 */
 	public BattlePet(SpeciesDef species, String displayName, int level, List<MoveDef> moves, Integer startingHp)
 	{
+		this(species, displayName, level, moves, startingHp, null);
+	}
+
+	/**
+	 * @param startingHp carried-over HP from a previous battle; null starts at full
+	 * @param variantId  active metamorphosis form id, or null for the base form
+	 */
+	public BattlePet(SpeciesDef species, String displayName, int level, List<MoveDef> moves,
+		Integer startingHp, String variantId)
+	{
 		this.species = species;
+		this.variantId = variantId;
 		this.displayName = displayName;
 		this.level = level;
 		this.moves = new ArrayList<>(moves);
-		this.maxHp = Leveling.hpAtLevel(species.getBase().getHp(), level);
+		this.maxHp = Leveling.hpAtLevel(species.baseFor(variantId).getHp(), level);
 		this.currentHp = startingHp == null ? maxHp : Math.max(0, Math.min(maxHp, startingHp));
 	}
 
@@ -55,17 +69,42 @@ public class BattlePet
 		return species;
 	}
 
+	/**
+	 * Active metamorphosis form id, or null for the base form.
+	 */
+	public String getVariantId()
+	{
+		return variantId;
+	}
+
+	/**
+	 * Types for this battler, honouring the active variant (tier 2); base types otherwise.
+	 */
+	public List<PetType> getTypes()
+	{
+		return species.typesFor(variantId);
+	}
+
+	/**
+	 * Whether the sprite art faces left, honouring the active variant's orientation override.
+	 */
+	public boolean isSpriteFacesLeft()
+	{
+		return species.spriteFacesLeftFor(variantId);
+	}
+
 	public String getDisplayName()
 	{
 		return displayName;
 	}
 
 	/**
-	 * Sprite item id for this pet at its current level, honouring growth-stage evolution.
+	 * Sprite item id for this pet at its current level, honouring growth-stage evolution and the
+	 * active metamorphosis form.
 	 */
 	public int getDisplayItemId()
 	{
-		return species.itemIdAt(level);
+		return species.itemIdFor(variantId, level);
 	}
 
 	public int getLevel()
@@ -87,7 +126,7 @@ public class BattlePet
 		}
 		int oldMax = maxHp;
 		this.level = newLevel;
-		this.maxHp = Leveling.hpAtLevel(species.getBase().getHp(), newLevel);
+		this.maxHp = Leveling.hpAtLevel(species.baseFor(variantId).getHp(), newLevel);
 		int gain = maxHp - oldMax;
 		if (gain > 0)
 		{
@@ -242,7 +281,7 @@ public class BattlePet
 
 	public int effectiveAtk()
 	{
-		double v = Leveling.statAtLevel(species.getBase().getAtk(), level) * stageMultiplier(atkStage);
+		double v = Leveling.statAtLevel(species.baseFor(variantId).getAtk(), level) * stageMultiplier(atkStage);
 		if (status == Status.BURN)
 		{
 			v *= 0.5;
@@ -252,13 +291,13 @@ public class BattlePet
 
 	public int effectiveDef()
 	{
-		double v = Leveling.statAtLevel(species.getBase().getDef(), level) * stageMultiplier(defStage);
+		double v = Leveling.statAtLevel(species.baseFor(variantId).getDef(), level) * stageMultiplier(defStage);
 		return Math.max(1, (int) Math.round(v));
 	}
 
 	public int effectiveSpd()
 	{
-		double v = Leveling.statAtLevel(species.getBase().getSpd(), level) * stageMultiplier(spdStage);
+		double v = Leveling.statAtLevel(species.baseFor(variantId).getSpd(), level) * stageMultiplier(spdStage);
 		if (status == Status.STUN)
 		{
 			v *= 0.5;
@@ -268,6 +307,6 @@ public class BattlePet
 
 	public boolean hasStab(PetType moveType)
 	{
-		return species.getTypes().contains(moveType);
+		return getTypes().contains(moveType);
 	}
 }

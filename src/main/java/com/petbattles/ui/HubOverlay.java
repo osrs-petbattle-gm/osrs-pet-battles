@@ -389,7 +389,8 @@ public class HubOverlay extends Overlay
 			{
 				SpeciesDef species = available.get(i);
 				PetInstance pet = roster.getPet(species.getId());
-				String label = species.getName() + (pet != null ? "  Lv " + pet.getLevel() : "");
+				String label = (pet != null ? species.nameFor(pet.getActiveVariantId(), pet.getLevel())
+					: species.getName()) + (pet != null ? "  Lv " + pet.getLevel() : "");
 				Rectangle r = new Rectangle(8, y, WIDTH - 16, 20);
 				drawButton(g, r, label, true, true);
 				out.add(new Button(r, "team.add:" + species.getId()));
@@ -410,7 +411,7 @@ public class HubOverlay extends Overlay
 		PetInstance pet = roster.getPet(speciesId);
 		boolean fainted = pet != null && pet.isFainted();
 		boolean hurt = pet != null && !fainted && pet.getCurrentHp() != null;
-		String rowName = pet != null ? species.nameAt(pet.getLevel()) : species.getName();
+		String rowName = pet != null ? species.nameFor(pet.getActiveVariantId(), pet.getLevel()) : species.getName();
 		String label = (index + 1) + ". " + rowName
 			+ (pet != null ? "  Lv" + pet.getLevel() : "")
 			+ (fainted ? "  KO" : hurt ? "  " + pet.getCurrentHp() + "hp" : "");
