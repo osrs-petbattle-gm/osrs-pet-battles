@@ -40,6 +40,18 @@ tasks.register('run', JavaExec) {
 
 	jvmArgs "-ea"
 	args "--developer-mode", "--debug"
+
+	// Enable Pet Battles developer mode with `./gradlew run -Pdev` (see PetBattlesConfig.DEV).
+	// The forked JVM doesn't inherit gradle's system properties, so forward them here. Extra dev
+	// knobs pass through too, e.g. `-Pdev -Ppetbattles.xpMult=50`.
+	if (project.hasProperty('dev')) {
+		jvmArgs "-Dpetbattles.dev=true"
+	}
+	['unlockAll', 'fullXpCurve', 'trace', 'xpMult'].each { k ->
+		if (project.hasProperty("petbattles.$k")) {
+			jvmArgs "-Dpetbattles.$k=${project.property("petbattles.$k")}"
+		}
+	}
 }
 
 // Build-time QA/reference page: every pet, its learnset, and the type chart.
