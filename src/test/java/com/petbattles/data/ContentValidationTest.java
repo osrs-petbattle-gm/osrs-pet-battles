@@ -14,6 +14,7 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -273,6 +274,36 @@ public class ContentValidationTest
 					entry.getLevel() >= 1 && entry.getLevel() <= 99);
 			}
 		}
+	}
+
+	@Test
+	public void bundledTrainerPortraitsAreRealPngs() throws java.io.IOException
+	{
+		// A random-event challenger must be an EASY fight (roadmap §1.2 / the cadence pool), and any
+		// portrait shipped for a trainer must be an actual PNG (AGENTS.md), not a renamed JPEG/ICO.
+		byte[] pngMagic = {(byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A};
+		int randomEventTrainers = 0;
+		for (TrainerDef t : db.allTrainers())
+		{
+			if (t.isRandomEvent())
+			{
+				randomEventTrainers++;
+				assertEquals("random-event trainer must be easy: " + t.getId(),
+					TrainerDef.Difficulty.EASY, t.getDifficulty());
+			}
+			try (java.io.InputStream in =
+				getClass().getResourceAsStream("/com/petbattles/portraits/" + t.getId() + ".png"))
+			{
+				if (in == null)
+				{
+					continue; // portrait optional — Portraits falls back to the lead-pet icon
+				}
+				byte[] header = new byte[8];
+				assertEquals("portrait too small: " + t.getId(), 8, in.read(header));
+				assertArrayEquals("portrait " + t.getId() + ".png is not a PNG", pngMagic, header);
+			}
+		}
+		assertTrue("random-event trainers are authored", randomEventTrainers >= 8);
 	}
 
 	@Test

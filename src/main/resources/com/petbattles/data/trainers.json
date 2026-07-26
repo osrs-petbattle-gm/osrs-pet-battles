@@ -66,5 +66,109 @@
       { "species": "olmlet", "level": 48 },
       { "species": "lil_zik", "level": 50 }
     ]
+  },
+  {
+    "id": "freaky_forester", "name": "Freaky Forester", "theme": "Random event: forester of the wilds",
+    "difficulty": "EASY", "npcIds": [], "randomEvent": true,
+    "party": [
+      { "species": "giant_squirrel", "level": 8 },
+      { "species": "tangleroot", "level": 10 }
+    ]
+  },
+  {
+    "id": "genie", "name": "Genie", "theme": "Random event: wish-granting spirit",
+    "difficulty": "EASY", "npcIds": [], "randomEvent": true,
+    "party": [
+      { "species": "wisp", "level": 9 },
+      { "species": "baby_chinchompa", "level": 11 }
+    ]
+  },
+  {
+    "id": "drunken_dwarf", "name": "Drunken Dwarf", "theme": "Random event: jovial, intoxicated brawler",
+    "difficulty": "EASY", "npcIds": [], "randomEvent": true,
+    "party": [
+      { "species": "rock_golem", "level": 10 },
+      { "species": "rocky", "level": 12 }
+    ]
+  },
+  {
+    "id": "evil_bob", "name": "Evil Bob", "theme": "Random event: sinister feline schemer",
+    "difficulty": "EASY", "npcIds": [], "randomEvent": true,
+    "party": [
+      { "species": "cat", "level": 9 },
+      { "species": "youngllef", "level": 11 }
+    ]
+  },
+  {
+    "id": "mysterious_old_man", "name": "Mysterious Old Man", "theme": "Random event: cryptic sage",
+    "difficulty": "EASY", "npcIds": [], "randomEvent": true,
+    "party": [
+      { "species": "wisp", "level": 10 },
+      { "species": "herbi", "level": 12 }
+    ]
+  },
+  {
+    "id": "quiz_master", "name": "Quiz Master", "theme": "Random event: keeper of trivia",
+    "difficulty": "EASY", "npcIds": [], "randomEvent": true,
+    "party": [
+      { "species": "heron", "level": 8 },
+      { "species": "beaver", "level": 9 }
+    ]
+  },
+  {
+    "id": "gravedigger", "name": "Leo", "theme": "Random event: solemn keeper of the dead",
+    "difficulty": "EASY", "npcIds": [], "randomEvent": true,
+    "party": [
+      { "species": "bran", "level": 9 },
+      { "species": "nid", "level": 11 }
+    ]
+  },
+  {
+    "id": "dr_jekyll", "name": "Dr Jekyll", "theme": "Random event: potion-brewing doctor",
+    "difficulty": "EASY", "npcIds": [], "randomEvent": true,
+    "party": [
+      { "species": "herbi", "level": 9 },
+      { "species": "sraracha", "level": 11 }
+    ]
+  },
+  {
+    "id": "pillory_guard", "name": "Pillory Guard", "theme": "Random event: enforcer of the stocks",
+    "difficulty": "EASY", "npcIds": [], "randomEvent": true,
+    "party": [
+      { "species": "rocky", "level": 8 },
+      { "species": "gull", "level": 9 }
+    ]
+  },
+  {
+    "id": "frog_prince", "name": "Frog Prince", "theme": "Random event: cursed fairytale royal",
+    "difficulty": "EASY", "npcIds": [], "randomEvent": true,
+    "party": [
+      { "species": "tangleroot", "level": 8 },
+      { "species": "huberte", "level": 10 }
+    ]
+  },
+  {
+    "id": "sandwich_lady", "name": "Sandwich Lady", "theme": "Random event: insistent food vendor",
+    "difficulty": "EASY", "npcIds": [], "randomEvent": true,
+    "party": [
+      { "species": "chompy_chick", "level": 7 },
+      { "species": "gull", "level": 8 }
+    ]
+  },
+  {
+    "id": "prison_pete", "name": "Prison Pete", "theme": "Random event: warden of the cells",
+    "difficulty": "EASY", "npcIds": [], "randomEvent": true,
+    "party": [
+      { "species": "scurry", "level": 9 },
+      { "species": "rock_golem", "level": 11 }
+    ]
+  },
+  {
+    "id": "rick_turpentine", "name": "Rick Turpentine", "theme": "Random event: elusive wanderer",
+    "difficulty": "EASY", "npcIds": [], "randomEvent": true,
+    "party": [
+      { "species": "gull", "level": 7 },
+      { "species": "scurry", "level": 9 }
+    ]
   }
 ]
