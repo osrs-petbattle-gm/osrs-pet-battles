@@ -10,6 +10,15 @@ public interface PetBattlesConfig extends Config
 {
 	String GROUP = "petbattles";
 
+	/**
+	 * Developer mode. Enable it with {@code -Dpetbattles.dev=true} when running the client from
+	 * source (e.g. {@code ./gradlew run -Dpetbattles.dev=true}). It is never set in the plugin-hub
+	 * build, so every dev affordance below is inert and invisible in production — the testing
+	 * toggles are intentionally NOT {@code @ConfigItem}s, so they never appear in the config panel
+	 * and there is no branch to maintain. See docs/plans/roadmap.md §S.
+	 */
+	boolean DEV = Boolean.getBoolean("petbattles.dev");
+
 	@ConfigItem(
 		keyName = "battleSpeed",
 		name = "Battle speed",
@@ -44,75 +53,60 @@ public interface PetBattlesConfig extends Config
 		return true;
 	}
 
-	@ConfigItem(
-		keyName = "devSelectLockedPets",
-		name = "Dev: select locked pets",
-		description = "Testing option: adds an 'Unlock' button to pets you haven't obtained, so you can build teams with them. "
-			+ "These dev unlocks are kept separate from your real collection log and are ignored while this is off.",
-		position = 4
-	)
+	// --- Developer-only affordances (gated on DEV; not config items) ---
+	// These read the DEV flag (and, for the graduated knobs, extra -D properties) rather than
+	// stored config, so a hub build can never show or enable them regardless of a user's profile.
+
+	/**
+	 * Adds per-card "Unlock (dev)" buttons and the "Reset progression (dev)" button so a developer
+	 * can build teams with unowned pets. Dev-only.
+	 */
 	default boolean devSelectLockedPets()
 	{
-		return false;
+		return DEV;
 	}
 
-	@ConfigItem(
-		keyName = "devRemoteBattles",
-		name = "Dev: remote battles",
-		description = "Testing option: fight any trainer from the panel without meeting them in-game first. "
-			+ "Trivializes training — normally a trainer must be challenged in the world once before remote re-fights unlock.",
-		position = 5
-	)
+	/**
+	 * Lets a developer fight any trainer from the panel without meeting them in-world first. Dev-only.
+	 */
 	default boolean devRemoteBattles()
 	{
-		return false;
+		return DEV;
 	}
 
-	@ConfigItem(
-		keyName = "devUnlockAll",
-		name = "Unlock all pets (dev)",
-		description = "Developer option: treat every pet as owned, for testing without the collection log",
-		hidden = true
-	)
+	/**
+	 * Treat every pet as owned, for testing without the collection log. Off unless the developer
+	 * additionally passes {@code -Dpetbattles.unlockAll=true}. Dev-only.
+	 */
 	default boolean devUnlockAll()
 	{
-		return false;
+		return DEV && Boolean.getBoolean("petbattles.unlockAll");
 	}
 
-	@ConfigItem(
-		keyName = "devFullXpCurve",
-		name = "Full OSRS XP curve (dev)",
-		description = "Testing option: use the full, unscaled OSRS experience table (~13M XP to level 99) instead of the "
-			+ "default 20x-faster pacing. Changes the effective level of every pet while enabled.",
-		hidden = true
-	)
+	/**
+	 * Use the full, unscaled OSRS experience table instead of the 20x-faster default pacing. Off
+	 * unless the developer passes {@code -Dpetbattles.fullXpCurve=true}. Dev-only.
+	 */
 	default boolean devFullXpCurve()
 	{
-		return false;
+		return DEV && Boolean.getBoolean("petbattles.fullXpCurve");
 	}
 
-	@ConfigItem(
-		keyName = "devXpMultiplier",
-		name = "Dev: XP boost",
-		description = "Testing option: multiply battle XP rewards so pets level up quickly, to reach new abilities and "
-			+ "growth stages sooner. Leave at 1 for normal pacing.",
-		position = 6
-	)
-	@Range(min = 1, max = 1000)
+	/**
+	 * Multiply battle XP rewards so pets level quickly in testing. Set with
+	 * {@code -Dpetbattles.xpMult=<n>} (clamped to at least 1). Dev-only; always 1 in production.
+	 */
 	default int devXpMultiplier()
 	{
-		return 1;
+		return DEV ? Math.max(1, Integer.getInteger("petbattles.xpMult", 1)) : 1;
 	}
 
-	@ConfigItem(
-		keyName = "devBattleTrace",
-		name = "Dev: battle trace",
-		description = "Testing option: log the battle event sequence (each surfaced event, XP/level-up, move learning, "
-			+ "HP-drain and faint reveals) at debug level, to diagnose animation/sequencing issues.",
-		position = 7
-	)
+	/**
+	 * Log the battle event sequence at debug level to diagnose animation/sequencing. Off unless the
+	 * developer passes {@code -Dpetbattles.trace=true}. Dev-only.
+	 */
 	default boolean devBattleTrace()
 	{
-		return false;
+		return DEV && Boolean.getBoolean("petbattles.trace");
 	}
 }
