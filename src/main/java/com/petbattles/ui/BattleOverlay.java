@@ -11,7 +11,6 @@ import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Composite;
 import java.awt.Dimension;
-import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Image;
@@ -162,16 +161,22 @@ public class BattleOverlay extends Overlay
 		boolean enemySettled = session.isFaintSettled(enemy);
 		boolean playerSettled = session.isFaintSettled(player);
 
+		// Orient each pet toward its opponent: the player's pet should face right, the enemy's
+		// left. A left-facing sprite is mirrored on the player side; a right-facing one on the
+		// enemy side (spriteFacesLeft defaults true, so most pets flip only on the player side).
+		boolean enemyMirror = !enemy.getSpecies().isSpriteFacesLeft();
+		boolean playerMirror = player.getSpecies().isSpriteFacesLeft();
+
 		// Enemy: info card top-left, sprite top-right
 		drawPetInfo(g, enemy, 10, 22, false);
 		drawPetSprite(g, enemy, ENEMY_SPRITE,
 			AttackAnimator.spriteTransform(current, currentMove, progress, BattleState.ENEMY, ENEMY_SPRITE, PLAYER_SPRITE),
-			enemySettled);
+			enemySettled, enemyMirror);
 
 		// Player: sprite mid-left, info card mid-right
 		drawPetSprite(g, player, PLAYER_SPRITE,
 			AttackAnimator.spriteTransform(current, currentMove, progress, BattleState.PLAYER, PLAYER_SPRITE, ENEMY_SPRITE),
-			playerSettled);
+			playerSettled, playerMirror);
 		drawPetInfo(g, player, WIDTH - 150, 92, true);
 
 		// Attack effects and hit splats ride the current event
@@ -215,17 +220,20 @@ public class BattleOverlay extends Overlay
 				swapMenuOpen = false;
 				boolean enabled = session.isAwaitingInput();
 				List<MoveDef> moves = player.getMoves();
+				// Taller 2x2 move cards filling the space freed by the removed log strip; each
+				// card shows power/accuracy and the type match-up against the current enemy.
+				int gridTop = 162;
 				int bw = (WIDTH - 24 - 8) / 2;
-				int bh = 18;
+				int bh = 38;
+				int stride = bh + 6;
 				for (int i = 0; i < 4; i++)
 				{
 					int col = i % 2;
 					int row = i / 2;
-					Rectangle r = new Rectangle(12 + col * (bw + 8), btnY + row * (bh + 4), bw, bh);
+					Rectangle r = new Rectangle(12 + col * (bw + 8), gridTop + row * stride, bw, bh);
 					if (i < moves.size())
 					{
-						MoveDef m = moves.get(i);
-						drawButton(g, r, m.getName(), enabled, new Color(m.getType().getColorRgb()));
+						drawMoveCard(g, r, moves.get(i), enabled, enemy);
 						newButtons.add(new Button(r, "move:" + i));
 					}
 					else
@@ -643,54 +651,62 @@ public class BattleOverlay extends Overlay
 	{
 		int w = 140;
 		g.setColor(new Color(0, 0, 0, 130));
-		g.fillRoundRect(x, y, w, showExactHp ? 46 : 36, 8, 8);
+		g.fillRoundRect(x, y, w, showExactHp ? 66 : 48, 8, 8);
 
-		g.setFont(FontManager.getRunescapeSmallFont());
-		g.setColor(Color.WHITE);
-		g.drawString(clip(g, pet.getDisplayName(), w - 40), x + 6, y + 13);
+		// Level (subtext) right-aligned, then the name (title) filling the rest of the top line
+		g.setFont(Fonts.SUBTEXT);
 		g.setColor(new Color(200, 190, 160));
 		String lv = "Lv" + pet.getLevel();
-		g.drawString(lv, x + w - g.getFontMetrics().stringWidth(lv) - 6, y + 13);
+		int lvW = g.getFontMetrics().stringWidth(lv);
+		g.drawString(lv, x + w - lvW - 6, y + 15);
+		g.setFont(Fonts.TITLE);
+		g.setColor(Color.WHITE);
+		g.drawString(clip(g, pet.getDisplayName(), w - lvW - 16), x + 6, y + 15);
 
-		// Types
+		// Types — chip sized from the font metrics so the text sits centred inside it (native
+		// RuneScape font metrics differ from a hardcoded box).
+		g.setFont(Fonts.SUBTEXT);
+		FontMetrics tfm = g.getFontMetrics();
+		int chipTop = y + 19;
+		int chipH = tfm.getAscent() + tfm.getDescent() + 2;
+		int chipBaseline = chipTop + tfm.getAscent() + 1;
 		int tx = x + 6;
 		for (PetType type : pet.getSpecies().getTypes())
 		{
-			g.setFont(FontManager.getRunescapeSmallFont().deriveFont(Font.PLAIN, 11f));
-			FontMetrics fm = g.getFontMetrics();
-			int tw = fm.stringWidth(type.getDisplayName()) + 6;
+			int tw = tfm.stringWidth(type.getDisplayName()) + 8;
 			g.setColor(new Color(type.getColorRgb()));
-			g.fillRoundRect(tx, y + 16, tw, 12, 4, 4);
+			g.fillRoundRect(tx, chipTop, tw, chipH, 4, 4);
 			g.setColor(Color.WHITE);
-			g.drawString(type.getDisplayName(), tx + 3, y + 25);
-			tx += tw + 3;
+			g.drawString(type.getDisplayName(), tx + 4, chipBaseline);
+			tx += tw + 4;
 		}
 		// Status tag
 		if (pet.getStatus() != BattlePet.Status.NONE)
 		{
 			g.setColor(HP_RED);
-			g.drawString(pet.getStatus().name(), tx + 2, y + 25);
+			g.drawString(pet.getStatus().name(), tx + 2, chipBaseline);
 		}
 
 		// HP bar — drawn from the session's displayed HP, which lags the resolved model so the
 		// bar drains in step with the hit-splat instead of snapping the instant a turn resolves.
-		int barY = y + 30;
+		int barY = chipTop + chipH + 4;
 		int barW = w - 12;
 		float shownHp = session.displayHp(pet);
 		double frac = pet.getMaxHp() > 0 ? Math.max(0, Math.min(1, shownHp / pet.getMaxHp())) : 0;
 		g.setColor(new Color(40, 40, 40));
-		g.fillRect(x + 6, barY, barW, 5);
+		g.fillRect(x + 6, barY, barW, 6);
 		g.setColor(hpColor(frac));
-		g.fillRect(x + 6, barY, (int) (barW * frac), 5);
+		g.fillRect(x + 6, barY, (int) (barW * frac), 6);
 		if (showExactHp)
 		{
-			g.setFont(FontManager.getRunescapeSmallFont().deriveFont(Font.PLAIN, 11f));
+			g.setFont(Fonts.SUBTEXT);
 			g.setColor(Color.WHITE);
-			g.drawString(Math.max(0, Math.round(shownHp)) + " / " + pet.getMaxHp(), x + 6, barY + 13);
+			g.drawString(Math.max(0, Math.round(shownHp)) + " / " + pet.getMaxHp(), x + 6, barY + 20);
 		}
 	}
 
-	private void drawPetSprite(Graphics2D g, BattlePet pet, Rectangle rect, AttackAnimator.Transform t, boolean settledFaint)
+	private void drawPetSprite(Graphics2D g, BattlePet pet, Rectangle rect, AttackAnimator.Transform t,
+		boolean settledFaint, boolean mirror)
 	{
 		int size = Math.round(rect.width * t.scale);
 		int x = rect.x + t.dx + (rect.width - size) / 2;
@@ -703,15 +719,93 @@ public class BattleOverlay extends Overlay
 		// A settled-fainted pet lingers as a faint ghost (no opaque dim box); otherwise the
 		// transform alpha drives the mid-faint collapse and normal full opacity.
 		float alpha = settledFaint ? 0.2f : t.alpha;
-		if (alpha >= 1f)
+		Composite prev = null;
+		if (alpha < 1f)
 		{
-			g.drawImage(img, x, y, size, size, null);
+			prev = g.getComposite();
+			g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, Math.max(0f, alpha)));
+		}
+		blitSprite(g, img, x, y, size, mirror);
+		if (prev != null)
+		{
+			g.setComposite(prev);
+		}
+	}
+
+	/**
+	 * Draw a sprite scaled into a size×size box, optionally mirrored horizontally (to flip a
+	 * pet's facing). Uses the dest/src form so the mirror is a simple swap of the x extents.
+	 */
+	private static void blitSprite(Graphics2D g, Image img, int x, int y, int size, boolean mirror)
+	{
+		int iw = img.getWidth(null);
+		int ih = img.getHeight(null);
+		if (iw <= 0 || ih <= 0)
+		{
 			return;
 		}
-		Composite prev = g.getComposite();
-		g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, Math.max(0f, alpha)));
-		g.drawImage(img, x, y, size, size, null);
-		g.setComposite(prev);
+		if (mirror)
+		{
+			g.drawImage(img, x + size, y, x, y + size, 0, 0, iw, ih, null);
+		}
+		else
+		{
+			g.drawImage(img, x, y, x + size, y + size, 0, 0, iw, ih, null);
+		}
+	}
+
+	/**
+	 * A move choice card: the move name, a stats line (power/accuracy, or "Status"), a
+	 * type-colour accent stripe, and the offensive match-up multiplier against the current
+	 * enemy (green if super-effective, red if resisted). Hit-tested like a plain button.
+	 */
+	private void drawMoveCard(Graphics2D g, Rectangle r, MoveDef m, boolean enabled, BattlePet enemy)
+	{
+		boolean hover = enabled && hoverPoint != null && r.contains(hoverPoint);
+		g.setColor(hover ? BUTTON_HOVER : BUTTON_BG);
+		g.fillRoundRect(r.x, r.y, r.width, r.height, 6, 6);
+		g.setColor(enabled ? BUTTON_EDGE : new Color(70, 70, 70));
+		g.setStroke(new BasicStroke(1));
+		g.drawRoundRect(r.x, r.y, r.width, r.height, 6, 6);
+
+		// Type-colour accent stripe down the left edge
+		g.setColor(new Color(m.getType().getColorRgb()));
+		g.fillRect(r.x + 3, r.y + 3, 4, r.height - 6);
+
+		int textX = r.x + 12;
+		Color textColor = enabled ? Color.WHITE : new Color(140, 140, 140);
+		Color subColor = enabled ? new Color(205, 200, 180) : new Color(120, 120, 120);
+
+		// Name
+		g.setFont(Fonts.TITLE);
+		g.setColor(textColor);
+		g.drawString(clip(g, m.getName(), r.width - 18), textX, r.y + 16);
+
+		// Stats line: power (or "Status") + accuracy
+		g.setFont(Fonts.SUBTEXT);
+		g.setColor(subColor);
+		String stats = (m.isStatusMove() ? "Status" : m.getPower() + " pow") + "  " + m.getAccuracy() + "%";
+		g.drawString(stats, textX, r.y + 33);
+
+		// Offensive match-up multiplier against the enemy (attacks only), right-aligned
+		if (!m.isStatusMove() && enemy != null)
+		{
+			double eff = session.getTypeChart().effectiveness(m.getType(), enemy.getSpecies().getTypes());
+			String effStr = "x" + trimEffectiveness(eff);
+			g.setColor(!enabled ? new Color(120, 120, 120)
+				: eff >= 2.0 ? HP_GREEN : eff <= 0.5 ? HP_RED : subColor);
+			FontMetrics fm = g.getFontMetrics();
+			g.drawString(effStr, r.x + r.width - fm.stringWidth(effStr) - 8, r.y + 33);
+		}
+	}
+
+	/**
+	 * Compact effectiveness multiplier text: whole numbers drop the decimal (2, 1), fractions
+	 * keep it (0.5, 0.25).
+	 */
+	private static String trimEffectiveness(double eff)
+	{
+		return eff == Math.rint(eff) ? String.valueOf((int) eff) : String.valueOf(eff);
 	}
 
 	private void drawButton(Graphics2D g, Rectangle r, String label, boolean enabled, Color accent)

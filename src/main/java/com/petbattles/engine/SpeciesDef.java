@@ -27,6 +27,10 @@ public class SpeciesDef
 	private String tradeInMessage;
 	// Optional evolution stages (kitten -> cat -> ...); empty for non-growing species.
 	private List<GrowthStage> growthStages = new ArrayList<>();
+	// Which way the sprite art faces. Defaults true (most icons face left) so battle pets are
+	// oriented toward their opponent: the player's pet is mirrored to face right, the enemy's
+	// is left as-is to face the player. Set false in species.json for art that already faces right.
+	private boolean spriteFacesLeft = true;
 
 	public String getId()
 	{
@@ -99,6 +103,15 @@ public class SpeciesDef
 	public List<GrowthStage> getGrowthStages()
 	{
 		return growthStages == null ? Collections.emptyList() : growthStages;
+	}
+
+	/**
+	 * Whether the sprite art faces left (the default). Used to orient battle pets toward their
+	 * opponent: a left-facing pet is mirrored on the player's side to face right.
+	 */
+	public boolean isSpriteFacesLeft()
+	{
+		return spriteFacesLeft;
 	}
 
 	/**
