@@ -43,7 +43,7 @@
   },
   {
     "id": "sergeant_damien", "name": "Sergeant Damien", "theme": "Abyssal drill demon",
-    "difficulty": "HARD", "npcIds": [337],
+    "difficulty": "HARD", "npcIds": [337], "randomEvent": true,
     "party": [
       { "species": "hellpuppy", "level": 32 },
       { "species": "abyssal_orphan", "level": 35 }

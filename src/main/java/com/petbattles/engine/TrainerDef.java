@@ -50,6 +50,9 @@ public class TrainerDef
 	// In-world NPC ids for this trainer (net.runelite.api.gameval.NpcID values);
 	// empty means the trainer is panel-only.
 	private List<Integer> npcIds = new ArrayList<>();
+	// Eligible to appear as a periodic "Random Battle" challenge (OSRS random-event cadence).
+	// Such a challenge is fightable from the panel without being in-world near the trainer.
+	private boolean randomEvent;
 
 	public String getId()
 	{
@@ -79,5 +82,13 @@ public class TrainerDef
 	public List<Integer> getNpcIds()
 	{
 		return npcIds == null ? Collections.emptyList() : npcIds;
+	}
+
+	/**
+	 * Whether this trainer can be surfaced as a periodic Random Battle challenge.
+	 */
+	public boolean isRandomEvent()
+	{
+		return randomEvent;
 	}
 }
