@@ -41,6 +41,7 @@ import com.petbattles.ui.BattleOverlay;
 import com.petbattles.ui.HubInputHandler;
 import com.petbattles.ui.HubOverlay;
 import com.petbattles.ui.PetBattlesPanel;
+import com.petbattles.ui.PetChatheads;
 import com.petbattles.ui.Portraits;
 import com.petbattles.ui.RestOverlay;
 import com.petbattles.ui.Sprites;
@@ -142,7 +143,7 @@ public class PetBattlesPlugin extends Plugin
 		panel = new PetBattlesPanel(db, roster, sprites, this::startTrainerBattle,
 			() -> restOverlay.play(), nearTrainerTracker::isNear, randomBattleScheduler::isPending);
 		session = new BattleSession(db, roster, config, () -> panel.refresh());
-		overlay = new BattleOverlay(session, sprites);
+		overlay = new BattleOverlay(session, sprites, new PetChatheads());
 		inputHandler = new BattleInputHandler(session, overlay, clientThread);
 		keyListener = new BattleKeyListener(client, session, clientThread);
 		hubOverlay = new HubOverlay(db, roster, sprites, new Portraits(), session,

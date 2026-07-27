@@ -17,6 +17,7 @@ import java.awt.Image;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
 import net.runelite.client.ui.FontManager;
@@ -70,14 +71,16 @@ public class BattleOverlay extends Overlay
 
 	private final BattleSession session;
 	private final Sprites sprites;
+	private final PetChatheads chatheads;
 	private final List<Button> buttons = new ArrayList<>();
 	private Point hoverPoint;
 	private volatile boolean swapMenuOpen;
 
-	public BattleOverlay(BattleSession session, Sprites sprites)
+	public BattleOverlay(BattleSession session, Sprites sprites, PetChatheads chatheads)
 	{
 		this.session = session;
 		this.sprites = sprites;
+		this.chatheads = chatheads;
 		setPosition(OverlayPosition.TOP_CENTER);
 		setLayer(OverlayLayer.ABOVE_WIDGETS);
 		setMovable(true);
@@ -167,16 +170,18 @@ public class BattleOverlay extends Overlay
 		boolean enemyMirror = !enemy.isSpriteFacesLeft();
 		boolean playerMirror = player.isSpriteFacesLeft();
 
-		// Enemy: info card top-left, sprite top-right
+		// Enemy: info card top-left, full-body item icon top-right (the "far" pet).
 		drawPetInfo(g, enemy, 10, 22, false);
 		drawPetSprite(g, enemy, ENEMY_SPRITE,
 			AttackAnimator.spriteTransform(current, currentMove, progress, BattleState.ENEMY, ENEMY_SPRITE, PLAYER_SPRITE),
-			enemySettled, enemyMirror);
+			enemySettled, enemyMirror, null);
 
-		// Player: sprite mid-left, info card mid-right
+		// Player: the near pet is drawn as a foreground chathead (bundled, pre-oriented to face
+		// right) when one exists, giving the scene depth; otherwise it falls back to the item icon.
+		BufferedImage playerChat = chatheads.chathead(player.getSpecies().getId());
 		drawPetSprite(g, player, PLAYER_SPRITE,
 			AttackAnimator.spriteTransform(current, currentMove, progress, BattleState.PLAYER, PLAYER_SPRITE, ENEMY_SPRITE),
-			playerSettled, playerMirror);
+			playerSettled, playerMirror, playerChat);
 		drawPetInfo(g, player, WIDTH - 150, 92, true);
 
 		// Attack effects and hit splats ride the current event
@@ -705,13 +710,19 @@ public class BattleOverlay extends Overlay
 		}
 	}
 
+	/**
+	 * Draw one pet into its sprite box. When {@code override} is non-null (the player's foreground
+	 * chathead) it is used verbatim — already oriented to face right, so the {@code mirror} flag is
+	 * ignored — and blitted with aspect preserved and bilinear smoothing. Otherwise the pet's item
+	 * icon is used with the mirror flag and the overlay's nearest-neighbour pixel look.
+	 */
 	private void drawPetSprite(Graphics2D g, BattlePet pet, Rectangle rect, AttackAnimator.Transform t,
-		boolean settledFaint, boolean mirror)
+		boolean settledFaint, boolean mirror, Image override)
 	{
 		int size = Math.round(rect.width * t.scale);
 		int x = rect.x + t.dx + (rect.width - size) / 2;
 		int y = rect.y + t.dy + (rect.height - size) / 2;
-		Image img = sprites.itemImage(pet.getDisplayItemId());
+		Image img = override != null ? override : sprites.itemImage(pet.getDisplayItemId());
 		if (img == null)
 		{
 			return;
@@ -725,10 +736,44 @@ public class BattleOverlay extends Overlay
 			prev = g.getComposite();
 			g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, Math.max(0f, alpha)));
 		}
-		blitSprite(g, img, x, y, size, mirror);
+		if (override != null)
+		{
+			blitFit(g, override, x, y, size);
+		}
+		else
+		{
+			blitSprite(g, img, x, y, size, mirror);
+		}
 		if (prev != null)
 		{
 			g.setComposite(prev);
+		}
+	}
+
+	/**
+	 * Blit an already-oriented image into a size×size box, preserving its aspect ratio (centred)
+	 * and using bilinear scaling — chatheads are wider than tall and low-res, so squashing them to
+	 * a square or hard-scaling them with nearest-neighbour would look poor.
+	 */
+	private static void blitFit(Graphics2D g, Image img, int x, int y, int size)
+	{
+		int iw = img.getWidth(null);
+		int ih = img.getHeight(null);
+		if (iw <= 0 || ih <= 0)
+		{
+			return;
+		}
+		float scale = Math.min((float) size / iw, (float) size / ih);
+		int w = Math.max(1, Math.round(iw * scale));
+		int h = Math.max(1, Math.round(ih * scale));
+		int dx = x + (size - w) / 2;
+		int dy = y + (size - h) / 2;
+		Object prevHint = g.getRenderingHint(RenderingHints.KEY_INTERPOLATION);
+		g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+		g.drawImage(img, dx, dy, w, h, null);
+		if (prevHint != null)
+		{
+			g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, prevHint);
 		}
 	}
 

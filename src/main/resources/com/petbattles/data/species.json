@@ -1,7 +1,7 @@
 [
   {
     "id": "baby_mole", "name": "Baby Mole",
-    "itemId": 12646, "altItemIds": [25613],
+    "itemId": 12646, "altItemIds": [25613], "spriteFacesLeft": false,
     "npcIds": [6635, 6651, 10650, 10651],
     "npcXpTags": ["Giant Mole"],
     "types": ["MELEE", "NATURE"],
@@ -72,7 +72,7 @@
   },
   {
     "id": "kalphite_princess", "name": "Kalphite Princess",
-    "itemId": 12647, "altItemIds": [],
+    "itemId": 12647, "altItemIds": [], "spriteFacesLeft": false,
     "npcIds": [6638, 6654, 6637, 6653],
     "npcXpTags": ["Kalphite Queen", "Kalphite"],
     "types": ["RANGED", "NATURE"],
@@ -92,7 +92,7 @@
   },
   {
     "id": "baby_chinchompa", "name": "Baby Chinchompa",
-    "itemId": 13324, "altItemIds": [13323, 13325, 13326],
+    "itemId": 13324, "altItemIds": [13323, 13325, 13326], "spriteFacesLeft": false,
     "npcIds": [6719, 6757, 6718, 6756, 6720, 6758, 6721, 6759],
     "npcXpTags": [],
     "types": ["RANGED", "SKILLING"],
@@ -108,7 +108,7 @@
   },
   {
     "id": "heron", "name": "Heron",
-    "itemId": 13320, "altItemIds": [25600],
+    "itemId": 13320, "altItemIds": [25600], "spriteFacesLeft": false,
     "npcIds": [6715, 6722, 6817, 10636],
     "npcXpTags": [],
     "types": ["SKILLING", "ICE"],
@@ -144,7 +144,7 @@
   },
   {
     "id": "rock_golem", "name": "Rock Golem",
-    "itemId": 13321, "altItemIds": [21340],
+    "itemId": 13321, "altItemIds": [21340], "spriteFacesLeft": false,
     "npcIds": [7439, 7451, 7440, 7452, 7441, 7453, 7442, 7454, 7443, 7455],
     "npcXpTags": [],
     "types": ["SKILLING", "MELEE"],
@@ -243,7 +243,7 @@
   },
   {
     "id": "ikkle_hydra", "name": "Ikkle Hydra",
-    "itemId": 22746, "altItemIds": [22748, 22750, 22752],
+    "itemId": 22746, "altItemIds": [22748, 22750, 22752], "spriteFacesLeft": false,
     "npcIds": [8492, 8517, 8493, 8518, 8494, 8519, 8495, 8520],
     "npcXpTags": ["Alchemical Hydra", "Hydra"],
     "types": ["DRAGON", "NATURE"],
@@ -259,7 +259,7 @@
   },
   {
     "id": "olmlet", "name": "Olmlet",
-    "itemId": 20851, "altItemIds": [22376, 22378, 22380, 22382, 22384],
+    "itemId": 20851, "altItemIds": [22376, 22378, 22380, 22382, 22384], "spriteFacesLeft": false,
     "npcIds": [7519, 7520],
     "npcXpTags": ["Great Olm"],
     "types": ["DRAGON", "MAGIC"],
@@ -379,7 +379,7 @@
   },
   {
     "id": "pet_dagannoth_supreme", "name": "Pet dagannoth supreme",
-    "itemId": 12643, "altItemIds": [],
+    "itemId": 12643, "altItemIds": [], "spriteFacesLeft": false,
     "npcIds": [6626, 6628],
     "npcXpTags": ["Dagannoth Supreme", "Dagannoth"],
     "types": ["RANGED", "ICE"],
@@ -396,7 +396,7 @@
   },
   {
     "id": "pet_dagannoth_prime", "name": "Pet dagannoth prime",
-    "itemId": 12644, "altItemIds": [],
+    "itemId": 12644, "altItemIds": [], "spriteFacesLeft": false,
     "npcIds": [6627, 6629],
     "npcXpTags": ["Dagannoth Prime", "Dagannoth"],
     "types": ["MAGIC", "ICE"],
@@ -413,7 +413,7 @@
   },
   {
     "id": "pet_dagannoth_rex", "name": "Pet dagannoth rex",
-    "itemId": 12645, "altItemIds": [],
+    "itemId": 12645, "altItemIds": [], "spriteFacesLeft": false,
     "npcIds": [6630, 6641],
     "npcXpTags": ["Dagannoth Rex", "Dagannoth"],
     "types": ["MELEE", "ICE"],
@@ -447,7 +447,7 @@
   },
   {
     "id": "pet_kreearra", "name": "Pet kree'arra",
-    "itemId": 12649, "altItemIds": [],
+    "itemId": 12649, "altItemIds": [], "spriteFacesLeft": false,
     "npcIds": [6631, 6643],
     "npcXpTags": ["Kree'arra"],
     "types": ["RANGED", "MAGIC"],
@@ -481,7 +481,7 @@
   },
   {
     "id": "pet_zilyana", "name": "Pet zilyana",
-    "itemId": 12651, "altItemIds": [],
+    "itemId": 12651, "altItemIds": [], "spriteFacesLeft": false,
     "npcIds": [6633, 6646],
     "npcXpTags": ["Commander Zilyana"],
     "types": ["MAGIC", "RANGED"],
@@ -532,7 +532,7 @@
   },
   {
     "id": "pet_kraken", "name": "Pet kraken",
-    "itemId": 12655, "altItemIds": [],
+    "itemId": 12655, "altItemIds": [], "spriteFacesLeft": false,
     "npcIds": [6640, 6656],
     "npcXpTags": ["Kraken", "Cave kraken"],
     "types": ["MAGIC", "NATURE"],
@@ -549,7 +549,7 @@
   },
   {
     "id": "pet_dark_core", "name": "Pet dark core",
-    "itemId": 12816, "altItemIds": [22318],
+    "itemId": 12816, "altItemIds": [22318], "spriteFacesLeft": false,
     "npcIds": [318, 388, 8008, 8010],
     "npcXpTags": ["Corporeal Beast"],
     "types": ["MAGIC", "UNDEAD"],
@@ -821,7 +821,7 @@
   },
   {
     "id": "phoenix", "name": "Phoenix",
-    "itemId": 20693, "altItemIds": [24484, 24483, 24486, 24485],
+    "itemId": 20693, "altItemIds": [24484, 24483, 24486, 24485], "spriteFacesLeft": false,
     "npcIds": [7368, 7370],
     "npcXpTags": [],
     "types": ["FIRE", "SKILLING"],
@@ -906,7 +906,7 @@
   },
   {
     "id": "lilviathan", "name": "Lil'viathan",
-    "itemId": 28252, "altItemIds": [],
+    "itemId": 28252, "altItemIds": [], "spriteFacesLeft": false,
     "npcIds": [12156, 12160],
     "npcXpTags": ["The Leviathan", "Leviathan"],
     "types": ["RANGED", "MAGIC"],
@@ -974,7 +974,7 @@
   },
   {
     "id": "quetzin", "name": "Quetzin",
-    "itemId": 28962, "altItemIds": [],
+    "itemId": 28962, "altItemIds": [], "spriteFacesLeft": false,
     "npcIds": [12768, 12858],
     "npcXpTags": [],
     "types": ["SKILLING", "DRAGON"],
@@ -1076,7 +1076,7 @@
   },
   {
     "id": "moxi", "name": "Moxi",
-    "itemId": 30154, "altItemIds": [],
+    "itemId": 30154, "altItemIds": [], "spriteFacesLeft": false,
     "npcIds": [14034, 14046],
     "npcXpTags": ["The Hueycoatl", "Hueycoatl"],
     "types": ["DRAGON", "NATURE"],
@@ -1144,7 +1144,7 @@
   },
   {
     "id": "soup", "name": "Soup",
-    "itemId": 31283, "altItemIds": [],
+    "itemId": 31283, "altItemIds": [], "spriteFacesLeft": false,
     "npcIds": [14930, 15058],
     "npcXpTags": [],
     "types": ["SKILLING", "ICE"],
