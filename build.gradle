@@ -65,6 +65,17 @@ tasks.register('generatePetReference', JavaExec) {
 	args layout.buildDirectory.file('pets.html').get().asFile.path
 }
 
+// Build-time QA tool: renders every move's attack animation to a looping GIF plus an HTML
+// contact sheet, so animations can be reviewed outside the game client. Output goes to
+// build/animations/ only (gitignored); not wired into `build` since it's an on-demand aid.
+tasks.register('previewAnimations', JavaExec) {
+	group = 'documentation'
+	description = 'Render every move animation to build/animations/*.gif + index.html'
+	classpath = sourceSets.test.runtimeClasspath
+	mainClass = 'com.petbattles.tools.AnimationPreviewGenerator'
+	args layout.buildDirectory.dir('animations').get().asFile.path
+}
+
 tasks.named('build') {
 	dependsOn 'generatePetReference'
 }

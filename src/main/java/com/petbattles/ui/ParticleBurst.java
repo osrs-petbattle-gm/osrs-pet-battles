@@ -27,6 +27,34 @@ public final class ParticleBurst
 		new Color(220, 240, 255),
 	};
 
+	/** Warm embers, for fire bursts and explosions. */
+	public static final Color[] EMBER = {
+		new Color(255, 230, 120),
+		new Color(255, 140, 40),
+		new Color(230, 70, 30),
+	};
+
+	/** Pale blue/white ice, for shatters and blizzards. */
+	public static final Color[] FROST = {
+		new Color(210, 240, 255),
+		new Color(150, 205, 240),
+		new Color(255, 255, 255),
+	};
+
+	/** Sickly greens, for poison clouds and spores. */
+	public static final Color[] TOXIN = {
+		new Color(120, 200, 70),
+		new Color(80, 150, 40),
+		new Color(170, 220, 90),
+	};
+
+	/** Dark purple wisps, for soul drain and shadow magic. */
+	public static final Color[] SHADOW = {
+		new Color(150, 70, 190),
+		new Color(90, 40, 130),
+		new Color(200, 120, 230),
+	};
+
 	private ParticleBurst()
 	{
 	}
