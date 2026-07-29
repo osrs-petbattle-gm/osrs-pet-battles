@@ -209,7 +209,16 @@ public class BattleOverlay extends Overlay
 				g.setFont(FontManager.getRunescapeSmallFont());
 				g.setColor(new Color(240, 210, 120));
 				g.drawString("Send out your next pet!", 12, btnY - 4);
-				drawSwapMenu(g, state, btnY, newButtons, true);
+				drawSwapMenu(g, state, btnY, newButtons, SwapMode.FORCED);
+			}
+			else if (session.getPhase() == BattleSession.Phase.FREE_SWITCH)
+			{
+				// Enemy just sent in a replacement after a KO: offer one cost-free swap
+				g.setFont(FontManager.getRunescapeSmallFont());
+				g.setColor(new Color(240, 210, 120));
+				g.drawString(clip(g, enemy.getDisplayName() + " is up! Switch pets free?", WIDTH - 72),
+					12, btnY - 4);
+				drawSwapMenu(g, state, btnY, newButtons, SwapMode.FREE);
 			}
 			else if (session.getPhase() == BattleSession.Phase.LEARN_MOVE)
 			{
@@ -218,7 +227,7 @@ public class BattleOverlay extends Overlay
 			}
 			else if (swapMenuOpen && session.isAwaitingInput())
 			{
-				drawSwapMenu(g, state, btnY, newButtons, false);
+				drawSwapMenu(g, state, btnY, newButtons, SwapMode.VOLUNTARY);
 			}
 			else
 			{
@@ -425,12 +434,18 @@ public class BattleOverlay extends Overlay
 	}
 
 	/**
-	 * Bench picker shown in place of the move grid: each healthy bench pet with its
-	 * offensive type match-up against the current enemy. When {@code forced} (after a
-	 * mid-turn faint) the pick is mandatory: rows submit a forced switch and there is no
-	 * Back button.
+	 * Which flavour of bench picker is on screen: a mandatory replacement after the player's own
+	 * pet fainted (FORCED, no decline), a voluntary mid-turn swap that costs the turn (VOLUNTARY,
+	 * "Back" to cancel), or the cost-free post-KO swap (FREE, "Keep" to decline).
 	 */
-	private void drawSwapMenu(Graphics2D g, BattleState state, int btnY, List<Button> newButtons, boolean forced)
+	private enum SwapMode { FORCED, VOLUNTARY, FREE }
+
+	/**
+	 * Bench picker shown in place of the move grid: each healthy bench pet with its
+	 * offensive type match-up against the current enemy. The mode decides which action the rows
+	 * submit and whether a decline button is shown (see {@link SwapMode}).
+	 */
+	private void drawSwapMenu(Graphics2D g, BattleState state, int btnY, List<Button> newButtons, SwapMode mode)
 	{
 		BattlePet enemy = state.active(BattleState.ENEMY);
 		List<BattlePet> team = state.team(BattleState.PLAYER);
@@ -454,14 +469,22 @@ public class BattleOverlay extends Overlay
 			Color accent = best >= 2.0 ? HP_GREEN : best <= 0.5 ? HP_RED : null;
 			Rectangle r = new Rectangle(12, rowY, WIDTH - 24, 18);
 			drawButton(g, r, label, true, accent);
-			newButtons.add(new Button(r, (forced ? "forceswitch:" : "switch:") + i));
+			String prefix = mode == SwapMode.FORCED ? "forceswitch:"
+				: mode == SwapMode.FREE ? "freeswitch:" : "switch:";
+			newButtons.add(new Button(r, prefix + i));
 			rowY += 22;
 		}
-		if (!forced)
+		if (mode == SwapMode.VOLUNTARY)
 		{
 			Rectangle back = new Rectangle(WIDTH - 60, 4, 50, 14);
 			drawButton(g, back, "Back", true, null);
 			newButtons.add(new Button(back, "swapcancel"));
+		}
+		else if (mode == SwapMode.FREE)
+		{
+			Rectangle keep = new Rectangle(WIDTH - 60, 4, 50, 14);
+			drawButton(g, keep, "Keep", true, null);
+			newButtons.add(new Button(keep, "freeswitchcancel"));
 		}
 	}
 

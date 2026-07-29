@@ -37,6 +37,8 @@ public class RosterStore
 		public List<String> team = new ArrayList<>();
 		// Trainers beaten at least once (unlocks remote re-fights at reduced XP)
 		public Set<String> defeatedTrainers = new LinkedHashSet<>();
+		// Step reached per quest id (see com.petbattles.quest.Quest); absent = step 0 (not started).
+		public Map<String, Integer> questProgress = new LinkedHashMap<>();
 		// Highest RosterManager.PROGRESSION_RESET_VERSION already applied to this roster.
 		// When the code constant exceeds this, load() wipes progression once and bumps it.
 		public int progressionResetVersion = 0;

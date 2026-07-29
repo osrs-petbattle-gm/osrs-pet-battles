@@ -275,7 +275,7 @@ public class PetBattlesPanel extends PluginPanel
 		TrainerItem selected = (TrainerItem) trainerBox.getSelectedItem();
 		boolean unlocked = selected != null
 			&& (roster.isTrainerDefeated(selected.trainer.getId())
-				|| roster.isDevRemoteBattlesEnabled()
+				|| roster.isRemoteBattlesUnlocked()
 				|| isNearTrainer.test(selected.trainer.getId()));
 		boolean canFight = loggedIn && !team.isEmpty() && roster.teamCanFight() && unlocked;
 		fightButton.setEnabled(canFight);

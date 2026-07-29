@@ -4,6 +4,7 @@ import com.petbattles.PetBattlesConfig;
 import com.petbattles.data.PetDatabase;
 import com.petbattles.engine.PetInstance;
 import com.petbattles.engine.SpeciesDef;
+import com.petbattles.quest.Quest;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -56,6 +57,10 @@ public class RosterManager
 		if (data.defeatedTrainers == null)
 		{
 			data.defeatedTrainers = new java.util.LinkedHashSet<>();
+		}
+		if (data.questProgress == null)
+		{
+			data.questProgress = new java.util.LinkedHashMap<>();
 		}
 		// Drop references to species/trainers that no longer exist in the content
 		data.team.removeIf(id -> db.species(id) == null);
@@ -348,11 +353,38 @@ public class RosterManager
 	}
 
 	/**
-	 * Whether the dev "remote battles" toggle allows fighting any trainer from the panel.
+	 * The step this quest has reached (0 = not started / in progress). Persistent.
 	 */
-	public boolean isDevRemoteBattlesEnabled()
+	public synchronized int getQuestStep(String questId)
 	{
-		return PetBattlesConfig.devRemoteBattles();
+		Integer step = data.questProgress.get(questId);
+		return step == null ? Quest.STEP_START : step;
+	}
+
+	/**
+	 * Advance a quest to at least the given step; no-op if already there or beyond.
+	 * Returns true if this moved the quest forward (and persisted).
+	 */
+	public synchronized boolean advanceQuest(String questId, int step)
+	{
+		if (getQuestStep(questId) >= step)
+		{
+			return false;
+		}
+		data.questProgress.put(questId, step);
+		save();
+		return true;
+	}
+
+	/**
+	 * Whether remote battles are unlocked: either the dev "remote battles" toggle, or the player
+	 * has completed "Where's the remote?" (the Remote Battle Device from Ernest). When unlocked,
+	 * any trainer can be fought from the panel without standing next to them in the world.
+	 */
+	public synchronized boolean isRemoteBattlesUnlocked()
+	{
+		return PetBattlesConfig.devRemoteBattles()
+			|| getQuestStep(Quest.WHERES_THE_REMOTE.getId()) >= Quest.STEP_COMPLETE;
 	}
 
 	/**

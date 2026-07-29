@@ -133,6 +133,30 @@ public class BattleEngine
 		return events;
 	}
 
+	/**
+	 * Apply the optional, cost-free swap offered after the enemy sends in a replacement (the
+	 * "about to send out X — switch?" prompt): the incoming pet just takes over, no turn runs and
+	 * the enemy gets no free hit. Invalid targets (out of range, fainted, already active) return no
+	 * events. Leaves the phase untouched — the battle is between turns (IN_PROGRESS), and the next
+	 * real turn is the player's to command.
+	 */
+	public List<BattleEvent> resolveOptionalSwitch(BattleState state, int teamIndex)
+	{
+		List<BattleEvent> events = new ArrayList<>();
+		List<BattlePet> team = state.team(BattleState.PLAYER);
+		if (teamIndex < 0 || teamIndex >= team.size()
+			|| teamIndex == state.activeIndex(BattleState.PLAYER) || team.get(teamIndex).isFainted())
+		{
+			return events;
+		}
+		BattlePet outgoing = state.active(BattleState.PLAYER);
+		state.setActive(BattleState.PLAYER, teamIndex);
+		BattlePet incoming = state.active(BattleState.PLAYER);
+		events.add(BattleEvent.of(BattleEvent.Type.PET_SENT_OUT, BattleState.PLAYER,
+			outgoing.getDisplayName() + ", come back! Go, " + incoming.getDisplayName() + "!"));
+		return events;
+	}
+
 	private static BattleAction actionFor(int side, BattleAction playerAction, BattleAction enemyAction)
 	{
 		return side == BattleState.PLAYER ? playerAction : enemyAction;

@@ -127,6 +127,9 @@
   {
     "id": "beaver", "name": "Beaver",
     "itemId": 13322, "altItemIds": [],
+    "variants": [
+      { "id": "fox", "name": "Fox", "itemId": 28670, "npcIds": [12548, 12550], "unlockItemIds": [28670] }
+    ],
     "npcIds": [12169, 12181, 12170, 12182, 12171, 12183, 12172, 12184, 12173, 12185, 12174, 12186, 12175, 12187],
     "npcXpTags": [],
     "types": ["SKILLING", "NATURE"],
@@ -1179,6 +1182,18 @@
   {
     "id": "cat", "name": "Cat",
     "itemId": 1555, "altItemIds": [1561, 1567],
+    "variants": [
+      {
+        "id": "hellcat", "name": "Hellcat", "itemId": 7582,
+        "npcIds": [1625, 5597, 5604, 5590, 1632],
+        "unlockItemIds": [7582, 7583, 7581, 7585, 7584],
+        "growthStages": [
+          { "level": 1, "name": "Hell-kitten", "itemId": 7583 },
+          { "level": 15, "name": "Hellcat", "itemId": 7582 },
+          { "level": 40, "name": "Overgrown hellcat", "itemId": 7581 }
+        ]
+      }
+    ],
     "npcIds": [],
     "npcXpTags": [],
     "itemUnlock": true,

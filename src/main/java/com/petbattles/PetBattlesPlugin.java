@@ -131,7 +131,7 @@ public class PetBattlesPlugin extends Plugin
 		restOverlay = new RestOverlay();
 		panel = new PetBattlesPanel(db, roster, sprites, this::startTrainerBattle,
 			() -> restOverlay.play(), nearTrainerTracker::isNear);
-		session = new BattleSession(db, roster, config, () -> panel.refresh());
+		session = new BattleSession(client, db, roster, config, () -> panel.refresh());
 		overlay = new BattleOverlay(session, sprites, new PetChatheads());
 		inputHandler = new BattleInputHandler(session, overlay, clientThread);
 		keyListener = new BattleKeyListener(client, session, clientThread);

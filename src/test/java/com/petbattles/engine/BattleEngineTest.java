@@ -338,6 +338,46 @@ public class BattleEngineTest
 	}
 
 	@Test
+	public void optionalSwitchIsFreeAndRunsNoTurn()
+	{
+		BattlePet first = TestPets.pet("first", PetType.MELEE, 20, TestPets.TACKLE);
+		BattlePet bench = TestPets.pet("bench", PetType.MELEE, 20, TestPets.TACKLE);
+		BattlePet enemy = TestPets.pet("enemy", PetType.MELEE, 20, TestPets.TACKLE);
+
+		List<BattleEvent> events = new ArrayList<>();
+		BattleState state = start(TestPets.teamOf(first, bench), TestPets.teamOf(enemy), events);
+
+		List<BattleEvent> out = engine.resolveOptionalSwitch(state, 1);
+		// The incoming pet takes over, one send-out line, and nobody attacked (no free enemy hit).
+		assertEquals(1, state.activeIndex(BattleState.PLAYER));
+		assertEquals(1, out.size());
+		assertEquals(BattleEvent.Type.PET_SENT_OUT, out.get(0).getType());
+		assertEquals(BattleState.PLAYER, out.get(0).getSide());
+		assertFalse(out.stream().anyMatch(e -> e.getType() == BattleEvent.Type.MOVE_USED));
+		assertEquals(first.getMaxHp(), first.getCurrentHp());
+		assertEquals(bench.getMaxHp(), bench.getCurrentHp());
+		assertEquals(enemy.getMaxHp(), enemy.getCurrentHp());
+	}
+
+	@Test
+	public void optionalSwitchToInvalidTargetIsIgnored()
+	{
+		BattlePet first = TestPets.pet("first", PetType.MELEE, 20, TestPets.TACKLE);
+		BattlePet downed = TestPets.pet("downed", PetType.MELEE, 20, TestPets.TACKLE);
+		downed.damage(downed.getMaxHp());
+		BattlePet enemy = TestPets.pet("enemy", PetType.MELEE, 20, TestPets.TACKLE);
+
+		List<BattleEvent> events = new ArrayList<>();
+		BattleState state = start(TestPets.teamOf(first, downed), TestPets.teamOf(enemy), events);
+
+		assertTrue("fainted target", engine.resolveOptionalSwitch(state, 1).isEmpty());
+		assertTrue("already-active target", engine.resolveOptionalSwitch(state, 0).isEmpty());
+		assertTrue("out-of-range target", engine.resolveOptionalSwitch(state, 7).isEmpty());
+		assertTrue("decline (negative index)", engine.resolveOptionalSwitch(state, -1).isEmpty());
+		assertEquals(0, state.activeIndex(BattleState.PLAYER));
+	}
+
+	@Test
 	public void resolveTurnOnFinishedBattleDoesNothing()
 	{
 		List<BattleEvent> events = new ArrayList<>();

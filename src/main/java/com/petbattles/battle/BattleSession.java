@@ -17,6 +17,7 @@ import com.petbattles.engine.TypeChart;
 import com.petbattles.engine.controller.AiController;
 import com.petbattles.engine.controller.OpponentController;
 import com.petbattles.persist.RosterManager;
+import com.petbattles.quest.Quest;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -29,6 +30,8 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.ChatMessageType;
+import net.runelite.api.Client;
 
 /**
  * Client-side battle orchestration: builds teams, paces engine events out on game
@@ -45,6 +48,9 @@ public class BattleSession
 		AWAITING_INPUT,
 		// Player's active pet fainted mid-turn; they must pick a replacement to continue
 		FORCED_SWITCH,
+		// The enemy just sent in a replacement after a KO; the player is offered one optional,
+		// cost-free swap before their next turn (declining keeps the current pet).
+		FREE_SWITCH,
 		// A pet levelled into a new move with a full moveset; player must forget one or skip
 		LEARN_MOVE,
 		ENDED
@@ -139,11 +145,15 @@ public class BattleSession
 		}
 	}
 
+	private final Client client;
 	private final PetDatabase db;
 	private final RosterManager roster;
 	private final PetBattlesConfig config;
 	private final BattleEngine engine;
 	private final Runnable onRosterChanged;
+
+	/** Trainer whose defeat completes {@link Quest#WHERES_THE_REMOTE} and unlocks remote battles. */
+	private static final String TRAINER_ERNEST = "ernest";
 
 	private Phase phase = Phase.IDLE;
 	private BattleState state;
@@ -159,6 +169,9 @@ public class BattleSession
 	private final Deque<PendingLearn> pendingLearns = new ArrayDeque<>();
 	private int tickCounter;
 	private boolean finalized;
+	// Set true while an enemy replacement is surfaced after a KO; if the player still has a
+	// benched pet to switch to, the queue drains into FREE_SWITCH to offer one cost-free swap.
+	private boolean freeSwitchOffer;
 	private BattleEvent currentEvent;
 	private MoveDef currentMove;
 	private long eventStartMs;
@@ -180,9 +193,10 @@ public class BattleSession
 	// LinkedHashSet gives identity semantics (BattlePet has no equals override) + stable order.
 	private final Set<BattlePet> enemyParticipants = new LinkedHashSet<>();
 
-	public BattleSession(PetDatabase db, RosterManager roster, PetBattlesConfig config,
+	public BattleSession(Client client, PetDatabase db, RosterManager roster, PetBattlesConfig config,
 		Runnable onRosterChanged)
 	{
+		this.client = client;
 		this.db = db;
 		this.roster = roster;
 		this.config = config;
@@ -380,6 +394,8 @@ public class BattleSession
 		phase = Phase.ANIMATING;
 		tickCounter = 0;
 		currentEvent = null;
+		// Cleared each batch; re-set only if this batch surfaces an enemy on-faint replacement.
+		freeSwitchOffer = false;
 		if (isManualAdvance())
 		{
 			advanceEvent();
@@ -419,6 +435,12 @@ public class BattleSession
 				// Apply the enemy's on-faint swap now, so the fainted pet was shown through
 				// its faint animation and the replacement appears exactly on this line
 				state.setActive(event.getSide(), event.getValue());
+				// The enemy just sent in a fresh pet after a KO — flag an optional free swap for
+				// the player, honoured at the drain below if they still have a benched pet.
+				if (event.getSide() == BattleState.ENEMY)
+				{
+					freeSwitchOffer = true;
+				}
 			}
 			// Shared-XP bookkeeping: a fresh enemy resets the participant pool; whoever the
 			// player has on the field (now, and as they swap) joins the pool for this enemy.
@@ -462,7 +484,37 @@ public class BattleSession
 			enterEnded();
 			return;
 		}
-		phase = state.awaitingForcedSwitch() ? Phase.FORCED_SWITCH : Phase.AWAITING_INPUT;
+		if (state.awaitingForcedSwitch())
+		{
+			phase = Phase.FORCED_SWITCH;
+			return;
+		}
+		// The enemy sent in a replacement this batch and the player still has a bench pet: offer
+		// one cost-free swap before their next turn. Otherwise it's a normal command turn.
+		if (freeSwitchOffer && hasBenchTarget())
+		{
+			freeSwitchOffer = false;
+			phase = Phase.FREE_SWITCH;
+			return;
+		}
+		phase = Phase.AWAITING_INPUT;
+	}
+
+	/**
+	 * Whether the player has a benched pet (not active, not fainted) they could switch to.
+	 */
+	private boolean hasBenchTarget()
+	{
+		List<BattlePet> team = state.team(BattleState.PLAYER);
+		int active = state.activeIndex(BattleState.PLAYER);
+		for (int i = 0; i < team.size(); i++)
+		{
+			if (i != active && !team.get(i).isFainted())
+			{
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**
@@ -512,6 +564,33 @@ public class BattleSession
 		}
 		pendingEvents.addAll(engine.resolveForcedSwitch(state, teamIndex));
 		beginAnimating();
+	}
+
+	/**
+	 * Player accepted the post-KO free swap: the incoming pet takes over at no turn cost, then
+	 * play resumes on the player's next command turn. Ignored unless a free swap is being offered.
+	 */
+	public void submitFreeSwitch(int teamIndex)
+	{
+		if (phase != Phase.FREE_SWITCH)
+		{
+			return;
+		}
+		pendingEvents.addAll(engine.resolveOptionalSwitch(state, teamIndex));
+		beginAnimating();
+	}
+
+	/**
+	 * Player declined the post-KO free swap and keeps their current pet: straight to their turn.
+	 */
+	public void declineFreeSwitch()
+	{
+		if (phase != Phase.FREE_SWITCH)
+		{
+			return;
+		}
+		freeSwitchOffer = false;
+		phase = Phase.AWAITING_INPUT;
 	}
 
 	public void submitFlee()
@@ -800,9 +879,29 @@ public class BattleSession
 		if (state.getPhase() == BattleState.Phase.PLAYER_WON)
 		{
 			roster.recordTrainerDefeated(trainer.getId());
+			grantQuestRewards();
 		}
 		roster.petChanged();
 		onRosterChanged.run();
+	}
+
+	/**
+	 * One-off quest rewards tied to beating a specific trainer. Beating Ernest at Draynor completes
+	 * "Where's the remote?" — he hands over the Remote Battle Device, unlocking remote battles. The
+	 * lines are our own plugin system messages (never player chat), per AGENTS chat rules.
+	 */
+	private void grantQuestRewards()
+	{
+		if (TRAINER_ERNEST.equals(trainer.getId())
+			&& roster.advanceQuest(Quest.WHERES_THE_REMOTE.getId(), Quest.STEP_COMPLETE))
+		{
+			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
+				"<col=ff7700>Ernest:</col> The Professor gave this to me, but I don't think I'll need it "
+					+ "anymore. Here — take it.", null);
+			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
+				"<col=ff7700>Pet Battles:</col> You received the <col=ffffff>Remote Battle Device</col>! "
+					+ "You can now battle trainers remotely from the panel.", null);
+		}
 	}
 
 	/**

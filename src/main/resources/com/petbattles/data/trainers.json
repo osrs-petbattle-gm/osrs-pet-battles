@@ -1,5 +1,24 @@
 [
   {
+    "id": "ernest",
+    "name": "Ernest",
+    "theme": "Draynor Manor — transformed by Professor Oddenstein's machine",
+    "difficulty": "EASY",
+    "npcIds": [
+      3563
+    ],
+    "party": [
+      {
+        "species": "giant_squirrel",
+        "level": 6
+      },
+      {
+        "species": "beaver",
+        "level": 8
+      }
+    ]
+  },
+  {
     "id": "party_pete",
     "name": "Party Pete",
     "theme": "Falador Party Room host",

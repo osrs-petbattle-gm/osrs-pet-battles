@@ -277,6 +277,19 @@ public class ContentValidationTest
 	}
 
 	@Test
+	public void ernestExistsForTheRemoteQuest()
+	{
+		// The "Where's the remote?" quest completes on beating trainer id "ernest" (Ernest, human
+		// form NPC 3563 at Draynor Manor). Keep that wiring intact — BattleSession keys the reward
+		// off this id, so a rename here silently breaks the remote-battle unlock.
+		TrainerDef ernest = db.trainer("ernest");
+		assertNotNull("ernest trainer must exist for the remote quest", ernest);
+		assertTrue("ernest maps to his human-form npc id 3563",
+			ernest.getNpcIds().contains(3563));
+		assertFalse("ernest has a party to fight", ernest.getParty().isEmpty());
+	}
+
+	@Test
 	public void bundledTrainerPortraitsAreRealPngs() throws java.io.IOException
 	{
 		// A random-event challenger must be an EASY fight (roadmap §1.2 / the cadence pool), and any
