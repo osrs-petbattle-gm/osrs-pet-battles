@@ -6,6 +6,7 @@ import com.petbattles.engine.BattlePet;
 import com.petbattles.engine.BattleState;
 import com.petbattles.engine.MoveDef;
 import com.petbattles.engine.PetType;
+import com.petbattles.engine.SpeciesDef;
 import java.awt.AlphaComposite;
 import java.awt.BasicStroke;
 import java.awt.Color;
@@ -189,7 +190,9 @@ public class BattleOverlay extends Overlay
 
 		// Player: the near pet is drawn as a foreground chathead (bundled, pre-oriented to face
 		// right) when one exists, giving the scene depth; otherwise it falls back to the item icon.
-		BufferedImage playerChat = chatheads.chathead(player.getSpecies().getId(), player.getVariantId());
+		SpeciesDef playerSpecies = player.getSpecies();
+		BufferedImage playerChat = chatheads.chathead(playerSpecies.getId(), player.getVariantId(),
+			playerSpecies.chatheadStageKeyFor(player.getVariantId(), player.getLevel()));
 		drawPetSprite(g, player, PLAYER_SPRITE,
 			AttackAnimator.spriteTransform(current, currentMove, progress, BattleState.PLAYER, PLAYER_SPRITE, ENEMY_SPRITE),
 			playerSettled, playerMirror, playerChat);

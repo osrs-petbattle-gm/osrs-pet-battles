@@ -378,6 +378,26 @@ public class SpeciesDef
 	}
 
 	/**
+	 * The active growth stage's chathead-art suffix for the given variant/level (e.g. "kitten",
+	 * "overgrown"), or null when the active stage uses the variant's default chathead. Mirrors
+	 * {@link #itemIdFor}: a variant's own growth stages win; a variant with no stages (or the base
+	 * form) falls through to the species stages.
+	 */
+	public String chatheadStageKeyFor(String variantId, int level)
+	{
+		Variant v = variant(variantId);
+		if (v != null)
+		{
+			GrowthStage stage = v.stageAt(level);
+			// A variant with its own stages (the cat colours) resolves within them; one without
+			// (wily/lazy) has no stage art, so its flat chathead applies.
+			return stage != null ? stage.getChathead() : null;
+		}
+		GrowthStage stage = stageAt(level);
+		return stage != null ? stage.getChathead() : null;
+	}
+
+	/**
 	 * Sprite orientation for the given variant: its own override if set, else the species default.
 	 */
 	public boolean spriteFacesLeftFor(String variantId)

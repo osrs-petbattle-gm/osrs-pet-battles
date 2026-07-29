@@ -31,18 +31,49 @@ public class PetChatheads
 	}
 
 	/**
-	 * The foreground chathead for a species in its active metamorphosis form: prefers a
-	 * variant-specific asset ({@code <species>__<variant>.png}) and falls back to the base
-	 * ({@code <species>.png}). A null variant (base form) uses the base asset directly.
+	 * The foreground chathead for a species in its active metamorphosis form, ignoring growth stage.
 	 */
 	public BufferedImage chathead(String speciesId, String variantId)
 	{
+		return chathead(speciesId, variantId, null);
+	}
+
+	/**
+	 * The foreground chathead for a species in its active form and growth stage. Resolution prefers
+	 * the most specific asset and degrades gracefully:
+	 * <ol>
+	 *   <li>{@code <species>__<variant>__<stage>.png} — this colour/form at this stage
+	 *   <li>{@code <species>__<variant>.png} — this colour/form (its adult art)
+	 *   <li>{@code <species>__<stage>.png} — the base form at this stage
+	 *   <li>{@code <species>.png} — the base chathead
+	 * </ol>
+	 * A same-colour adult (step 2) is preferred over a wrong-colour stage image, so a missing
+	 * stage asset never shows the wrong colour. Null variant/stage simply skip their steps.
+	 */
+	public BufferedImage chathead(String speciesId, String variantId, String stageKey)
+	{
 		if (variantId != null)
 		{
+			if (stageKey != null)
+			{
+				BufferedImage staged = load(speciesId + "__" + variantId + "__" + stageKey);
+				if (staged != null)
+				{
+					return staged;
+				}
+			}
 			BufferedImage variant = load(speciesId + "__" + variantId);
 			if (variant != null)
 			{
 				return variant;
+			}
+		}
+		if (stageKey != null)
+		{
+			BufferedImage baseStage = load(speciesId + "__" + stageKey);
+			if (baseStage != null)
+			{
+				return baseStage;
 			}
 		}
 		return load(speciesId);

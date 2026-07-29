@@ -10,6 +10,10 @@ public class GrowthStage
 	private int level;
 	private String name;
 	private int itemId;
+	// Optional chathead-art suffix for this stage (e.g. "kitten", "overgrown"). When set, the
+	// battle scene prefers <species>__<variant>__<chathead>.png (or <species>__<chathead>.png for
+	// the base form) so an evolving pet shows stage-specific art; null uses the variant's chathead.
+	private String chathead;
 
 	public GrowthStage()
 	{
@@ -35,5 +39,14 @@ public class GrowthStage
 	public int getItemId()
 	{
 		return itemId;
+	}
+
+	/**
+	 * The chathead-art suffix for this stage (e.g. "kitten", "overgrown"), or null when the stage
+	 * uses the variant's/species' default chathead.
+	 */
+	public String getChathead()
+	{
+		return chathead;
 	}
 }

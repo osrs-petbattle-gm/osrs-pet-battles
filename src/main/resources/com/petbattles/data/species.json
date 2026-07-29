@@ -1,8 +1,11 @@
 [
   {
     "id": "baby_mole", "name": "Baby Mole",
-    "itemId": 12646, "altItemIds": [25613], "spriteFacesLeft": false,
-    "npcIds": [6635, 6651, 10650, 10651],
+    "itemId": 12646, "altItemIds": [], "spriteFacesLeft": false,
+    "npcIds": [6635, 6651],
+    "variants": [
+      { "id": "rat", "name": "Baby Mole-rat", "itemId": 25613, "npcIds": [10650, 10651], "unlockItemIds": [25613] }
+    ],
     "npcXpTags": ["Giant Mole"],
     "types": ["MELEE", "NATURE"],
     "base": { "hp": 70, "atk": 52, "def": 68, "spd": 40 },
@@ -36,8 +39,12 @@
   },
   {
     "id": "pet_snakeling", "name": "Pet Snakeling",
-    "itemId": 12921, "altItemIds": [12939, 12940],
-    "npcIds": [2127, 2130, 2128, 2131, 2129, 2132],
+    "itemId": 12921, "altItemIds": [],
+    "npcIds": [2127, 2130],
+    "variants": [
+      { "id": "magma", "itemId": 12939, "npcIds": [2128, 2131], "unlockItemIds": [12939] },
+      { "id": "tanzanite", "itemId": 12940, "npcIds": [2129, 2132], "unlockItemIds": [12940] }
+    ],
     "npcXpTags": ["Zulrah"],
     "types": ["MAGIC", "NATURE"],
     "base": { "hp": 58, "atk": 68, "def": 50, "spd": 62 },
@@ -55,8 +62,11 @@
   },
   {
     "id": "vetion_jr", "name": "Vet'ion Jr.",
-    "itemId": 13179, "altItemIds": [13180, 27650, 27651],
-    "npcIds": [5536, 5559, 5537, 5560, 11983, 11987, 11984, 11988],
+    "itemId": 13179, "altItemIds": [27650],
+    "npcIds": [5536, 5559, 11983, 11987],
+    "variants": [
+      { "id": "reborn", "itemId": 13180, "npcIds": [5537, 5560, 11984, 11988], "unlockItemIds": [13180, 27651] }
+    ],
     "npcXpTags": ["Vet'ion", "Calvar'ion", "Skeleton", "Zombie"],
     "types": ["UNDEAD", "MELEE"],
     "base": { "hp": 66, "atk": 62, "def": 62, "spd": 38 },
@@ -92,8 +102,13 @@
   },
   {
     "id": "baby_chinchompa", "name": "Baby Chinchompa",
-    "itemId": 13324, "altItemIds": [13323, 13325, 13326], "spriteFacesLeft": false,
-    "npcIds": [6719, 6757, 6718, 6756, 6720, 6758, 6721, 6759],
+    "itemId": 13324, "altItemIds": [], "spriteFacesLeft": false,
+    "npcIds": [6719, 6757],
+    "variants": [
+      { "id": "red", "itemId": 13323, "npcIds": [6718, 6756], "unlockItemIds": [13323] },
+      { "id": "black", "itemId": 13325, "npcIds": [6720, 6758], "unlockItemIds": [13325] },
+      { "id": "gold", "itemId": 13326, "npcIds": [6721, 6759], "unlockItemIds": [13326] }
+    ],
     "npcXpTags": [],
     "types": ["RANGED", "SKILLING"],
     "base": { "hp": 45, "atk": 60, "def": 40, "spd": 70 },
@@ -128,9 +143,22 @@
     "id": "beaver", "name": "Beaver",
     "itemId": 13322, "altItemIds": [],
     "variants": [
-      { "id": "fox", "name": "Fox", "itemId": 28670, "npcIds": [12548, 12550], "unlockItemIds": [28670] }
+      { "id": "fox", "name": "Fox", "itemId": 28670, "npcIds": [12548, 12550], "unlockItemIds": [28670] },
+      { "id": "oak", "itemId": 28229, "npcIds": [12170, 12182], "unlockItemIds": [28229] },
+      { "id": "willow", "itemId": 28230, "npcIds": [12171, 12183], "unlockItemIds": [28230] },
+      { "id": "maple", "itemId": 28231, "npcIds": [12172, 12184], "unlockItemIds": [28231] },
+      { "id": "yew", "itemId": 28232, "npcIds": [12173, 12185], "unlockItemIds": [28232] },
+      { "id": "magic", "itemId": 28233, "npcIds": [12174, 12186], "unlockItemIds": [28233] },
+      { "id": "redwood", "itemId": 28234, "npcIds": [12175, 12187], "unlockItemIds": [28234] },
+      { "id": "teak", "itemId": 28235, "npcIds": [12176, 12188], "unlockItemIds": [28235] },
+      { "id": "mahogany", "itemId": 28236, "npcIds": [12177, 12189], "unlockItemIds": [28236] },
+      { "id": "arctic_pine", "itemId": 28237, "npcIds": [12178, 12190], "unlockItemIds": [28237] },
+      { "id": "camphor", "itemId": 31279, "npcIds": [14926, 15054], "unlockItemIds": [31279] },
+      { "id": "ironwood", "itemId": 31280, "npcIds": [14927, 15055], "unlockItemIds": [31280] },
+      { "id": "jatoba", "itemId": 31281, "npcIds": [14928, 15056], "unlockItemIds": [31281] },
+      { "id": "rosewood", "itemId": 31282, "npcIds": [14929, 15057], "unlockItemIds": [31282] }
     ],
-    "npcIds": [12169, 12181, 12170, 12182, 12171, 12183, 12172, 12184, 12173, 12185, 12174, 12186, 12175, 12187],
+    "npcIds": [12169, 12181],
     "npcXpTags": [],
     "types": ["SKILLING", "NATURE"],
     "base": { "hp": 50, "atk": 56, "def": 46, "spd": 58 },
@@ -147,8 +175,28 @@
   },
   {
     "id": "rock_golem", "name": "Rock Golem",
-    "itemId": 13321, "altItemIds": [21340], "spriteFacesLeft": false,
-    "npcIds": [7439, 7451, 7440, 7452, 7441, 7453, 7442, 7454, 7443, 7455],
+    "itemId": 13321, "altItemIds": [], "spriteFacesLeft": false,
+    "npcIds": [7439, 7451],
+    "variants": [
+      { "id": "tin", "itemId": 21187, "npcIds": [7440, 7452], "unlockItemIds": [21187] },
+      { "id": "copper", "itemId": 21188, "npcIds": [7441, 7453], "unlockItemIds": [21188] },
+      { "id": "iron", "itemId": 21189, "npcIds": [7442, 7454], "unlockItemIds": [21189] },
+      { "id": "blurite", "itemId": 21190, "npcIds": [7443, 7455], "unlockItemIds": [21190] },
+      { "id": "silver", "itemId": 21191, "npcIds": [7444, 7642], "unlockItemIds": [21191] },
+      { "id": "coal", "itemId": 21192, "npcIds": [7445, 7643], "unlockItemIds": [21192] },
+      { "id": "gold", "itemId": 21193, "npcIds": [7446, 7644], "unlockItemIds": [21193] },
+      { "id": "mithril", "itemId": 21194, "npcIds": [7447, 7645], "unlockItemIds": [21194] },
+      { "id": "granite", "itemId": 21195, "npcIds": [7448, 7646], "unlockItemIds": [21195] },
+      { "id": "adamantite", "itemId": 21196, "npcIds": [7449, 7647], "unlockItemIds": [21196] },
+      { "id": "runite", "itemId": 21197, "npcIds": [7450, 7648], "unlockItemIds": [21197] },
+      { "id": "amethyst", "itemId": 21340, "npcIds": [2182, 7711], "unlockItemIds": [21340] },
+      { "id": "lovakite", "itemId": 21358, "npcIds": [7736, 7739], "unlockItemIds": [21358] },
+      { "id": "elemental", "itemId": 21359, "npcIds": [7737, 7740], "unlockItemIds": [21359] },
+      { "id": "daeyalt", "itemId": 21360, "npcIds": [7738, 7741], "unlockItemIds": [21360] },
+      { "id": "lead", "itemId": 31276, "npcIds": [14923, 15051], "unlockItemIds": [31276] },
+      { "id": "rubium", "itemId": 31277, "npcIds": [14924, 15052], "unlockItemIds": [31277] },
+      { "id": "nickel", "itemId": 31278, "npcIds": [14925, 15053], "unlockItemIds": [31278] }
+    ],
     "npcXpTags": [],
     "types": ["SKILLING", "MELEE"],
     "base": { "hp": 62, "atk": 50, "def": 70, "spd": 25 },
@@ -195,8 +243,15 @@
   },
   {
     "id": "tangleroot", "name": "Tangleroot",
-    "itemId": 20661, "altItemIds": [24555, 24557, 24559, 24561, 24563],
-    "npcIds": [7335, 7352, 9492, 9497, 9493, 9498, 9494, 9499, 9495, 9500, 9496, 9501],
+    "itemId": 20661, "altItemIds": [],
+    "npcIds": [7335, 7352],
+    "variants": [
+      { "id": "crystal", "itemId": 24555, "npcIds": [9492, 9497], "unlockItemIds": [24555] },
+      { "id": "dragonfruit", "itemId": 24557, "npcIds": [9493, 9498], "unlockItemIds": [24557] },
+      { "id": "herb", "itemId": 24559, "npcIds": [9494, 9499], "unlockItemIds": [24559] },
+      { "id": "white_lily", "itemId": 24561, "npcIds": [9495, 9500], "unlockItemIds": [24561] },
+      { "id": "redwood", "itemId": 24563, "npcIds": [9496, 9501], "unlockItemIds": [24563] }
+    ],
     "npcXpTags": [],
     "types": ["NATURE", "SKILLING"],
     "base": { "hp": 58, "atk": 60, "def": 55, "spd": 35 },
@@ -246,8 +301,13 @@
   },
   {
     "id": "ikkle_hydra", "name": "Ikkle Hydra",
-    "itemId": 22746, "altItemIds": [22748, 22750, 22752], "spriteFacesLeft": false,
-    "npcIds": [8492, 8517, 8493, 8518, 8494, 8519, 8495, 8520],
+    "itemId": 22746, "altItemIds": [], "spriteFacesLeft": false,
+    "npcIds": [8492, 8517],
+    "variants": [
+      { "id": "electric", "itemId": 22748, "npcIds": [8493, 8518], "unlockItemIds": [22748] },
+      { "id": "fire", "itemId": 22750, "npcIds": [8494, 8519], "unlockItemIds": [22750] },
+      { "id": "extinguished", "itemId": 22752, "npcIds": [8495, 8520], "unlockItemIds": [22752] }
+    ],
     "npcXpTags": ["Alchemical Hydra", "Hydra"],
     "types": ["DRAGON", "NATURE"],
     "base": { "hp": 62, "atk": 64, "def": 60, "spd": 42 },
@@ -518,8 +578,11 @@
   },
   {
     "id": "pet_smoke_devil", "name": "Pet smoke devil",
-    "itemId": 12648, "altItemIds": [22663],
+    "itemId": 12648, "altItemIds": [],
     "npcIds": [6639, 6655],
+    "variants": [
+      { "id": "normal", "itemId": 22663, "npcIds": [8482, 8483], "unlockItemIds": [22663] }
+    ],
     "npcXpTags": ["Thermonuclear smoke devil", "Smoke devil"],
     "types": ["MAGIC", "FIRE"],
     "base": { "hp": 54, "atk": 64, "def": 50, "spd": 60 },
@@ -586,8 +649,12 @@
   },
   {
     "id": "sraracha", "name": "Sraracha",
-    "itemId": 23495, "altItemIds": [25842, 25843],
-    "npcIds": [2143, 2144, 11157, 11159, 11158, 11160],
+    "itemId": 23495, "altItemIds": [],
+    "npcIds": [2143, 2144],
+    "variants": [
+      { "id": "orange", "itemId": 25842, "npcIds": [11157, 11159], "unlockItemIds": [25842] },
+      { "id": "blue", "itemId": 25843, "npcIds": [11158, 11160], "unlockItemIds": [25843] }
+    ],
     "npcXpTags": ["Sarachnis"],
     "types": ["NATURE", "MELEE"],
     "base": { "hp": 56, "atk": 62, "def": 54, "spd": 52 },
@@ -722,8 +789,12 @@
   },
   {
     "id": "muphin", "name": "Muphin",
-    "itemId": 27590, "altItemIds": [27592, 27593],
-    "npcIds": [12005, 12006, 12007, 12014, 12015, 12016],
+    "itemId": 27590, "altItemIds": [],
+    "npcIds": [12005, 12014],
+    "variants": [
+      { "id": "melee", "itemId": 27592, "npcIds": [12006, 12015], "unlockItemIds": [27592] },
+      { "id": "shielded", "itemId": 27593, "npcIds": [12007, 12016], "unlockItemIds": [27593] }
+    ],
     "npcXpTags": ["Phantom Muspah"],
     "types": ["MAGIC", "ICE"],
     "base": { "hp": 60, "atk": 64, "def": 56, "spd": 50 },
@@ -824,8 +895,14 @@
   },
   {
     "id": "phoenix", "name": "Phoenix",
-    "itemId": 20693, "altItemIds": [24484, 24483, 24486, 24485], "spriteFacesLeft": false,
+    "itemId": 20693, "altItemIds": [], "spriteFacesLeft": false,
     "npcIds": [7368, 7370],
+    "variants": [
+      { "id": "blue", "itemId": 24484, "npcIds": [3078, 3082], "unlockItemIds": [24484] },
+      { "id": "green", "itemId": 24483, "npcIds": [3077, 3081], "unlockItemIds": [24483] },
+      { "id": "purple", "itemId": 24486, "npcIds": [3080, 3084], "unlockItemIds": [24486] },
+      { "id": "white", "itemId": 24485, "npcIds": [3079, 3083], "unlockItemIds": [24485] }
+    ],
     "npcXpTags": [],
     "types": ["FIRE", "SKILLING"],
     "base": { "hp": 52, "atk": 60, "def": 48, "spd": 60 },
@@ -1188,11 +1265,68 @@
         "npcIds": [1625, 5597, 5604, 5590, 1632],
         "unlockItemIds": [7582, 7583, 7581, 7585, 7584],
         "growthStages": [
-          { "level": 1, "name": "Hell-kitten", "itemId": 7583 },
+          { "level": 1, "name": "Hell-kitten", "itemId": 7583, "chathead": "kitten" },
           { "level": 15, "name": "Hellcat", "itemId": 7582 },
-          { "level": 40, "name": "Overgrown hellcat", "itemId": 7581 }
+          { "level": 40, "name": "Overgrown hellcat", "itemId": 7581, "chathead": "overgrown" }
         ]
-      }
+      },
+      {
+        "id": "white", "itemId": 1562, "npcIds": [5592, 1620, 6663, 5599, 6677],
+        "unlockItemIds": [1556, 1562, 1568],
+        "growthStages": [
+          { "level": 1, "name": "Kitten", "itemId": 1556, "chathead": "kitten" },
+          { "level": 15, "name": "Cat", "itemId": 1562 },
+          { "level": 40, "name": "Overgrown Cat", "itemId": 1568, "chathead": "overgrown" }
+        ]
+      },
+      {
+        "id": "brown", "itemId": 1563, "npcIds": [5593, 1621, 6664, 5600, 6678],
+        "unlockItemIds": [1557, 1563, 1569],
+        "growthStages": [
+          { "level": 1, "name": "Kitten", "itemId": 1557, "chathead": "kitten" },
+          { "level": 15, "name": "Cat", "itemId": 1563 },
+          { "level": 40, "name": "Overgrown Cat", "itemId": 1569, "chathead": "overgrown" }
+        ]
+      },
+      {
+        "id": "black", "itemId": 1564, "npcIds": [5594, 1622, 6665, 5601, 6679],
+        "unlockItemIds": [1558, 1564, 1570],
+        "growthStages": [
+          { "level": 1, "name": "Kitten", "itemId": 1558, "chathead": "kitten" },
+          { "level": 15, "name": "Cat", "itemId": 1564 },
+          { "level": 40, "name": "Overgrown Cat", "itemId": 1570, "chathead": "overgrown" }
+        ]
+      },
+      {
+        "id": "grey_and_brown", "itemId": 1565, "npcIds": [5595, 1623, 6666, 5602, 6680],
+        "unlockItemIds": [1559, 1565, 1571],
+        "growthStages": [
+          { "level": 1, "name": "Kitten", "itemId": 1559, "chathead": "kitten" },
+          { "level": 15, "name": "Cat", "itemId": 1565 },
+          { "level": 40, "name": "Overgrown Cat", "itemId": 1571, "chathead": "overgrown" }
+        ]
+      },
+      {
+        "id": "grey_and_blue", "itemId": 1566, "npcIds": [5596, 1624, 6667, 5603, 6681],
+        "unlockItemIds": [1560, 1566, 1572],
+        "growthStages": [
+          { "level": 1, "name": "Kitten", "itemId": 1560, "chathead": "kitten" },
+          { "level": 15, "name": "Cat", "itemId": 1566 },
+          { "level": 40, "name": "Overgrown Cat", "itemId": 1572, "chathead": "overgrown" }
+        ]
+      },
+      { "id": "wily", "name": "Wily cat", "itemId": 6556, "npcIds": [5585, 6690], "unlockItemIds": [6556] },
+      { "id": "wily_white", "name": "Wily cat", "itemId": 6555, "npcIds": [5584, 6691], "unlockItemIds": [6555] },
+      { "id": "wily_brown", "name": "Wily cat", "itemId": 6557, "npcIds": [5586, 6692], "unlockItemIds": [6557] },
+      { "id": "wily_black", "name": "Wily cat", "itemId": 6558, "npcIds": [5587, 6693], "unlockItemIds": [6558] },
+      { "id": "wily_grey_and_brown", "name": "Wily cat", "itemId": 6559, "npcIds": [5588, 6694], "unlockItemIds": [6559] },
+      { "id": "wily_grey_and_blue", "name": "Wily cat", "itemId": 6560, "npcIds": [5589, 6695], "unlockItemIds": [6560] },
+      { "id": "lazy", "name": "Lazy cat", "itemId": 6550, "npcIds": [1627, 6683], "unlockItemIds": [6550] },
+      { "id": "lazy_white", "name": "Lazy cat", "itemId": 6549, "npcIds": [1626, 6684], "unlockItemIds": [6549] },
+      { "id": "lazy_brown", "name": "Lazy cat", "itemId": 6551, "npcIds": [1628, 6685], "unlockItemIds": [6551] },
+      { "id": "lazy_black", "name": "Lazy cat", "itemId": 6552, "npcIds": [1629, 6686], "unlockItemIds": [6552] },
+      { "id": "lazy_grey_and_brown", "name": "Lazy cat", "itemId": 6553, "npcIds": [1630, 6687], "unlockItemIds": [6553] },
+      { "id": "lazy_grey_and_blue", "name": "Lazy cat", "itemId": 6554, "npcIds": [1631, 6688], "unlockItemIds": [6554] }
     ],
     "npcIds": [],
     "npcXpTags": [],
@@ -1201,9 +1335,9 @@
     "types": ["MELEE"],
     "base": { "hp": 45, "atk": 48, "def": 42, "spd": 58 },
     "growthStages": [
-      { "level": 1, "name": "Kitten", "itemId": 1555 },
+      { "level": 1, "name": "Kitten", "itemId": 1555, "chathead": "kitten" },
       { "level": 15, "name": "Cat", "itemId": 1561 },
-      { "level": 40, "name": "Overgrown Cat", "itemId": 1567 }
+      { "level": 40, "name": "Overgrown Cat", "itemId": 1567, "chathead": "overgrown" }
     ],
     "learnset": [
       { "level": 1, "move": "scratch" },
