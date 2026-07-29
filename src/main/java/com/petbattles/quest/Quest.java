@@ -9,12 +9,13 @@ package com.petbattles.quest;
 public enum Quest
 {
 	/**
-	 * The first quest: travel to Draynor Manor and beat Ernest — transformed there by Professor
-	 * Oddenstein's machine — who hands over the Remote Battle Device, permanently unlocking remote
-	 * battles ({@link com.petbattles.persist.RosterManager#isRemoteBattlesUnlocked()}).
+	 * The first quest: travel to Draynor Manor's top floor and beat Professor Oddenstein, who hands
+	 * over his Remote Battle Device — the invention he battles trainers with (and keeps losing with)
+	 * — permanently unlocking remote battles
+	 * ({@link com.petbattles.persist.RosterManager#isRemoteBattlesUnlocked()}).
 	 */
 	WHERES_THE_REMOTE("wheres_the_remote", "Where's the remote?",
-		"Investigate Draynor Manor — find whoever Professor Oddenstein's machine left behind, and battle them.");
+		"Investigate Draynor Manor and challenge Professor Oddenstein on the manor's top floor.");
 
 	/** A quest sits at step 0 until it reaches its completion step. */
 	public static final int STEP_START = 0;

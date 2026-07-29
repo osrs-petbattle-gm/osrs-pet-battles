@@ -153,7 +153,7 @@ public class BattleSession
 	private final Runnable onRosterChanged;
 
 	/** Trainer whose defeat completes {@link Quest#WHERES_THE_REMOTE} and unlocks remote battles. */
-	private static final String TRAINER_ERNEST = "ernest";
+	private static final String TRAINER_PROFESSOR = "professor_oddenstein";
 
 	private Phase phase = Phase.IDLE;
 	private BattleState state;
@@ -172,6 +172,10 @@ public class BattleSession
 	// Set true while an enemy replacement is surfaced after a KO; if the player still has a
 	// benched pet to switch to, the queue drains into FREE_SWITCH to offer one cost-free swap.
 	private boolean freeSwitchOffer;
+	// A one-off NPC dialog to show on the end screen (e.g. Professor Oddenstein's quest reward):
+	// the speaker's trainer id (for the chathead) and the speech text; null = no dialog pending.
+	private String questDialogTrainerId;
+	private String questDialogText;
 	private BattleEvent currentEvent;
 	private MoveDef currentMove;
 	private long eventStartMs;
@@ -629,6 +633,7 @@ public class BattleSession
 		hpAnimPet = null;
 		currentEvent = null;
 		currentMove = null;
+		dismissQuestDialog();
 	}
 
 	/**
@@ -886,22 +891,46 @@ public class BattleSession
 	}
 
 	/**
-	 * One-off quest rewards tied to beating a specific trainer. Beating Ernest at Draynor completes
-	 * "Where's the remote?" — he hands over the Remote Battle Device, unlocking remote battles. The
-	 * lines are our own plugin system messages (never player chat), per AGENTS chat rules.
+	 * One-off quest rewards tied to beating a specific trainer. Beating Professor Oddenstein on
+	 * Draynor Manor's top floor completes "Where's the remote?" — he hands over the Remote Battle
+	 * Device, unlocking remote battles. Queues an end-screen dialog (with his chathead) and logs a
+	 * plugin system line (never player chat), per AGENTS chat rules.
 	 */
 	private void grantQuestRewards()
 	{
-		if (TRAINER_ERNEST.equals(trainer.getId())
+		if (TRAINER_PROFESSOR.equals(trainer.getId())
 			&& roster.advanceQuest(Quest.WHERES_THE_REMOTE.getId(), Quest.STEP_COMPLETE))
 		{
-			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
-				"<col=ff7700>Ernest:</col> The Professor gave this to me, but I don't think I'll need it "
-					+ "anymore. Here — take it.", null);
+			questDialogTrainerId = trainer.getId();
+			questDialogText = "Marvellous battling! I built this Remote Battle Device to challenge "
+				+ "trainers all across the realm from my tower... but I keep losing! I'm retiring from "
+				+ "pet battles — you take it. Now you can battle any trainer remotely.";
 			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
 				"<col=ff7700>Pet Battles:</col> You received the <col=ffffff>Remote Battle Device</col>! "
 					+ "You can now battle trainers remotely from the panel.", null);
 		}
+	}
+
+	/**
+	 * The one-off end-screen NPC dialog to show (speaker chathead + speech), or null. Shown on the
+	 * ENDED screen before the battle summary; cleared by {@link #dismissQuestDialog()}.
+	 */
+	public String getQuestDialogText()
+	{
+		return questDialogText;
+	}
+
+	/** Trainer id of the {@link #getQuestDialogText() quest dialog} speaker (for the chathead). */
+	public String getQuestDialogTrainerId()
+	{
+		return questDialogTrainerId;
+	}
+
+	/** Dismiss the quest dialog so the end screen proceeds to the battle summary. */
+	public void dismissQuestDialog()
+	{
+		questDialogTrainerId = null;
+		questDialogText = null;
 	}
 
 	/**

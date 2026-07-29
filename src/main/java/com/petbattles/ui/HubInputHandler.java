@@ -1,6 +1,7 @@
 package com.petbattles.ui;
 
 import com.petbattles.battle.BattleSession;
+import com.petbattles.engine.TrainerDef;
 import com.petbattles.persist.RosterManager;
 import java.awt.Point;
 import java.awt.Rectangle;
@@ -22,16 +23,18 @@ public class HubInputHandler extends MouseAdapter
 	private final RosterManager roster;
 	private final BattleSession session;
 	private final Consumer<String> fightAction;
+	private final Consumer<String> locateAction;
 	private final Runnable onRest;
 	private final ClientThread clientThread;
 
 	public HubInputHandler(HubOverlay overlay, RosterManager roster, BattleSession session,
-		Consumer<String> fightAction, Runnable onRest, ClientThread clientThread)
+		Consumer<String> fightAction, Consumer<String> locateAction, Runnable onRest, ClientThread clientThread)
 	{
 		this.overlay = overlay;
 		this.roster = roster;
 		this.session = session;
 		this.fightAction = fightAction;
+		this.locateAction = locateAction;
 		this.onRest = onRest;
 		this.clientThread = clientThread;
 	}
@@ -105,6 +108,35 @@ public class HubInputHandler extends MouseAdapter
 		else if ("open:challenge".equals(action))
 		{
 			overlay.openPane(HubOverlay.Pane.CHALLENGE);
+		}
+		else if ("open:trainers".equals(action))
+		{
+			overlay.openPane(HubOverlay.Pane.TRAINERS);
+		}
+		else if ("open:quests".equals(action))
+		{
+			overlay.openPane(HubOverlay.Pane.QUESTS);
+		}
+		else if (action.startsWith("quest:"))
+		{
+			overlay.toggleQuest(action.substring(6));
+		}
+		else if (action.startsWith("trainers.filter:"))
+		{
+			String value = action.substring(16);
+			overlay.setTrainerFilter("ALL".equals(value) ? null : TrainerDef.Difficulty.valueOf(value));
+		}
+		else if ("trainers.page:1".equals(action))
+		{
+			overlay.trainersPage(+1);
+		}
+		else if ("trainers.page:-1".equals(action))
+		{
+			overlay.trainersPage(-1);
+		}
+		else if (action.startsWith("locate:"))
+		{
+			locateAction.accept(action.substring(7));
 		}
 		else if (action.startsWith("team.up:"))
 		{

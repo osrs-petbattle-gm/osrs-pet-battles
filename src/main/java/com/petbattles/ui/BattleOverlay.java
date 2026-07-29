@@ -72,15 +72,17 @@ public class BattleOverlay extends Overlay
 	private final BattleSession session;
 	private final Sprites sprites;
 	private final PetChatheads chatheads;
+	private final Portraits portraits;
 	private final List<Button> buttons = new ArrayList<>();
 	private Point hoverPoint;
 	private volatile boolean swapMenuOpen;
 
-	public BattleOverlay(BattleSession session, Sprites sprites, PetChatheads chatheads)
+	public BattleOverlay(BattleSession session, Sprites sprites, PetChatheads chatheads, Portraits portraits)
 	{
 		this.session = session;
 		this.sprites = sprites;
 		this.chatheads = chatheads;
+		this.portraits = portraits;
 		setPosition(OverlayPosition.TOP_CENTER);
 		setLayer(OverlayLayer.ABOVE_WIDGETS);
 		setMovable(true);
@@ -140,11 +142,20 @@ public class BattleOverlay extends Overlay
 		String title = session.getTrainer() != null ? "vs " + session.getTrainer().getName() : "Battle";
 		g.drawString(title, 10, 14);
 
-		// The end-of-battle summary replaces the battle scene entirely
+		// The end-of-battle summary replaces the battle scene entirely. A pending quest dialog
+		// (e.g. Professor Oddenstein's reward) shows first, gating the summary until dismissed.
 		if (session.getPhase() == BattleSession.Phase.ENDED)
 		{
 			List<Button> endButtons = new ArrayList<>();
-			drawSummary(g, state, endButtons);
+			String questDialog = session.getQuestDialogText();
+			if (questDialog != null)
+			{
+				drawQuestDialog(g, endButtons, session.getQuestDialogTrainerId(), questDialog);
+			}
+			else
+			{
+				drawSummary(g, state, endButtons);
+			}
 			synchronized (this)
 			{
 				buttons.clear();
@@ -178,7 +189,7 @@ public class BattleOverlay extends Overlay
 
 		// Player: the near pet is drawn as a foreground chathead (bundled, pre-oriented to face
 		// right) when one exists, giving the scene depth; otherwise it falls back to the item icon.
-		BufferedImage playerChat = chatheads.chathead(player.getSpecies().getId());
+		BufferedImage playerChat = chatheads.chathead(player.getSpecies().getId(), player.getVariantId());
 		drawPetSprite(g, player, PLAYER_SPRITE,
 			AttackAnimator.spriteTransform(current, currentMove, progress, BattleState.PLAYER, PLAYER_SPRITE, ENEMY_SPRITE),
 			playerSettled, playerMirror, playerChat);
@@ -282,6 +293,63 @@ public class BattleOverlay extends Overlay
 	 * Close button. Level-up fireworks play over the pet's own icon here, so the celebration
 	 * always lands on the pet that actually grew rather than whoever was last on the field.
 	 */
+	/**
+	 * A one-off NPC dialog on the end screen: the speaker's chathead on the left, their speech
+	 * wrapped on the right, and a Continue button that dismisses it and reveals the battle summary.
+	 * The chathead is the speaker's trainer portrait; if that asset isn't bundled the framed box is
+	 * left empty (the name header still identifies the speaker).
+	 */
+	private void drawQuestDialog(Graphics2D g, List<Button> newButtons, String trainerId, String text)
+	{
+		String name = session.getTrainer() != null ? session.getTrainer().getName() : "";
+		g.setFont(FontManager.getRunescapeBoldFont());
+		g.setColor(new Color(240, 210, 120));
+		g.drawString(clip(g, name, WIDTH - 24), 12, 24);
+
+		int px = 12;
+		int py = 36;
+		int pw = 74;
+		int ph = 84;
+		g.setColor(new Color(255, 255, 255, 18));
+		g.fillRoundRect(px, py, pw, ph, 6, 6);
+		g.setColor(PANEL_EDGE);
+		g.setStroke(new BasicStroke(1));
+		g.drawRoundRect(px, py, pw, ph, 6, 6);
+		BufferedImage chathead = portraits.portrait(trainerId);
+		if (chathead != null)
+		{
+			drawFit(g, chathead, px + 2, py + 2, pw - 4, ph - 4);
+		}
+
+		int textX = px + pw + 12;
+		int textW = WIDTH - textX - 12;
+		g.setFont(FontManager.getRunescapeFont());
+		g.setColor(LOG_TEXT);
+		int ty = py + 14;
+		for (String line : wrap(g, text, textW))
+		{
+			g.drawString(line, textX, ty);
+			ty += 16;
+		}
+
+		Rectangle cont = new Rectangle(WIDTH / 2 - 50, HEIGHT - 32, 100, 24);
+		drawButton(g, cont, "Continue", true, null);
+		newButtons.add(new Button(cont, "questdialog.continue"));
+	}
+
+	/** Draw an image scaled to fit the box while preserving aspect ratio, centred. */
+	private void drawFit(Graphics2D g, BufferedImage img, int bx, int by, int bw, int bh)
+	{
+		if (img == null || img.getWidth() <= 0 || img.getHeight() <= 0)
+		{
+			return;
+		}
+		double scale = Math.min(bw / (double) img.getWidth(), bh / (double) img.getHeight());
+		int w = Math.max(1, (int) Math.round(img.getWidth() * scale));
+		int h = Math.max(1, (int) Math.round(img.getHeight() * scale));
+		g.drawImage(img, bx + (bw - w) / 2, by + (bh - h) / 2, w, h, null);
+	}
+
 	private void drawSummary(Graphics2D g, BattleState state, List<Button> newButtons)
 	{
 		BattleState.Phase phase = state.getPhase();

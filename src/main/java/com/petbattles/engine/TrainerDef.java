@@ -16,6 +16,40 @@ public class TrainerDef
 		HARD
 	}
 
+	/** Optional in-world location for the Trainers panel "Locate" world-map pin. */
+	public static class Location
+	{
+		private int x;
+		private int y;
+		private int plane;
+
+		public Location()
+		{
+		}
+
+		public Location(int x, int y, int plane)
+		{
+			this.x = x;
+			this.y = y;
+			this.plane = plane;
+		}
+
+		public int getX()
+		{
+			return x;
+		}
+
+		public int getY()
+		{
+			return y;
+		}
+
+		public int getPlane()
+		{
+			return plane;
+		}
+	}
+
 	public static class PartyEntry
 	{
 		private String species;
@@ -53,6 +87,9 @@ public class TrainerDef
 	// Eligible to appear as a periodic "Random Battle" challenge (OSRS random-event cadence).
 	// Such a challenge is fightable from the panel without being in-world near the trainer.
 	private boolean randomEvent;
+	// Optional in-world locations for the Trainers panel "Locate" pins. Some trainers (Man, Woman,
+	// Guard…) appear in many places, so this is a list; empty = unknown (no pins).
+	private List<Location> locations = new ArrayList<>();
 
 	public String getId()
 	{
@@ -90,5 +127,13 @@ public class TrainerDef
 	public boolean isRandomEvent()
 	{
 		return randomEvent;
+	}
+
+	/**
+	 * In-world locations for the "Locate" world-map pins; empty if unknown.
+	 */
+	public List<Location> getLocations()
+	{
+		return locations == null ? Collections.emptyList() : locations;
 	}
 }

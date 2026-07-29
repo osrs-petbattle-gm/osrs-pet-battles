@@ -6,6 +6,7 @@ import com.petbattles.engine.PetInstance;
 import com.petbattles.engine.SpeciesDef;
 import com.petbattles.engine.TrainerDef;
 import com.petbattles.persist.RosterManager;
+import com.petbattles.quest.Quest;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -32,11 +33,12 @@ import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.util.ImageUtil;
 
 /**
- * In-client control hub. Collapsed it's a small launcher chip; it expands to one of
- * three panes — Team (reorder / remove / add / rest), Rest, or Challenge ("Battle
+ * In-client control hub. Collapsed it's a small launcher chip; it expands to one of several
+ * panes — Team (reorder / remove / add / rest), Trainers (searchable chathead card list with
+ * Locate / Battle), Quests (quest log with expandable objectives), Rest, or Challenge ("Battle
  * &lt;trainer&gt;" with the trainer's chathead and party). Expansion is context-driven
  * (near a bank with an injured pet → Rest; near a battleable trainer → Challenge) with
- * the chip as the manual fallback. Hidden entirely during a battle, which locks the
+ * the chip and menu as the manual fallback. Hidden entirely during a battle, which locks the
  * swap/rest controls while a fight runs.
  *
  * <p>Each pane's body is laid out twice per frame: once under an empty clip to measure
@@ -52,7 +54,9 @@ public class HubOverlay extends Overlay
 		MENU,
 		TEAM,
 		REST,
-		CHALLENGE
+		CHALLENGE,
+		QUESTS,
+		TRAINERS
 	}
 
 	public static final class Button
@@ -81,6 +85,7 @@ public class HubOverlay extends Overlay
 	private static final int WIDTH = 234;
 	private static final int CHIP = 46;
 	private static final int ADD_VISIBLE = 4;
+	private static final int TRAINERS_VISIBLE = 3;
 	private static final int PAD = 8;
 
 	private static final Color PANEL_BG = new Color(20, 24, 28, 235);
@@ -114,6 +119,11 @@ public class HubOverlay extends Overlay
 	private boolean dismissed;
 	private int addOffset;
 	private int challengePage;
+	// Trainers pane: which difficulty filter is active (null = all) and the scroll offset.
+	private TrainerDef.Difficulty trainerFilter;
+	private int trainersOffset;
+	// Quests pane: the quest id whose detail box is expanded (null = none).
+	private String expandedQuest;
 
 	public HubOverlay(PetDatabase db, RosterManager roster, Sprites sprites, Portraits portraits,
 		BattleSession session, BooleanSupplier atBank, Supplier<Set<String>> nearTrainers)
@@ -153,6 +163,27 @@ public class HubOverlay extends Overlay
 		pinned = pane;
 		addOffset = 0;
 		challengePage = 0;
+		trainersOffset = 0;
+		expandedQuest = null;
+	}
+
+	public void toggleQuest(String questId)
+	{
+		expandedQuest = questId.equals(expandedQuest) ? null : questId;
+	}
+
+	public void trainersPage(int delta)
+	{
+		trainersOffset = Math.max(0, trainersOffset + delta);
+	}
+
+	/**
+	 * Set the Trainers difficulty filter (null = show all) and jump back to the first page.
+	 */
+	public void setTrainerFilter(TrainerDef.Difficulty difficulty)
+	{
+		trainerFilter = difficulty;
+		trainersOffset = 0;
 	}
 
 	public void collapse()
@@ -277,6 +308,10 @@ public class HubOverlay extends Overlay
 				return restBody(g, out);
 			case CHALLENGE:
 				return challengeBody(g, out);
+			case QUESTS:
+				return questsBody(g, out);
+			case TRAINERS:
+				return trainersBody(g, out);
 			case TEAM:
 			default:
 				return teamBody(g, out);
@@ -293,6 +328,10 @@ public class HubOverlay extends Overlay
 				return "Rest pets";
 			case CHALLENGE:
 				return "Challenge";
+			case QUESTS:
+				return "Quests";
+			case TRAINERS:
+				return "Trainers";
 			case TEAM:
 			default:
 				return "Team (" + roster.getTeam().size() + "/" + RosterManager.MAX_TEAM_SIZE + ")";
@@ -309,6 +348,8 @@ public class HubOverlay extends Overlay
 			return loginHint(g, y);
 		}
 		y = fullButton(g, out, y, "Manage team", "open:team", true);
+		y = fullButton(g, out, y, "Trainers", "open:trainers", true);
+		y = fullButton(g, out, y, "Quests", "open:quests", true);
 		if (roster.anyPetInjured())
 		{
 			boolean canRest = atBank.getAsBoolean();
@@ -542,6 +583,229 @@ public class HubOverlay extends Overlay
 			y += 16;
 		}
 		return fullButton(g, out, y, "Battle " + trainer.getName(), "fight:" + trainer.getId(), canFight);
+	}
+
+	private int questsBody(Graphics2D g, List<Button> out)
+	{
+		int y = 26;
+		if (!roster.isLoaded())
+		{
+			return loginHint(g, y);
+		}
+		for (Quest quest : Quest.values())
+		{
+			boolean complete = roster.getQuestStep(quest.getId()) >= Quest.STEP_COMPLETE;
+			boolean expanded = quest.getId().equals(expandedQuest);
+
+			// Row: title on the left, status tag on the right; the whole row toggles the detail box.
+			// Taller than a plain button with generous side padding and a clear title/status gap.
+			Rectangle row = new Rectangle(8, y, WIDTH - 16, 26);
+			drawButtonBg(g, row, true);
+			out.add(new Button(row, "quest:" + quest.getId()));
+			g.setFont(FontManager.getRunescapeFont());
+			String status = complete ? "Complete" : "In progress";
+			int statusW = g.getFontMetrics().stringWidth(status);
+			int textBaseline = y + 17;
+			g.setColor(Color.WHITE);
+			g.drawString(clip(g, quest.getTitle(), row.width - statusW - 30), row.x + 10, textBaseline);
+			g.setColor(complete ? new Color(120, 200, 110) : HP_YELLOW);
+			g.drawString(status, row.x + row.width - statusW - 10, textBaseline);
+			y += 30;
+
+			if (expanded)
+			{
+				String detail = complete
+					? "Completed — you recovered the Remote Battle Device from Professor Oddenstein. Remote battles are unlocked."
+					: quest.getHint();
+				g.setFont(FontManager.getRunescapeFont());
+				List<String> lines = wrapText(g, detail, WIDTH - 32);
+				int lineH = 15;
+				int boxH = lines.size() * lineH + 12;
+				g.setColor(new Color(0, 0, 0, 90));
+				g.fillRoundRect(8, y, WIDTH - 16, boxH, 6, 6);
+				g.setColor(TEXT);
+				int ty = y + 17;
+				for (String line : lines)
+				{
+					g.drawString(line, 15, ty);
+					ty += lineH;
+				}
+				y += boxH + 8;
+			}
+		}
+		return y;
+	}
+
+	private int trainersBody(Graphics2D g, List<Button> out)
+	{
+		int y = 26;
+		if (!roster.isLoaded())
+		{
+			return loginHint(g, y);
+		}
+		// Difficulty filter: All / Easy / Med / Hard (the active one is highlighted).
+		int fw = (WIDTH - 16 - 6) / 4;
+		filterButton(g, out, 8, y, fw, "All", null);
+		filterButton(g, out, 8 + (fw + 2), y, fw, "Easy", TrainerDef.Difficulty.EASY);
+		filterButton(g, out, 8 + (fw + 2) * 2, y, fw, "Med", TrainerDef.Difficulty.MEDIUM);
+		filterButton(g, out, 8 + (fw + 2) * 3, y, fw, "Hard", TrainerDef.Difficulty.HARD);
+		y += 24;
+
+		List<TrainerDef> list = filteredTrainers();
+		if (list.isEmpty())
+		{
+			hint(g, "No trainers match that filter.", y);
+			return y + 16;
+		}
+		int maxOffset = Math.max(0, list.size() - TRAINERS_VISIBLE);
+		if (trainersOffset > maxOffset)
+		{
+			trainersOffset = maxOffset;
+		}
+		int end = Math.min(list.size(), trainersOffset + TRAINERS_VISIBLE);
+
+		// Count + paging row.
+		g.setFont(FontManager.getRunescapeFont());
+		g.setColor(MUTED);
+		g.drawString((trainersOffset + 1) + "-" + end + " of " + list.size(), 10, y + 11);
+		if (list.size() > TRAINERS_VISIBLE)
+		{
+			iconButton(g, out, new Rectangle(WIDTH - 42, y, 14, 14), Icon.UP, "trainers.page:-1", trainersOffset > 0);
+			iconButton(g, out, new Rectangle(WIDTH - 24, y, 14, 14), Icon.DOWN, "trainers.page:1", trainersOffset < maxOffset);
+		}
+		y += 20;
+
+		for (int i = trainersOffset; i < end; i++)
+		{
+			y = trainerCard(g, out, y, list.get(i));
+		}
+		return y;
+	}
+
+	private void filterButton(Graphics2D g, List<Button> out, int x, int y, int w, String label,
+		TrainerDef.Difficulty difficulty)
+	{
+		Rectangle r = new Rectangle(x, y, w, 20);
+		boolean active = trainerFilter == difficulty;
+		Point hp = hoverPoint;
+		boolean hover = hp != null && r.contains(hp);
+		g.setColor(active || hover ? BUTTON_HOVER : BUTTON_BG);
+		g.fillRoundRect(r.x, r.y, r.width, r.height, 6, 6);
+		g.setColor(active ? new Color(220, 200, 120) : BUTTON_EDGE);
+		g.setStroke(new BasicStroke(active ? 2 : 1));
+		g.drawRoundRect(r.x, r.y, r.width, r.height, 6, 6);
+		g.setFont(FontManager.getRunescapeFont());
+		g.setColor(active ? Color.WHITE : TEXT);
+		FontMetrics fm = g.getFontMetrics();
+		String t = clip(g, label, w - 4);
+		g.drawString(t, r.x + (w - fm.stringWidth(t)) / 2, r.y + (r.height + fm.getAscent() - fm.getDescent()) / 2);
+		out.add(new Button(r, "trainers.filter:" + (difficulty == null ? "ALL" : difficulty.name())));
+	}
+
+	private int trainerCard(Graphics2D g, List<Button> out, int y, TrainerDef trainer)
+	{
+		int cardW = WIDTH - 16;
+		int cardH = 74;
+		g.setColor(new Color(0, 0, 0, 90));
+		g.fillRoundRect(8, y, cardW, cardH, 6, 6);
+
+		int pw = 40;
+		int ph = 48;
+		Rectangle portraitRect = new Rectangle(12, y + 4, pw, ph);
+		g.setColor(new Color(255, 255, 255, 18));
+		g.fillRoundRect(portraitRect.x, portraitRect.y, pw, ph, 5, 5);
+		BufferedImage portrait = portraits.portrait(trainer.getId());
+		if (portrait != null)
+		{
+			drawFit(g, portrait, portraitRect.x + 1, portraitRect.y + 1, pw - 2, ph - 2);
+		}
+		else if (!trainer.getParty().isEmpty())
+		{
+			SpeciesDef lead = db.species(trainer.getParty().get(0).getSpecies());
+			if (lead != null)
+			{
+				drawFit(g, sprites.itemImage(lead.itemIdAt(trainer.getParty().get(0).getLevel())),
+					portraitRect.x + 6, portraitRect.y + 6, pw - 12, ph - 12);
+			}
+		}
+
+		int textX = portraitRect.x + pw + 8;
+		g.setFont(FontManager.getRunescapeBoldFont());
+		g.setColor(Color.WHITE);
+		g.drawString(clip(g, trainer.getName(), 8 + cardW - textX - 6), textX, y + 15);
+		g.setFont(FontManager.getRunescapeFont());
+		g.setColor(MUTED);
+		int maxLevel = trainer.getParty().stream().mapToInt(TrainerDef.PartyEntry::getLevel).max().orElse(1);
+		int partyCount = trainer.getParty().size();
+		g.drawString(clip(g, "Lv " + maxLevel + " - " + trainer.getDifficulty() + " - "
+			+ partyCount + (partyCount == 1 ? " pet" : " pets"), 8 + cardW - textX - 6), textX, y + 30);
+
+		// Buttons row: Battle (gated on being unlocked + a fit team) and Locate (if location known).
+		int innerLeft = 12;
+		int innerW = cardW - 8;
+		int gap = 6;
+		int bw = (innerW - gap) / 2;
+		int btnY = y + cardH - 22;
+		boolean unlocked = roster.isTrainerDefeated(trainer.getId())
+			|| roster.isRemoteBattlesUnlocked()
+			|| nearTrainers.get().contains(trainer.getId());
+		boolean canFight = unlocked && !roster.getTeam().isEmpty() && roster.teamCanFight();
+		Rectangle battle = new Rectangle(innerLeft, btnY, bw, 18);
+		drawButton(g, battle, "Battle", canFight, false);
+		if (canFight)
+		{
+			out.add(new Button(battle, "fight:" + trainer.getId()));
+		}
+		Rectangle locate = new Rectangle(innerLeft + bw + gap, btnY, innerW - bw - gap, 18);
+		boolean canLocate = !trainer.getLocations().isEmpty();
+		drawButton(g, locate, "Locate", canLocate, false);
+		if (canLocate)
+		{
+			out.add(new Button(locate, "locate:" + trainer.getId()));
+		}
+		return y + cardH + 6;
+	}
+
+	private List<TrainerDef> filteredTrainers()
+	{
+		List<TrainerDef> out = new ArrayList<>();
+		for (TrainerDef trainer : db.allTrainers())
+		{
+			if (trainerFilter == null || trainer.getDifficulty() == trainerFilter)
+			{
+				out.add(trainer);
+			}
+		}
+		out.sort(Comparator.comparing(TrainerDef::getDifficulty)
+			.thenComparingInt(t -> t.getParty().stream().mapToInt(TrainerDef.PartyEntry::getLevel).max().orElse(1))
+			.thenComparing(TrainerDef::getName));
+		return out;
+	}
+
+	/** Greedy word-wrap into lines no wider than {@code maxWidth} in the current font. */
+	private List<String> wrapText(Graphics2D g, String text, int maxWidth)
+	{
+		FontMetrics fm = g.getFontMetrics();
+		List<String> lines = new ArrayList<>();
+		StringBuilder line = new StringBuilder();
+		for (String word : text.split(" "))
+		{
+			String candidate = line.length() == 0 ? word : line + " " + word;
+			if (line.length() > 0 && fm.stringWidth(candidate) > maxWidth)
+			{
+				lines.add(line.toString());
+				line = new StringBuilder(word);
+			}
+			else
+			{
+				line = new StringBuilder(candidate);
+			}
+		}
+		if (line.length() > 0)
+		{
+			lines.add(line.toString());
+		}
+		return lines;
 	}
 
 	// --- drawing helpers ---

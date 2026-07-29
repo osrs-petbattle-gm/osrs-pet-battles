@@ -23,16 +23,40 @@ public class PetChatheads
 	private final Map<String, BufferedImage> cache = new HashMap<>();
 
 	/**
-	 * The foreground chathead for this species id, or null if none is bundled.
+	 * The foreground chathead for this species' base form, or null if none is bundled.
 	 */
 	public BufferedImage chathead(String speciesId)
 	{
-		if (cache.containsKey(speciesId))
+		return chathead(speciesId, null);
+	}
+
+	/**
+	 * The foreground chathead for a species in its active metamorphosis form: prefers a
+	 * variant-specific asset ({@code <species>__<variant>.png}) and falls back to the base
+	 * ({@code <species>.png}). A null variant (base form) uses the base asset directly.
+	 */
+	public BufferedImage chathead(String speciesId, String variantId)
+	{
+		if (variantId != null)
 		{
-			return cache.get(speciesId);
+			BufferedImage variant = load(speciesId + "__" + variantId);
+			if (variant != null)
+			{
+				return variant;
+			}
+		}
+		return load(speciesId);
+	}
+
+	/** Load and cache the chathead at {@code <key>.png}, or null (cached) if none is bundled. */
+	private BufferedImage load(String key)
+	{
+		if (cache.containsKey(key))
+		{
+			return cache.get(key);
 		}
 		BufferedImage img = null;
-		String path = BASE + speciesId + ".png";
+		String path = BASE + key + ".png";
 		if (getClass().getResource(path) != null)
 		{
 			img = ImageUtil.loadImageResource(getClass(), path);
@@ -43,7 +67,7 @@ public class PetChatheads
 		{
 			log.debug("No pet chathead bundled at {}", path);
 		}
-		cache.put(speciesId, img);
+		cache.put(key, img);
 		return img;
 	}
 }

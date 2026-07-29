@@ -21,7 +21,10 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.overlay.OverlayManager;
+import net.runelite.client.ui.overlay.worldmap.WorldMapPoint;
+import net.runelite.client.ui.overlay.worldmap.WorldMapPointManager;
 import net.runelite.client.util.ImageUtil;
+import net.runelite.api.coords.WorldPoint;
 import com.petbattles.bank.AtBankTracker;
 import com.petbattles.battle.BattleInputHandler;
 import com.petbattles.battle.BattleKeyListener;
@@ -31,6 +34,7 @@ import com.petbattles.data.ContentLoader;
 import com.petbattles.data.PetDatabase;
 import com.petbattles.easteregg.EasterEggTracker;
 import com.petbattles.engine.Leveling;
+import com.petbattles.engine.TrainerDef;
 import com.petbattles.follower.FollowerTracker;
 import com.petbattles.follower.HeldItemTracker;
 import com.petbattles.npc.NearTrainerTracker;
@@ -88,6 +92,14 @@ public class PetBattlesPlugin extends Plugin
 	@Inject
 	private EventBus eventBus;
 
+	@Inject
+	private WorldMapPointManager worldMapPointManager;
+
+	// "Locate" pins currently on the world map (one per known trainer location). Replaced on each
+	// Locate and cleared on shutdown. A trainer like Man has many, so this is a list.
+	private final java.util.List<WorldMapPoint> locatePins = new java.util.ArrayList<>();
+	private BufferedImage mapPinImage;
+
 	private PetDatabase db;
 	private RosterManager roster;
 	private PetBattlesPanel panel;
@@ -132,13 +144,13 @@ public class PetBattlesPlugin extends Plugin
 		panel = new PetBattlesPanel(db, roster, sprites, this::startTrainerBattle,
 			() -> restOverlay.play(), nearTrainerTracker::isNear);
 		session = new BattleSession(client, db, roster, config, () -> panel.refresh());
-		overlay = new BattleOverlay(session, sprites, new PetChatheads());
+		overlay = new BattleOverlay(session, sprites, new PetChatheads(), new Portraits());
 		inputHandler = new BattleInputHandler(session, overlay, clientThread);
 		keyListener = new BattleKeyListener(client, session, clientThread);
 		hubOverlay = new HubOverlay(db, roster, sprites, new Portraits(), session,
 			atBankTracker::isAtBank, nearTrainerTracker::getNearTrainerIds);
 		hubInputHandler = new HubInputHandler(hubOverlay, roster, session,
-			this::startTrainerBattle, restOverlay::play, clientThread);
+			this::startTrainerBattle, this::locateTrainer, restOverlay::play, clientThread);
 		overlayManager.add(overlay);
 		overlayManager.add(restOverlay);
 		overlayManager.add(hubOverlay);
@@ -176,14 +188,16 @@ public class PetBattlesPlugin extends Plugin
 			clientThread.invokeLater(followerTracker::refresh);
 			panel.refresh();
 		}
-		log.debug("Pet Battles started with {} species, {} moves, {} trainers",
-			db.allSpecies().size(), db.allMoves().size(), db.allTrainers().size());
+		log.debug("Pet Battles started with {} species, {} moves, {} trainers (dev mode: {})",
+			db.allSpecies().size(), db.allMoves().size(), db.allTrainers().size(), PetBattlesConfig.DEV);
 	}
 
 	@Override
 	protected void shutDown() throws Exception
 	{
 		clientToolbar.removeNavigation(navButton);
+		clearLocatePins();
+		mapPinImage = null;
 		if (collectionLogSync != null)
 		{
 			eventBus.unregister(atBankTracker);
@@ -307,6 +321,65 @@ public class PetBattlesPlugin extends Plugin
 					"Pet Battles: " + reason, null);
 			}
 		});
+	}
+
+	/**
+	 * Drop a "Locate" pin on the world map at every known location of this trainer and centre the
+	 * map on the one nearest the player. Pins persist so the player sees them when they open the
+	 * map; the next Locate replaces them. No-op for trainers with no known location. Runs on the
+	 * client thread (dispatched from the hub input handler).
+	 */
+	private void locateTrainer(String trainerId)
+	{
+		TrainerDef trainer = db.trainer(trainerId);
+		if (trainer == null || trainer.getLocations().isEmpty())
+		{
+			return;
+		}
+		clearLocatePins();
+		if (mapPinImage == null)
+		{
+			mapPinImage = ImageUtil.loadImageResource(getClass(), "/com/petbattles/icons/panel_icon.png");
+		}
+		WorldPoint me = client.getLocalPlayer() != null ? client.getLocalPlayer().getWorldLocation() : null;
+		WorldPoint nearest = null;
+		int nearestDist = Integer.MAX_VALUE;
+		for (TrainerDef.Location loc : trainer.getLocations())
+		{
+			WorldPoint wp = new WorldPoint(loc.getX(), loc.getY(), loc.getPlane());
+			WorldMapPoint pin = new WorldMapPoint(wp, mapPinImage);
+			pin.setName(trainer.getName());
+			pin.setTarget(wp);
+			pin.setJumpOnClick(true);
+			pin.setSnapToEdge(true);
+			worldMapPointManager.add(pin);
+			locatePins.add(pin);
+			int dist = me != null && me.getPlane() == wp.getPlane() ? me.distanceTo(wp) : Integer.MAX_VALUE;
+			if (nearest == null || dist < nearestDist)
+			{
+				nearest = wp;
+				nearestDist = dist;
+			}
+		}
+		// getWorldMap() is null until the map widget has initialised; the pins still register, and
+		// centring is a best-effort nicety, so just skip it when unavailable.
+		if (client.getWorldMap() != null)
+		{
+			client.getWorldMap().setWorldMapPositionTarget(nearest);
+		}
+		int count = trainer.getLocations().size();
+		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
+			"<col=ff7700>Pet Battles:</col> " + trainer.getName() + " marked on your world map"
+				+ (count > 1 ? " (" + count + " locations)." : "."), null);
+	}
+
+	private void clearLocatePins()
+	{
+		for (WorldMapPoint pin : locatePins)
+		{
+			worldMapPointManager.remove(pin);
+		}
+		locatePins.clear();
 	}
 
 	public PetDatabase getDb()

@@ -1,11 +1,14 @@
 [
   {
-    "id": "ernest",
-    "name": "Ernest",
-    "theme": "Draynor Manor — transformed by Professor Oddenstein's machine",
+    "id": "professor_oddenstein",
+    "name": "Professor Oddenstein",
+    "theme": "Draynor Manor's resident wizard and inventor",
     "difficulty": "EASY",
     "npcIds": [
-      3563
+      3562
+    ],
+    "locations": [
+      { "x": 3111, "y": 3367, "plane": 2 }
     ],
     "party": [
       {
@@ -437,6 +440,27 @@
       3106,
       3107,
       3108
+    ],
+    "locations": [
+      { "x": 3216, "y": 3219, "plane": 0 },
+      { "x": 3234, "y": 3398, "plane": 0 },
+      { "x": 3100, "y": 3279, "plane": 0 },
+      { "x": 3293, "y": 3205, "plane": 0 },
+      { "x": 3029, "y": 3352, "plane": 0 },
+      { "x": 3095, "y": 3510, "plane": 0 },
+      { "x": 3017, "y": 3238, "plane": 0 },
+      { "x": 2941, "y": 3145, "plane": 0 },
+      { "x": 2889, "y": 3173, "plane": 0 },
+      { "x": 3006, "y": 3458, "plane": 0 },
+      { "x": 2603, "y": 3421, "plane": 0 },
+      { "x": 2713, "y": 3480, "plane": 0 },
+      { "x": 2816, "y": 3442, "plane": 0 },
+      { "x": 2596, "y": 3104, "plane": 0 },
+      { "x": 1806, "y": 3710, "plane": 0 },
+      { "x": 1777, "y": 3655, "plane": 0 },
+      { "x": 1682, "y": 3673, "plane": 0 },
+      { "x": 1508, "y": 3585, "plane": 0 },
+      { "x": 1894, "y": 3318, "plane": 0 }
     ],
     "party": [
       {

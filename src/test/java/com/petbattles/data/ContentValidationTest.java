@@ -277,16 +277,36 @@ public class ContentValidationTest
 	}
 
 	@Test
-	public void ernestExistsForTheRemoteQuest()
+	public void professorOddensteinExistsForTheRemoteQuest()
 	{
-		// The "Where's the remote?" quest completes on beating trainer id "ernest" (Ernest, human
-		// form NPC 3563 at Draynor Manor). Keep that wiring intact — BattleSession keys the reward
-		// off this id, so a rename here silently breaks the remote-battle unlock.
-		TrainerDef ernest = db.trainer("ernest");
-		assertNotNull("ernest trainer must exist for the remote quest", ernest);
-		assertTrue("ernest maps to his human-form npc id 3563",
-			ernest.getNpcIds().contains(3563));
-		assertFalse("ernest has a party to fight", ernest.getParty().isEmpty());
+		// The "Where's the remote?" quest completes on beating trainer id "professor_oddenstein"
+		// (Professor Oddenstein, NPC 3562, top floor of Draynor Manor). Keep that wiring intact —
+		// BattleSession keys the reward off this id, so a rename here silently breaks the unlock.
+		TrainerDef professor = db.trainer("professor_oddenstein");
+		assertNotNull("professor_oddenstein trainer must exist for the remote quest", professor);
+		assertTrue("professor maps to his npc id 3562", professor.getNpcIds().contains(3562));
+		assertFalse("professor has a party to fight", professor.getParty().isEmpty());
+		assertFalse("professor has a location for the Locate pin", professor.getLocations().isEmpty());
+	}
+
+	@Test
+	public void trainerLocationsAreWellFormed()
+	{
+		boolean anyLocated = false;
+		for (TrainerDef t : db.allTrainers())
+		{
+			for (TrainerDef.Location loc : t.getLocations())
+			{
+				anyLocated = true;
+				String ctx = "trainer " + t.getId() + " location";
+				assertTrue(ctx + " x in world bounds", loc.getX() > 0 && loc.getX() < 16384);
+				assertTrue(ctx + " y in world bounds", loc.getY() > 0 && loc.getY() < 16384);
+				assertTrue(ctx + " plane 0-3", loc.getPlane() >= 0 && loc.getPlane() <= 3);
+			}
+		}
+		assertTrue("at least one trainer is locatable on the world map", anyLocated);
+		// Man wanders many towns — the multi-location model must hold more than one for him.
+		assertTrue("Man has multiple locations", db.trainer("man").getLocations().size() > 1);
 	}
 
 	@Test

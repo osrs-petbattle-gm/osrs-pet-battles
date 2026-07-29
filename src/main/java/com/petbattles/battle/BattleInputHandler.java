@@ -121,6 +121,10 @@ public class BattleInputHandler extends MouseAdapter
 		{
 			session.submitFlee();
 		}
+		else if ("questdialog.continue".equals(action))
+		{
+			session.dismissQuestDialog();
+		}
 		else if ("close".equals(action))
 		{
 			session.close();

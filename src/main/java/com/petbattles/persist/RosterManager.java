@@ -378,7 +378,7 @@ public class RosterManager
 
 	/**
 	 * Whether remote battles are unlocked: either the dev "remote battles" toggle, or the player
-	 * has completed "Where's the remote?" (the Remote Battle Device from Ernest). When unlocked,
+	 * has completed "Where's the remote?" (the Remote Battle Device from Professor Oddenstein). When unlocked,
 	 * any trainer can be fought from the panel without standing next to them in the world.
 	 */
 	public synchronized boolean isRemoteBattlesUnlocked()
