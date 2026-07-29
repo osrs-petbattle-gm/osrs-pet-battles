@@ -15,6 +15,7 @@ import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.NpcSpawned;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.eventbus.Subscribe;
 
 /**
@@ -23,6 +24,7 @@ import net.runelite.client.eventbus.Subscribe;
  * per game tick against that set. Being near an undefeated trainer is what unlocks the
  * first panel Fight against them, replacing the old in-world right-click entry.
  */
+@Slf4j
 public class NearTrainerTracker
 {
 	private static final int TRAINER_RADIUS_TILES = 10;
@@ -103,6 +105,8 @@ public class NearTrainerTracker
 		Set<String> now = computeNearby();
 		if (!now.equals(nearTrainerIds))
 		{
+			log.debug("Near-trainer set changed: {} -> {} (tracking {} trainer NPC(s))",
+				nearTrainerIds, now, trainers.size());
 			nearTrainerIds = now;
 			onChanged.run();
 		}

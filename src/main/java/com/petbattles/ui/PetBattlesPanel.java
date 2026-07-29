@@ -50,8 +50,6 @@ public class PetBattlesPanel extends PluginPanel
 	// "Is the player currently standing near this trainer in the world?" — unlocks the
 	// first panel Fight against an undefeated trainer.
 	private final Predicate<String> isNearTrainer;
-	// Whether a trainer is the current Random Battle challenge (fightable without being in-world).
-	private final Predicate<String> isPendingChallenge;
 
 	private final JLabel statusLabel = new JLabel();
 	private final JLabel teamTitle = new JLabel();
@@ -82,8 +80,7 @@ public class PetBattlesPanel extends PluginPanel
 	}
 
 	public PetBattlesPanel(PetDatabase db, RosterManager roster, Sprites sprites,
-		Consumer<String> fightAction, Runnable onRest, Predicate<String> isNearTrainer,
-		Predicate<String> isPendingChallenge)
+		Consumer<String> fightAction, Runnable onRest, Predicate<String> isNearTrainer)
 	{
 		this.db = db;
 		this.roster = roster;
@@ -91,7 +88,6 @@ public class PetBattlesPanel extends PluginPanel
 		this.fightAction = fightAction;
 		this.onRest = onRest;
 		this.isNearTrainer = isNearTrainer;
-		this.isPendingChallenge = isPendingChallenge;
 
 		setLayout(new BorderLayout());
 		setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
@@ -274,20 +270,17 @@ public class PetBattlesPanel extends PluginPanel
 			: !injured ? "All pets are rested" : "Restore every pet to full HP");
 
 		// The first fight against a trainer must be earned in the world: stand near them,
-		// or beat them once (remote re-fights then unlock permanently). A pending Random Battle
-		// challenge also unlocks that trainer. The dev remote-battles toggle bypasses this entirely.
+		// or beat them once (remote re-fights then unlock permanently). The dev remote-battles
+		// toggle bypasses this entirely.
 		TrainerItem selected = (TrainerItem) trainerBox.getSelectedItem();
-		boolean challenged = selected != null && isPendingChallenge.test(selected.trainer.getId());
 		boolean unlocked = selected != null
-			&& (challenged
-				|| roster.isTrainerDefeated(selected.trainer.getId())
+			&& (roster.isTrainerDefeated(selected.trainer.getId())
 				|| roster.isDevRemoteBattlesEnabled()
 				|| isNearTrainer.test(selected.trainer.getId()));
 		boolean canFight = loggedIn && !team.isEmpty() && roster.teamCanFight() && unlocked;
 		fightButton.setEnabled(canFight);
 		fightButton.setToolTipText(team.isEmpty() ? "Add a pet to your team first"
 			: loggedIn && !roster.teamCanFight() ? "Your team is knocked out — rest at a bank"
-			: challenged ? "Random Battle challenge — fight them now!"
 			: loggedIn && !unlocked && selected != null
 				? "Get near " + selected.trainer.getName() + " to challenge them for the first time"
 			: null);

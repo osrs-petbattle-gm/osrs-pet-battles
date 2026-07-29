@@ -219,11 +219,13 @@ public class HubOverlay extends Overlay
 
 	/**
 	 * The pane context wants open right now, or null. Challenge (a battleable trainer is
-	 * nearby) outranks Rest (at a bank with an injured pet).
+	 * nearby) outranks Rest (at a bank with an injured pet). The challenge pane never
+	 * auto-opens while banking — it would cover the bank interface — but the manual
+	 * "Challenge nearby trainer" menu button stays available.
 	 */
 	private Pane currentContext()
 	{
-		if (!nearTrainers.get().isEmpty())
+		if (!atBank.getAsBoolean() && !nearTrainers.get().isEmpty())
 		{
 			return Pane.CHALLENGE;
 		}

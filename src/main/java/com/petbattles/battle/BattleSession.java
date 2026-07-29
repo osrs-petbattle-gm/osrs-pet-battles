@@ -596,11 +596,19 @@ public class BattleSession
 			{
 				continue;
 			}
+			int oldLevel = pet.getLevel();
+			Progress p = progress.computeIfAbsent(speciesId, k -> new Progress(oldLevel));
 			long xp = Math.max(1,
 				Leveling.battleWinXp(fallen.getLevel(), pet.getLevel(), firstWin) * mult / share);
-			int oldLevel = pet.getLevel();
+			// Cap the per-battle jump relative to the level this pet entered the battle at, so a
+			// single win can't rocket a low-level pet up the compressed early curve (feedback #3).
+			xp = Leveling.capBattleXp(pet.getXp(), xp, p.startLevel);
+			if (xp <= 0)
+			{
+				// Already hit the per-battle level cap on an earlier faint this fight.
+				continue;
+			}
 			int gained = pet.addXp(xp);
-			Progress p = progress.computeIfAbsent(speciesId, k -> new Progress(oldLevel));
 			p.xp += xp;
 			anyAward = true;
 			if (PetBattlesConfig.devBattleTrace())

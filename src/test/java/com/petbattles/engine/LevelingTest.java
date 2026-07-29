@@ -81,7 +81,7 @@ public class LevelingTest
 	}
 
 	@Test
-	public void repeatWinsGiveAThirdOfFirstWinXp()
+	public void repeatWinsGiveReducedFirstWinXp()
 	{
 		long first = Leveling.battleWinXp(50, 50, true);
 		long repeat = Leveling.battleWinXp(50, 50, false);
@@ -90,6 +90,27 @@ public class LevelingTest
 		assertTrue(repeat < first);
 		// Repeats never round down to zero
 		assertTrue(Leveling.battleWinXp(1, 99, false) >= 1);
+	}
+
+	@Test
+	public void capBattleXpLimitsLevelsPerBattle()
+	{
+		int start = 1;
+		long ceiling = Leveling.xpForLevel(start + Leveling.MAX_LEVELS_PER_BATTLE);
+
+		// A level-1 pet (0 xp) offered a huge award lands exactly at the cap level.
+		long capped = Leveling.capBattleXp(0, 10_000_000L, start);
+		assertEquals(ceiling, capped);
+		assertEquals(start + Leveling.MAX_LEVELS_PER_BATTLE, Leveling.levelForXp(capped));
+
+		// An award that stays within the cap passes through untouched.
+		assertEquals(ceiling - 1, Leveling.capBattleXp(0, ceiling - 1, start));
+
+		// Once the pet has already reached the cap this battle, further awards give nothing.
+		assertEquals(0, Leveling.capBattleXp(ceiling, 500, start));
+
+		// Near the level ceiling the cap never blocks progress.
+		assertEquals(500, Leveling.capBattleXp(Leveling.xpForLevel(97), 500, 97));
 	}
 
 	@Test

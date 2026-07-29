@@ -95,9 +95,43 @@ public final class Leveling
 	}
 
 	/**
-	 * Fraction of first-win XP awarded when re-fighting an already-defeated trainer.
+	 * Fraction of first-win XP awarded when re-fighting an already-defeated trainer. Kept
+	 * generous (half of the first-win amount) so re-fights still feel worth doing (feedback #3).
 	 */
-	public static final double REPEAT_WIN_FACTOR = 0.33;
+	public static final double REPEAT_WIN_FACTOR = 0.5;
+
+	/**
+	 * Most levels a single pet may gain from one battle. On the compressed low-level curve a
+	 * single early win would otherwise vault a level-1 pet deep into the teens (feedback #3);
+	 * this caps the jump while leaving late-game pacing untouched (a capped 200 XP is a small
+	 * fraction of a level by then anyway).
+	 */
+	public static final int MAX_LEVELS_PER_BATTLE = 5;
+
+	/**
+	 * Clamp a battle XP award so a pet finishes the battle at most {@link #MAX_LEVELS_PER_BATTLE}
+	 * levels above the level it started that battle at. {@code currentXp} is the pet's XP right now
+	 * (it may already have gained levels earlier in the same battle); returns the XP to actually
+	 * apply, never more than {@code award} and never negative.
+	 */
+	public static long capBattleXp(long currentXp, long award, int battleStartLevel)
+	{
+		if (award <= 0)
+		{
+			return Math.max(0, award);
+		}
+		int capLevel = battleStartLevel + MAX_LEVELS_PER_BATTLE;
+		if (capLevel >= MAX_LEVEL)
+		{
+			return award; // no cap needed near the level ceiling
+		}
+		long ceiling = xpForLevel(capLevel);
+		if (currentXp >= ceiling)
+		{
+			return 0;
+		}
+		return Math.min(award, ceiling - currentXp);
+	}
 
 	/**
 	 * XP for winning a plugin battle, scaled by relative levels (first-win amount).

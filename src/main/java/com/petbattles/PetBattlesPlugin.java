@@ -34,7 +34,6 @@ import com.petbattles.engine.Leveling;
 import com.petbattles.follower.FollowerTracker;
 import com.petbattles.follower.HeldItemTracker;
 import com.petbattles.npc.NearTrainerTracker;
-import com.petbattles.npc.RandomBattleScheduler;
 import com.petbattles.persist.RosterManager;
 import com.petbattles.persist.RosterStore;
 import com.petbattles.ui.BattleOverlay;
@@ -102,7 +101,6 @@ public class PetBattlesPlugin extends Plugin
 	private BattleKeyListener keyListener;
 	private AtBankTracker atBankTracker;
 	private NearTrainerTracker nearTrainerTracker;
-	private RandomBattleScheduler randomBattleScheduler;
 	private CollectionLogSync collectionLogSync;
 	private FollowerTracker followerTracker;
 	private HeldItemTracker heldItemTracker;
@@ -130,18 +128,9 @@ public class PetBattlesPlugin extends Plugin
 				panel.refresh();
 			}
 		});
-		randomBattleScheduler = new RandomBattleScheduler(client, db, roster,
-			() -> session != null && session.isActive(),
-			() ->
-			{
-				if (panel != null)
-				{
-					panel.refresh();
-				}
-			});
 		restOverlay = new RestOverlay();
 		panel = new PetBattlesPanel(db, roster, sprites, this::startTrainerBattle,
-			() -> restOverlay.play(), nearTrainerTracker::isNear, randomBattleScheduler::isPending);
+			() -> restOverlay.play(), nearTrainerTracker::isNear);
 		session = new BattleSession(db, roster, config, () -> panel.refresh());
 		overlay = new BattleOverlay(session, sprites, new PetChatheads());
 		inputHandler = new BattleInputHandler(session, overlay, clientThread);
@@ -165,7 +154,6 @@ public class PetBattlesPlugin extends Plugin
 		easterEggTracker = new EasterEggTracker(client, db, roster, followerTracker, refreshPanel);
 		eventBus.register(atBankTracker);
 		eventBus.register(nearTrainerTracker);
-		eventBus.register(randomBattleScheduler);
 		eventBus.register(collectionLogSync);
 		eventBus.register(followerTracker);
 		eventBus.register(heldItemTracker);
@@ -200,7 +188,6 @@ public class PetBattlesPlugin extends Plugin
 		{
 			eventBus.unregister(atBankTracker);
 			eventBus.unregister(nearTrainerTracker);
-			eventBus.unregister(randomBattleScheduler);
 			eventBus.unregister(collectionLogSync);
 			eventBus.unregister(followerTracker);
 			eventBus.unregister(heldItemTracker);
@@ -252,7 +239,6 @@ public class PetBattlesPlugin extends Plugin
 		keyListener = null;
 		atBankTracker = null;
 		nearTrainerTracker = null;
-		randomBattleScheduler = null;
 		collectionLogSync = null;
 		followerTracker = null;
 		heldItemTracker = null;
@@ -308,12 +294,7 @@ public class PetBattlesPlugin extends Plugin
 				return;
 			}
 			session.close();
-			if (session.startTrainerBattle(trainerId))
-			{
-				// Starting the fight consumes any Random Battle challenge for this trainer.
-				randomBattleScheduler.clearPending();
-			}
-			else
+			if (!session.startTrainerBattle(trainerId))
 			{
 				log.debug("Could not start battle vs {}", trainerId);
 				// Most likely cause: empty or fully-fainted team

@@ -25,7 +25,8 @@
     "theme": "Varrock's famous pet keeper",
     "difficulty": "EASY",
     "npcIds": [
-      7284
+      7284,
+      7723
     ],
     "party": [
       {
