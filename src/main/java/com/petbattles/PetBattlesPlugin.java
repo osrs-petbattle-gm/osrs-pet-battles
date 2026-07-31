@@ -2,6 +2,10 @@ package com.petbattles;
 
 import com.google.gson.Gson;
 import com.google.inject.Provides;
+import java.awt.BasicStroke;
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import javax.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +46,7 @@ import com.petbattles.persist.RosterManager;
 import com.petbattles.persist.RosterStore;
 import com.petbattles.ui.BattleOverlay;
 import com.petbattles.ui.HubInputHandler;
+import com.petbattles.ui.HubKeyListener;
 import com.petbattles.ui.HubOverlay;
 import com.petbattles.ui.PetBattlesPanel;
 import com.petbattles.ui.PetChatheads;
@@ -109,6 +114,7 @@ public class PetBattlesPlugin extends Plugin
 	private RestOverlay restOverlay;
 	private HubOverlay hubOverlay;
 	private HubInputHandler hubInputHandler;
+	private HubKeyListener hubKeyListener;
 	private BattleInputHandler inputHandler;
 	private BattleKeyListener keyListener;
 	private AtBankTracker atBankTracker;
@@ -151,12 +157,15 @@ public class PetBattlesPlugin extends Plugin
 			atBankTracker::isAtBank, nearTrainerTracker::getNearTrainerIds);
 		hubInputHandler = new HubInputHandler(hubOverlay, roster, session,
 			this::startTrainerBattle, this::locateTrainer, restOverlay::play, clientThread);
+		hubKeyListener = new HubKeyListener(hubOverlay, session, clientThread);
 		overlayManager.add(overlay);
 		overlayManager.add(restOverlay);
 		overlayManager.add(hubOverlay);
 		mouseManager.registerMouseListener(inputHandler);
 		mouseManager.registerMouseListener(hubInputHandler);
+		mouseManager.registerMouseWheelListener(hubInputHandler);
 		keyManager.registerKeyListener(keyListener);
+		keyManager.registerKeyListener(hubKeyListener);
 
 		Runnable refreshPanel = () -> panel.refresh();
 		collectionLogSync = new CollectionLogSync(client, db, roster, refreshPanel);
@@ -223,6 +232,7 @@ public class PetBattlesPlugin extends Plugin
 		if (hubInputHandler != null)
 		{
 			mouseManager.unregisterMouseListener(hubInputHandler);
+			mouseManager.unregisterMouseWheelListener(hubInputHandler);
 		}
 		if (inputHandler != null)
 		{
@@ -231,6 +241,10 @@ public class PetBattlesPlugin extends Plugin
 		if (keyListener != null)
 		{
 			keyManager.unregisterKeyListener(keyListener);
+		}
+		if (hubKeyListener != null)
+		{
+			keyManager.unregisterKeyListener(hubKeyListener);
 		}
 		if (session != null)
 		{
@@ -249,6 +263,7 @@ public class PetBattlesPlugin extends Plugin
 		restOverlay = null;
 		hubOverlay = null;
 		hubInputHandler = null;
+		hubKeyListener = null;
 		inputHandler = null;
 		keyListener = null;
 		atBankTracker = null;
@@ -339,7 +354,7 @@ public class PetBattlesPlugin extends Plugin
 		clearLocatePins();
 		if (mapPinImage == null)
 		{
-			mapPinImage = ImageUtil.loadImageResource(getClass(), "/com/petbattles/icons/panel_icon.png");
+			mapPinImage = buildMapPin();
 		}
 		WorldPoint me = client.getLocalPlayer() != null ? client.getLocalPlayer().getWorldLocation() : null;
 		WorldPoint nearest = null;
@@ -380,6 +395,36 @@ public class PetBattlesPlugin extends Plugin
 			worldMapPointManager.remove(pin);
 		}
 		locatePins.clear();
+	}
+
+	/**
+	 * The world-map marker. The bare paw icon washes out against the tan map, so it's composited
+	 * onto a bright, dark-outlined disc and the paw is redrawn as a solid dark silhouette on top —
+	 * high-contrast at any map zoom regardless of the source icon's own colours.
+	 */
+	private BufferedImage buildMapPin()
+	{
+		BufferedImage paw = ImageUtil.loadImageResource(getClass(), "/com/petbattles/icons/panel_icon.png");
+		int size = 28;
+		BufferedImage pin = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g = pin.createGraphics();
+		g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+		g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+		int inset = 3;
+		int d = size - inset * 2;
+		g.setColor(new Color(240, 170, 40));
+		g.fillOval(inset, inset, d, d);
+		g.setColor(new Color(25, 20, 10));
+		g.setStroke(new BasicStroke(2.5f));
+		g.drawOval(inset, inset, d, d);
+		if (paw != null)
+		{
+			BufferedImage silhouette = ImageUtil.recolorImage(paw, new Color(25, 20, 10));
+			int inner = d - 6;
+			g.drawImage(silhouette, (size - inner) / 2, (size - inner) / 2, inner, inner, null);
+		}
+		g.dispose();
+		return pin;
 	}
 
 	public PetDatabase getDb()

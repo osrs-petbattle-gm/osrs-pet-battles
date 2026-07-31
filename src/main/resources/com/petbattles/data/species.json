@@ -1348,5 +1348,39 @@
       { "level": 44, "move": "whirlwind" }
     ],
     "easterEggs": []
+  },
+  {
+    "id": "mr_mcgroot", "name": "Mr McGroot",
+    "itemId": 34040, "altItemIds": [],
+    "npcIds": [16316, 16333],
+    "npcXpTags": [],
+    "types": ["SKILLING", "NATURE"],
+    "base": { "hp": 62, "atk": 52, "def": 62, "spd": 44 },
+    "learnset": [
+      { "level": 1, "move": "crush" },
+      { "level": 8, "move": "vine_whip" },
+      { "level": 16, "move": "harden" },
+      { "level": 26, "move": "overgrowth" },
+      { "level": 38, "move": "timber" },
+      { "level": 48, "move": "bulk_up" }
+    ],
+    "easterEggs": []
+  },
+  {
+    "id": "aggy", "name": "Aggy",
+    "itemId": 34042, "altItemIds": [],
+    "npcIds": [16317, 16334],
+    "npcXpTags": ["Mad Angel"],
+    "types": ["MAGIC", "FIRE"],
+    "base": { "hp": 56, "atk": 68, "def": 52, "spd": 66 },
+    "learnset": [
+      { "level": 1, "move": "wind_strike" },
+      { "level": 8, "move": "ember" },
+      { "level": 16, "move": "arcane_blast" },
+      { "level": 26, "move": "flame_breath" },
+      { "level": 38, "move": "lunar_grace" },
+      { "level": 48, "move": "inferno" }
+    ],
+    "easterEggs": []
   }
 ]

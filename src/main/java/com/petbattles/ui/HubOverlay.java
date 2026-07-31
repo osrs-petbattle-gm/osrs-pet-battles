@@ -5,6 +5,7 @@ import com.petbattles.data.PetDatabase;
 import com.petbattles.engine.PetInstance;
 import com.petbattles.engine.SpeciesDef;
 import com.petbattles.engine.TrainerDef;
+import com.petbattles.item.Item;
 import com.petbattles.persist.RosterManager;
 import com.petbattles.quest.Quest;
 import java.awt.BasicStroke;
@@ -21,7 +22,10 @@ import java.awt.Shape;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.IntSupplier;
@@ -56,6 +60,7 @@ public class HubOverlay extends Overlay
 		REST,
 		CHALLENGE,
 		QUESTS,
+		ITEMS,
 		TRAINERS
 	}
 
@@ -107,21 +112,31 @@ public class HubOverlay extends Overlay
 	private final BooleanSupplier atBank;
 	private final Supplier<Set<String>> nearTrainers;
 	private final BufferedImage chipIcon;
+	// Item icons loaded lazily from /com/petbattles/items/<id>.png; a null value caches a miss.
+	private final Map<String, BufferedImage> itemIconCache = new HashMap<>();
 
 	private final List<Button> buttons = new ArrayList<>();
 	private volatile Point hoverPoint;
 
-	// Pane the user has explicitly opened; null means "follow context / collapsed".
-	private Pane pinned;
+	// Pane the user has explicitly opened; null means "follow context / collapsed". Read from the
+	// AWT thread by the wheel handler (isScrollablePaneOpen), written on the client thread.
+	private volatile Pane pinned;
 	// Context we last auto-derived, and whether the user dismissed it (so it doesn't
 	// immediately re-pop). Cleared when the context changes and re-triggers.
 	private Pane lastContext;
 	private boolean dismissed;
 	private int addOffset;
 	private int challengePage;
-	// Trainers pane: which difficulty filter is active (null = all) and the scroll offset.
+	// Trainers pane: which difficulty filter is active (null = all) and the scroll offset. The
+	// separate "Random" filter is orthogonal to difficulty — when on it shows only random-event
+	// NPCs (which have no fixed location) and difficulty is ignored.
 	private TrainerDef.Difficulty trainerFilter;
+	private boolean randomFilter;
 	private int trainersOffset;
+	// Trainers pane name search. Written on the client thread (render + marshalled key events);
+	// searchFocused is read from the AWT thread by the key listener, so it is volatile.
+	private String trainerSearch = "";
+	private volatile boolean searchFocused;
 	// Quests pane: the quest id whose detail box is expanded (null = none).
 	private String expandedQuest;
 
@@ -165,6 +180,71 @@ public class HubOverlay extends Overlay
 		challengePage = 0;
 		trainersOffset = 0;
 		expandedQuest = null;
+		trainerSearch = "";
+		searchFocused = false;
+	}
+
+	// --- Trainers pane name search (fed by the sibling HubKeyListener while focused) ---
+
+	public void focusSearch()
+	{
+		searchFocused = true;
+	}
+
+	public void blurSearch()
+	{
+		searchFocused = false;
+	}
+
+	public boolean isSearchFocused()
+	{
+		return searchFocused;
+	}
+
+	public void appendSearch(char c)
+	{
+		if (trainerSearch.length() < 24)
+		{
+			trainerSearch += c;
+			trainersOffset = 0;
+		}
+	}
+
+	public void backspaceSearch()
+	{
+		if (!trainerSearch.isEmpty())
+		{
+			trainerSearch = trainerSearch.substring(0, trainerSearch.length() - 1);
+			trainersOffset = 0;
+		}
+	}
+
+	public void clearSearch()
+	{
+		trainerSearch = "";
+		trainersOffset = 0;
+	}
+
+	/**
+	 * Mouse-wheel scroll routed here from the input handler: nudges whichever open pane has a
+	 * scrollable list (Trainers cards, or the Team "add a pet" picker).
+	 */
+	public void scroll(int rotation)
+	{
+		if (pinned == Pane.TRAINERS)
+		{
+			trainersPage(rotation);
+		}
+		else if (pinned == Pane.TEAM)
+		{
+			addPage(rotation);
+		}
+	}
+
+	/** Whether an open pane has a scrollable list, so the wheel handler knows to claim the event. */
+	public boolean isScrollablePaneOpen()
+	{
+		return pinned == Pane.TRAINERS || pinned == Pane.TEAM;
 	}
 
 	public void toggleQuest(String questId)
@@ -178,11 +258,21 @@ public class HubOverlay extends Overlay
 	}
 
 	/**
-	 * Set the Trainers difficulty filter (null = show all) and jump back to the first page.
+	 * Set the Trainers difficulty filter (null = show all), clearing the Random filter, and jump
+	 * back to the first page.
 	 */
 	public void setTrainerFilter(TrainerDef.Difficulty difficulty)
 	{
 		trainerFilter = difficulty;
+		randomFilter = false;
+		trainersOffset = 0;
+	}
+
+	/** Show only random-event NPCs, clearing any difficulty selection. */
+	public void setRandomFilter()
+	{
+		randomFilter = true;
+		trainerFilter = null;
 		trainersOffset = 0;
 	}
 
@@ -209,6 +299,7 @@ public class HubOverlay extends Overlay
 		// Battle lock: the hub is gone for the whole fight, so no team edits or rest.
 		if (session.isActive())
 		{
+			searchFocused = false;
 			clearButtons();
 			return null;
 		}
@@ -232,6 +323,12 @@ public class HubOverlay extends Overlay
 		else
 		{
 			pane = Pane.COLLAPSED;
+		}
+
+		// The search box only lives on the Trainers pane; drop focus if we've left it.
+		if (pane != Pane.TRAINERS)
+		{
+			searchFocused = false;
 		}
 
 		g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
@@ -310,6 +407,8 @@ public class HubOverlay extends Overlay
 				return challengeBody(g, out);
 			case QUESTS:
 				return questsBody(g, out);
+			case ITEMS:
+				return itemsBody(g, out);
 			case TRAINERS:
 				return trainersBody(g, out);
 			case TEAM:
@@ -330,6 +429,8 @@ public class HubOverlay extends Overlay
 				return "Challenge";
 			case QUESTS:
 				return "Quests";
+			case ITEMS:
+				return "Items";
 			case TRAINERS:
 				return "Trainers";
 			case TEAM:
@@ -350,6 +451,7 @@ public class HubOverlay extends Overlay
 		y = fullButton(g, out, y, "Manage team", "open:team", true);
 		y = fullButton(g, out, y, "Trainers", "open:trainers", true);
 		y = fullButton(g, out, y, "Quests", "open:quests", true);
+		y = fullButton(g, out, y, "Items", "open:items", true);
 		if (roster.anyPetInjured())
 		{
 			boolean canRest = atBank.getAsBoolean();
@@ -614,9 +716,8 @@ public class HubOverlay extends Overlay
 
 			if (expanded)
 			{
-				String detail = complete
-					? "Completed — you recovered the Remote Battle Device from Professor Oddenstein. Remote battles are unlocked."
-					: quest.getHint();
+				// Rewards live in the Items panel now; a completed quest just reads as done here.
+				String detail = complete ? "Quest completed." : quest.getHint();
 				g.setFont(FontManager.getRunescapeFont());
 				List<String> lines = wrapText(g, detail, WIDTH - 32);
 				int lineH = 15;
@@ -636,6 +737,100 @@ public class HubOverlay extends Overlay
 		return y;
 	}
 
+	private int itemsBody(Graphics2D g, List<Button> out)
+	{
+		int y = 26;
+		if (!roster.isLoaded())
+		{
+			return loginHint(g, y);
+		}
+		List<Item> items = ownedItems();
+		if (items.isEmpty())
+		{
+			hint(g, "No items yet.", y);
+			y += 16;
+			hint(g, "Complete quests to earn rewards.", y);
+			return y + 16;
+		}
+		for (Item item : items)
+		{
+			y = itemCard(g, out, y, item);
+		}
+		return y;
+	}
+
+	/**
+	 * A held item: bundled icon on the left, name and a wrapped description on the right. Items are
+	 * passive rewards, so the card carries no buttons — the card height grows to fit the text.
+	 */
+	private int itemCard(Graphics2D g, List<Button> out, int y, Item item)
+	{
+		int cardW = WIDTH - 16;
+		int iconBox = 42;
+		int textX = 12 + iconBox + 8;
+		int textW = WIDTH - textX - 10;
+		int lineH = 14;
+
+		g.setFont(FontManager.getRunescapeFont());
+		List<String> desc = wrapText(g, item.getDescription(), textW);
+		int textBlockH = 8 /* name */ + 6 + desc.size() * lineH;
+		int cardH = Math.max(iconBox + 12, textBlockH + 14);
+
+		g.setColor(new Color(0, 0, 0, 90));
+		g.fillRoundRect(8, y, cardW, cardH, 6, 6);
+
+		Rectangle iconRect = new Rectangle(12, y + (cardH - iconBox) / 2, iconBox, iconBox);
+		g.setColor(new Color(255, 255, 255, 18));
+		g.fillRoundRect(iconRect.x, iconRect.y, iconBox, iconBox, 5, 5);
+		BufferedImage icon = itemIcon(item.getId());
+		if (icon != null)
+		{
+			drawFit(g, icon, iconRect.x + 5, iconRect.y + 5, iconBox - 10, iconBox - 10);
+		}
+
+		int ty = y + 16;
+		g.setFont(FontManager.getRunescapeBoldFont());
+		g.setColor(Color.WHITE);
+		g.drawString(clip(g, item.getName(), textW), textX, ty);
+		g.setFont(FontManager.getRunescapeFont());
+		g.setColor(TEXT);
+		ty += 6;
+		for (String line : desc)
+		{
+			ty += lineH;
+			g.drawString(line, textX, ty);
+		}
+		return y + cardH + 6;
+	}
+
+	/** The items the player currently holds, derived from the roster state that granted each. */
+	private List<Item> ownedItems()
+	{
+		List<Item> out = new ArrayList<>();
+		if (roster.isRemoteBattlesUnlocked())
+		{
+			out.add(Item.REMOTE_BATTLE_DEVICE);
+		}
+		return out;
+	}
+
+	/** The bundled icon for an item id, or null (cached) if none is present. */
+	private BufferedImage itemIcon(String id)
+	{
+		if (itemIconCache.containsKey(id))
+		{
+			return itemIconCache.get(id);
+		}
+		BufferedImage img = null;
+		String path = "/com/petbattles/items/" + id + ".png";
+		if (getClass().getResource(path) != null)
+		{
+			img = ImageUtil.loadImageResource(getClass(), path);
+		}
+		itemIconCache.put(id, img);
+		return img;
+	}
+
 	private int trainersBody(Graphics2D g, List<Button> out)
 	{
 		int y = 26;
@@ -643,18 +838,31 @@ public class HubOverlay extends Overlay
 		{
 			return loginHint(g, y);
 		}
-		// Difficulty filter: All / Easy / Med / Hard (the active one is highlighted).
-		int fw = (WIDTH - 16 - 6) / 4;
-		filterButton(g, out, 8, y, fw, "All", null);
-		filterButton(g, out, 8 + (fw + 2), y, fw, "Easy", TrainerDef.Difficulty.EASY);
-		filterButton(g, out, 8 + (fw + 2) * 2, y, fw, "Med", TrainerDef.Difficulty.MEDIUM);
-		filterButton(g, out, 8 + (fw + 2) * 3, y, fw, "Hard", TrainerDef.Difficulty.HARD);
+		// Category filter: All / Easy / Med / Hard / Random (the active one is highlighted).
+		int fw = (WIDTH - 16 - 8) / 5;
+		int fx = 8;
+		filterButton(g, out, fx, y, fw, "All", "ALL", trainerFilter == null && !randomFilter);
+		fx += fw + 2;
+		filterButton(g, out, fx, y, fw, "Easy", "EASY",
+			!randomFilter && trainerFilter == TrainerDef.Difficulty.EASY);
+		fx += fw + 2;
+		filterButton(g, out, fx, y, fw, "Med", "MEDIUM",
+			!randomFilter && trainerFilter == TrainerDef.Difficulty.MEDIUM);
+		fx += fw + 2;
+		filterButton(g, out, fx, y, fw, "Hard", "HARD",
+			!randomFilter && trainerFilter == TrainerDef.Difficulty.HARD);
+		fx += fw + 2;
+		filterButton(g, out, fx, y, fw, "Random", "RANDOM", randomFilter);
 		y += 24;
+
+		// Name search box (click to focus, then type — see HubKeyListener).
+		y = searchBox(g, out, y);
 
 		List<TrainerDef> list = filteredTrainers();
 		if (list.isEmpty())
 		{
-			hint(g, "No trainers match that filter.", y);
+			hint(g, trainerSearch.isEmpty() ? "No trainers match that filter."
+				: "No trainers match \"" + trainerSearch + "\".", y);
 			return y + 16;
 		}
 		int maxOffset = Math.max(0, list.size() - TRAINERS_VISIBLE);
@@ -683,10 +891,9 @@ public class HubOverlay extends Overlay
 	}
 
 	private void filterButton(Graphics2D g, List<Button> out, int x, int y, int w, String label,
-		TrainerDef.Difficulty difficulty)
+		String key, boolean active)
 	{
 		Rectangle r = new Rectangle(x, y, w, 20);
-		boolean active = trainerFilter == difficulty;
 		Point hp = hoverPoint;
 		boolean hover = hp != null && r.contains(hp);
 		g.setColor(active || hover ? BUTTON_HOVER : BUTTON_BG);
@@ -699,7 +906,57 @@ public class HubOverlay extends Overlay
 		FontMetrics fm = g.getFontMetrics();
 		String t = clip(g, label, w - 4);
 		g.drawString(t, r.x + (w - fm.stringWidth(t)) / 2, r.y + (r.height + fm.getAscent() - fm.getDescent()) / 2);
-		out.add(new Button(r, "trainers.filter:" + (difficulty == null ? "ALL" : difficulty.name())));
+		out.add(new Button(r, "trainers.filter:" + key));
+	}
+
+	/**
+	 * The name-search input: a rounded field showing the query (or a muted placeholder), a blinking
+	 * caret while focused, and a clear cross once there's text. Clicking the field submits
+	 * {@code trainers.search.focus}; the sibling key listener then feeds keystrokes in.
+	 */
+	private int searchBox(Graphics2D g, List<Button> out, int y)
+	{
+		int h = 20;
+		Rectangle box = new Rectangle(8, y, WIDTH - 16, h);
+		g.setColor(new Color(0, 0, 0, 120));
+		g.fillRoundRect(box.x, box.y, box.width, box.height, 6, 6);
+		g.setColor(searchFocused ? new Color(220, 200, 120) : BUTTON_EDGE);
+		g.setStroke(new BasicStroke(searchFocused ? 2 : 1));
+		g.drawRoundRect(box.x, box.y, box.width, box.height, 6, 6);
+
+		boolean empty = trainerSearch.isEmpty();
+		g.setFont(FontManager.getRunescapeFont());
+		FontMetrics fm = g.getFontMetrics();
+		int textX = box.x + 6;
+		int baseline = box.y + (h + fm.getAscent() - fm.getDescent()) / 2;
+		int textRoom = box.width - 12 - (empty ? 0 : 16);
+		// Placeholder only while idle-empty; once focused it's just the caret on a blank field.
+		if (empty && !searchFocused)
+		{
+			g.setColor(MUTED);
+			g.drawString(clip(g, "Search name…", textRoom), textX, baseline);
+		}
+		else if (!empty)
+		{
+			g.setColor(Color.WHITE);
+			g.drawString(clip(g, trainerSearch, textRoom), textX, baseline);
+		}
+
+		if (searchFocused && (System.currentTimeMillis() / 500) % 2 == 0)
+		{
+			int caretX = textX + Math.min(fm.stringWidth(trainerSearch), textRoom) + 1;
+			g.setColor(Color.WHITE);
+			g.drawLine(caretX, box.y + 4, caretX, box.y + h - 4);
+		}
+
+		// Clear cross first so it wins the hit-test over the field button beneath it.
+		if (!empty)
+		{
+			iconButton(g, out, new Rectangle(box.x + box.width - 18, box.y + 3, 14, 14),
+				Icon.CLOSE, "trainers.search.clear", true);
+		}
+		out.add(new Button(box, "trainers.search.focus"));
+		return y + h + 6;
 	}
 
 	private int trainerCard(Graphics2D g, List<Button> out, int y, TrainerDef trainer)
@@ -757,21 +1014,36 @@ public class HubOverlay extends Overlay
 			out.add(new Button(battle, "fight:" + trainer.getId()));
 		}
 		Rectangle locate = new Rectangle(innerLeft + bw + gap, btnY, innerW - bw - gap, 18);
-		boolean canLocate = !trainer.getLocations().isEmpty();
-		drawButton(g, locate, "Locate", canLocate, false);
-		if (canLocate)
+		if (trainer.isRandomEvent())
 		{
-			out.add(new Button(locate, "locate:" + trainer.getId()));
+			// Random events teleport to the player — there's no fixed spot to mark, so the slot is a
+			// non-clickable "Random" tag rather than a dead "Locate" button.
+			drawButton(g, locate, "Random", false, false);
+		}
+		else
+		{
+			boolean canLocate = !trainer.getLocations().isEmpty();
+			drawButton(g, locate, "Locate", canLocate, false);
+			if (canLocate)
+			{
+				out.add(new Button(locate, "locate:" + trainer.getId()));
+			}
 		}
 		return y + cardH + 6;
 	}
 
 	private List<TrainerDef> filteredTrainers()
 	{
+		String query = trainerSearch.trim().toLowerCase(Locale.ROOT);
 		List<TrainerDef> out = new ArrayList<>();
 		for (TrainerDef trainer : db.allTrainers())
 		{
-			if (trainerFilter == null || trainer.getDifficulty() == trainerFilter)
+			boolean matchesCategory = randomFilter
+				? trainer.isRandomEvent()
+				: (trainerFilter == null || trainer.getDifficulty() == trainerFilter);
+			boolean matchesName = query.isEmpty()
+				|| trainer.getName().toLowerCase(Locale.ROOT).contains(query);
+			if (matchesCategory && matchesName)
 			{
 				out.add(trainer);
 			}

@@ -57,6 +57,7 @@ public class PetBattlesPanel extends PluginPanel
 	private final JLabel bankHintLabel = new JLabel();
 	private final JButton restButton = new JButton("Rest pets");
 	private final JButton resetProgressionButton = new JButton("Reset progression (dev)");
+	private final JButton resetQuestsButton = new JButton("Reset quests (dev)");
 	private final JComboBox<TrainerItem> trainerBox = new JComboBox<>();
 	private final JButton fightButton = new JButton("Fight!");
 	private final JTextField searchField = new JTextField();
@@ -157,6 +158,26 @@ public class PetBattlesPanel extends PluginPanel
 		});
 		north.add(Box.createVerticalStrut(2));
 		north.add(resetProgressionButton);
+
+		resetQuestsButton.setAlignmentX(Component.LEFT_ALIGNMENT);
+		resetQuestsButton.setFont(FontManager.getRunescapeSmallFont());
+		resetQuestsButton.setToolTipText("Testing: wipe all quest progress back to not-started. "
+			+ "Relocks quest rewards (e.g. remote battles / the Remote Battle Device).");
+		resetQuestsButton.setVisible(false);
+		resetQuestsButton.addActionListener(e ->
+		{
+			int confirm = JOptionPane.showConfirmDialog(this,
+				"Reset ALL quest progress?\nThis sets every quest back to not-started and\n"
+					+ "relocks their rewards (e.g. remote battles).",
+				"Reset quests", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+			if (confirm == JOptionPane.YES_OPTION)
+			{
+				roster.resetQuests();
+				refresh();
+			}
+		});
+		north.add(Box.createVerticalStrut(2));
+		north.add(resetQuestsButton);
 		north.add(Box.createVerticalStrut(6));
 
 		trainerBox.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -262,6 +283,7 @@ public class PetBattlesPanel extends PluginPanel
 		rebuildTeamRows(team, canEditTeam);
 
 		resetProgressionButton.setVisible(loggedIn && roster.isDevSelectEnabled());
+		resetQuestsButton.setVisible(loggedIn && roster.isDevSelectEnabled());
 
 		boolean injured = loggedIn && roster.anyPetInjured();
 		restButton.setEnabled(canEditTeam && injured);

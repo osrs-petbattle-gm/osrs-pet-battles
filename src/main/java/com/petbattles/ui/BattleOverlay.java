@@ -227,12 +227,16 @@ public class BattleOverlay extends Overlay
 			}
 			else if (session.getPhase() == BattleSession.Phase.FREE_SWITCH)
 			{
-				// Enemy just sent in a replacement after a KO: offer one cost-free swap
+				// Enemy just sent in a replacement after a KO: offer one cost-free swap. The rows
+				// start a little higher than the usual button strip so the inline "Keep" option
+				// beneath the bench pets (up to two) still clears the bottom edge — worst case is
+				// three 22px rows from here ending at ~240 of the 250-tall overlay.
+				int freeTop = 178;
 				g.setFont(FontManager.getRunescapeSmallFont());
 				g.setColor(new Color(240, 210, 120));
-				g.drawString(clip(g, enemy.getDisplayName() + " is up! Switch pets free?", WIDTH - 72),
-					12, btnY - 4);
-				drawSwapMenu(g, state, btnY, newButtons, SwapMode.FREE);
+				g.drawString(clip(g, enemy.getDisplayName() + " is up! Switch pets free?", WIDTH - 24),
+					12, freeTop - 6);
+				drawSwapMenu(g, state, freeTop, newButtons, SwapMode.FREE);
 			}
 			else if (session.getPhase() == BattleSession.Phase.LEARN_MOVE)
 			{
@@ -553,8 +557,10 @@ public class BattleOverlay extends Overlay
 		}
 		else if (mode == SwapMode.FREE)
 		{
-			Rectangle keep = new Rectangle(WIDTH - 60, 4, 50, 14);
-			drawButton(g, keep, "Keep", true, null);
+			// Decline sits inline as one more option row beneath the bench pets, so it reads as
+			// part of the same "who's up next?" choice rather than a stray corner button.
+			Rectangle keep = new Rectangle(12, rowY, WIDTH - 24, 18);
+			drawButton(g, keep, "Keep current pet", true, null);
 			newButtons.add(new Button(keep, "freeswitchcancel"));
 		}
 	}

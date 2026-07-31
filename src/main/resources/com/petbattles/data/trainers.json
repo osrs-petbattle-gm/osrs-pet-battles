@@ -29,7 +29,9 @@
     "npcIds": [
       5792
     ],
-    "randomEvent": true,
+    "locations": [
+      { "x": 3046, "y": 3376, "plane": 1 }
+    ],
     "party": [
       {
         "species": "giant_squirrel",
@@ -49,6 +51,9 @@
     "npcIds": [
       7284,
       7723
+    ],
+    "locations": [
+      { "x": 3150, "y": 3410, "plane": 0 }
     ],
     "party": [
       {
@@ -73,6 +78,9 @@
     "npcIds": [
       5422
     ],
+    "locations": [
+      { "x": 2999, "y": 3379, "plane": 0 }
+    ],
     "party": [
       {
         "species": "tangleroot",
@@ -95,6 +103,9 @@
     "difficulty": "MEDIUM",
     "npcIds": [
       822
+    ],
+    "locations": [
+      { "x": 3068, "y": 3517, "plane": 0 }
     ],
     "party": [
       {
@@ -120,6 +131,9 @@
       2158,
       2159,
       2160
+    ],
+    "locations": [
+      { "x": 2451, "y": 5178, "plane": 0 }
     ],
     "party": [
       {
@@ -159,6 +173,9 @@
     "npcIds": [
       13622
     ],
+    "locations": [
+      { "x": 2869, "y": 2954, "plane": 1 }
+    ],
     "party": [
       {
         "species": "skotos",
@@ -181,6 +198,9 @@
     "difficulty": "HARD",
     "npcIds": [
       2108
+    ],
+    "locations": [
+      { "x": 3088, "y": 3254, "plane": 0 }
     ],
     "party": [
       {
@@ -485,6 +505,11 @@
       3274,
       3254
     ],
+    "locations": [
+      { "x": 3210, "y": 3401, "plane": 0 },
+      { "x": 2965, "y": 3374, "plane": 0 },
+      { "x": 2611, "y": 3293, "plane": 0 }
+    ],
     "party": [
       {
         "species": "rocky",
@@ -503,6 +528,9 @@
     "difficulty": "HARD",
     "npcIds": [
       2460
+    ],
+    "locations": [
+      { "x": 2843, "y": 3540, "plane": 0 }
     ],
     "party": [
       {
@@ -523,6 +551,9 @@
     "npcIds": [
       13616
     ],
+    "locations": [
+      { "x": 2843, "y": 3546, "plane": 0 }
+    ],
     "party": [
       {
         "species": "rocky",
@@ -541,6 +572,9 @@
     "difficulty": "MEDIUM",
     "npcIds": [
       3216
+    ],
+    "locations": [
+      { "x": 3218, "y": 3237, "plane": 0 }
     ],
     "party": [
       {
@@ -561,6 +595,9 @@
     "npcIds": [
       3343
     ],
+    "locations": [
+      { "x": 3341, "y": 3193, "plane": 0 }
+    ],
     "party": [
       {
         "species": "baby_mole",
@@ -579,6 +616,9 @@
     "difficulty": "MEDIUM",
     "npcIds": [
       6059
+    ],
+    "locations": [
+      { "x": 2668, "y": 3428, "plane": 0 }
     ],
     "party": [
       {
@@ -599,6 +639,9 @@
     "npcIds": [
       2578
     ],
+    "locations": [
+      { "x": 3059, "y": 3485, "plane": 1 }
+    ],
     "party": [
       {
         "species": "phoenix",
@@ -618,6 +661,9 @@
     "npcIds": [
       3249
     ],
+    "locations": [
+      { "x": 2596, "y": 3088, "plane": 0 }
+    ],
     "party": [
       {
         "species": "pet_snakeling",
@@ -636,6 +682,9 @@
     "difficulty": "MEDIUM",
     "npcIds": [
       2886
+    ],
+    "locations": [
+      { "x": 3253, "y": 3401, "plane": 0 }
     ],
     "party": [
       {
@@ -657,6 +706,10 @@
       3097,
       13343
     ],
+    "locations": [
+      { "x": 3238, "y": 3417, "plane": 0 },
+      { "x": 2994, "y": 3341, "plane": 0 }
+    ],
     "party": [
       {
         "species": "rocky",
@@ -675,6 +728,9 @@
     "difficulty": "EASY",
     "npcIds": [
       5789
+    ],
+    "locations": [
+      { "x": 2809, "y": 3192, "plane": 0 }
     ],
     "party": [
       {
@@ -695,6 +751,9 @@
     "npcIds": [
       5045
     ],
+    "locations": [
+      { "x": 2910, "y": 3483, "plane": 0 }
+    ],
     "party": [
       {
         "species": "herbi",
@@ -713,6 +772,9 @@
     "difficulty": "MEDIUM",
     "npcIds": [
       3193
+    ],
+    "locations": [
+      { "x": 3025, "y": 4972, "plane": 1 }
     ],
     "party": [
       {
@@ -735,6 +797,9 @@
       5811,
       5812
     ],
+    "locations": [
+      { "x": 2933, "y": 3288, "plane": 0 }
+    ],
     "party": [
       {
         "species": "beaver",
@@ -754,6 +819,9 @@
     "npcIds": [
       3212
     ],
+    "locations": [
+      { "x": 2824, "y": 3442, "plane": 0 }
+    ],
     "party": [
       {
         "species": "heron",
@@ -768,10 +836,13 @@
   {
     "id": "kuradal",
     "name": "Kuradal",
-    "theme": "Slayer cape master, Slayer Tower",
+    "theme": "Slayer cape master, Shilo Village",
     "difficulty": "HARD",
     "npcIds": [
       13623
+    ],
+    "locations": [
+      { "x": 2872, "y": 2955, "plane": 0 }
     ],
     "party": [
       {
@@ -796,6 +867,9 @@
     "npcIds": [
       1504
     ],
+    "locations": [
+      { "x": 2558, "y": 2913, "plane": 0 }
+    ],
     "party": [
       {
         "species": "herbi",
@@ -814,6 +888,9 @@
     "difficulty": "MEDIUM",
     "npcIds": [
       7716
+    ],
+    "locations": [
+      { "x": 3046, "y": 3339, "plane": 0 }
     ],
     "party": [
       {
@@ -834,6 +911,9 @@
     "npcIds": [
       4733
     ],
+    "locations": [
+      { "x": 3001, "y": 3145, "plane": 0 }
+    ],
     "party": [
       {
         "species": "rock_golem",
@@ -852,6 +932,9 @@
     "difficulty": "MEDIUM",
     "npcIds": [
       2913
+    ],
+    "locations": [
+      { "x": 2612, "y": 3389, "plane": 0 }
     ],
     "party": [
       {
@@ -872,6 +955,9 @@
     "npcIds": [
       2658
     ],
+    "locations": [
+      { "x": 3143, "y": 3450, "plane": 0 }
+    ],
     "party": [
       {
         "species": "chompy_chick",
@@ -890,6 +976,9 @@
     "difficulty": "MEDIUM",
     "npcIds": [
       118
+    ],
+    "locations": [
+      { "x": 2725, "y": 3480, "plane": 0 }
     ],
     "party": [
       {
@@ -910,6 +999,9 @@
     "npcIds": [
       3226
     ],
+    "locations": [
+      { "x": 3193, "y": 3226, "plane": 0 }
+    ],
     "party": [
       {
         "species": "beaver",
@@ -928,6 +1020,9 @@
     "difficulty": "MEDIUM",
     "npcIds": [
       5832
+    ],
+    "locations": [
+      { "x": 3079, "y": 3258, "plane": 0 }
     ],
     "party": [
       {

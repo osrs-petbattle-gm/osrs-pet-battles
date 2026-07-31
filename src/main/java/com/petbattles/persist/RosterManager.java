@@ -377,6 +377,23 @@ public class RosterManager
 	}
 
 	/**
+	 * Testing aid: wipe all quest progress back to not-started. This relocks anything a quest
+	 * granted (e.g. remote battles / the Remote Battle Device item), so a developer can re-run the
+	 * quest flow without clearing their whole roster. Returns the number of quest records cleared.
+	 */
+	public synchronized int resetQuests()
+	{
+		int cleared = data.questProgress.size();
+		log.debug("resetQuests invoked; clearing {} quest record(s)", cleared);
+		if (cleared > 0)
+		{
+			data.questProgress.clear();
+			save();
+		}
+		return cleared;
+	}
+
+	/**
 	 * Whether remote battles are unlocked: either the dev "remote battles" toggle, or the player
 	 * has completed "Where's the remote?" (the Remote Battle Device from Professor Oddenstein). When unlocked,
 	 * any trainer can be fought from the panel without standing next to them in the world.
