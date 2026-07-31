@@ -282,6 +282,7 @@ public class BattleSession
 			def.getName() + " wants to battle!"));
 		state = engine.start(playerTeam, enemyTeam, events);
 		pendingEvents.addAll(events);
+		roster.recordBattleFought();
 		beginAnimating();
 		return true;
 	}

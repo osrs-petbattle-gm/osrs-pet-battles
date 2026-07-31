@@ -4,6 +4,7 @@ import com.petbattles.PetBattlesConfig;
 import com.petbattles.data.PetDatabase;
 import com.petbattles.engine.PetInstance;
 import com.petbattles.engine.SpeciesDef;
+import com.petbattles.item.Item;
 import com.petbattles.quest.Quest;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -391,6 +392,38 @@ public class RosterManager
 			save();
 		}
 		return cleared;
+	}
+
+	/**
+	 * Lifetime number of battles the player has started. Shown as a stat on the Items panel.
+	 */
+	public synchronized int getTotalBattles()
+	{
+		return data.totalBattles;
+	}
+
+	/**
+	 * Count one more battle started, and persist. Called when a battle actually begins.
+	 */
+	public synchronized void recordBattleFought()
+	{
+		data.totalBattles++;
+		save();
+	}
+
+	/**
+	 * Whether the player currently holds this reward item. Derived from the state that granted it
+	 * (so an item and the thing it unlocks can't drift apart), not stored separately.
+	 */
+	public synchronized boolean ownsItem(Item item)
+	{
+		switch (item)
+		{
+			case REMOTE_BATTLE_DEVICE:
+				return isRemoteBattlesUnlocked();
+			default:
+				return false;
+		}
 	}
 
 	/**

@@ -19,6 +19,7 @@ import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.Shape;
+import java.awt.Stroke;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -76,6 +77,19 @@ public class HubOverlay extends Overlay
 		}
 	}
 
+	/** One entry in the menu's icon row: the click action and whether it's currently live. */
+	private static final class MenuEntry
+	{
+		final String action;
+		final boolean enabled;
+
+		MenuEntry(String action, boolean enabled)
+		{
+			this.action = action;
+			this.enabled = enabled;
+		}
+	}
+
 	/** Vector glyphs for the small square controls (arrows, close cross, menu). */
 	private enum Icon
 	{
@@ -114,6 +128,8 @@ public class HubOverlay extends Overlay
 	private final BufferedImage chipIcon;
 	// Item icons loaded lazily from /com/petbattles/items/<id>.png; a null value caches a miss.
 	private final Map<String, BufferedImage> itemIconCache = new HashMap<>();
+	// Menu nav icons (OSRS clan motif symbols) from /com/petbattles/icons/menu/<name>.png.
+	private final Map<String, BufferedImage> menuIconCache = new HashMap<>();
 
 	private final List<Button> buttons = new ArrayList<>();
 	private volatile Point hoverPoint;
@@ -448,22 +464,120 @@ public class HubOverlay extends Overlay
 		{
 			return loginHint(g, y);
 		}
-		y = fullButton(g, out, y, "Manage team", "open:team", true);
-		y = fullButton(g, out, y, "Trainers", "open:trainers", true);
-		y = fullButton(g, out, y, "Quests", "open:quests", true);
-		y = fullButton(g, out, y, "Items", "open:items", true);
+
+		// Nav as a compact row of icon buttons (saves the vertical space the old text list ate).
+		// Actions are unchanged, so the input handler needs no edits. Context-dependent entries
+		// (Rest when hurt, Challenge when a trainer is near) append like the old text menu did.
+		List<MenuEntry> entries = new ArrayList<>();
+		entries.add(new MenuEntry("open:team", true));
+		entries.add(new MenuEntry("open:trainers", true));
+		entries.add(new MenuEntry("open:quests", true));
+		entries.add(new MenuEntry("open:items", true));
 		if (roster.anyPetInjured())
 		{
-			boolean canRest = atBank.getAsBoolean();
-			// Rest straight from the menu (one click), like the Team pane's button — no detour
-			// through the Rest pane, which still auto-opens on its own when you reach a bank hurt.
-			y = fullButton(g, out, y, canRest ? "Rest pets" : "Rest pets (visit a bank)", "rest", canRest);
+			// Rests in one click like the Team pane's button; the Rest pane still auto-opens on its
+			// own when you reach a bank hurt.
+			entries.add(new MenuEntry("rest", atBank.getAsBoolean()));
 		}
 		if (!nearTrainers.get().isEmpty())
 		{
-			y = fullButton(g, out, y, "Challenge nearby trainer", "open:challenge", true);
+			entries.add(new MenuEntry("open:challenge", true));
 		}
-		return y;
+
+		int n = entries.size();
+		int gap = 4;
+		int size = Math.min(32, (WIDTH - 2 * PAD - (n - 1) * gap) / n);
+		int rowW = n * size + (n - 1) * gap;
+		int x = (WIDTH - rowW) / 2;
+		for (MenuEntry e : entries)
+		{
+			Rectangle r = new Rectangle(x, y, size, size);
+			drawButtonBg(g, r, e.enabled);
+			drawMenuGlyph(g, r, e.action);
+			if (e.enabled)
+			{
+				out.add(new Button(r, e.action));
+			}
+			else
+			{
+				// Dim the whole slot when the action isn't available (e.g. Rest away from a bank).
+				g.setColor(new Color(20, 24, 28, 150));
+				g.fillRoundRect(r.x, r.y, r.width, r.height, 6, 6);
+			}
+			x += size + gap;
+		}
+		return y + size + 2;
+	}
+
+	/**
+	 * A menu icon glyph, drawn as a vector so no image assets are needed. Deliberately simple and
+	 * legible at ~40px rather than pixel-faithful to OSRS.
+	 */
+	private void drawMenuGlyph(Graphics2D g, Rectangle r, String action)
+	{
+		BufferedImage icon = menuIcon(action);
+		if (icon != null)
+		{
+			int box = r.width - 8;
+			drawFit(g, icon, r.x + 4, r.y + 4, box, box);
+			return;
+		}
+		// Vector fallback if the icon resource is missing.
+		int cx = r.x + r.width / 2;
+		int cy = r.y + r.height / 2;
+		g.setColor(TEXT);
+		Stroke os = g.getStroke();
+		switch (action)
+		{
+			case "open:team":  // paw print
+				g.fillOval(cx - 7, cy - 5, 4, 4);
+				g.fillOval(cx - 2, cy - 7, 4, 4);
+				g.fillOval(cx + 3, cy - 5, 4, 4);
+				g.fillOval(cx - 5, cy - 1, 10, 9);
+				break;
+			case "open:trainers":  // person
+				g.fillOval(cx - 4, cy - 9, 8, 8);
+				g.fillArc(cx - 7, cy, 14, 14, 0, 180);
+				break;
+			case "open:quests":  // star
+				drawStar(g, cx, cy, 8, 3.4);
+				break;
+			case "open:items":  // backpack
+				g.setStroke(new BasicStroke(2, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+				g.drawArc(cx - 4, cy - 9, 8, 8, 0, 180);
+				g.fillRoundRect(cx - 7, cy - 4, 14, 12, 4, 4);
+				break;
+			case "rest":  // "Zz" (sleep)
+				g.setFont(FontManager.getRunescapeFont());
+				g.drawString("z", cx - 6, cy + 6);
+				g.setFont(FontManager.getRunescapeBoldFont());
+				g.drawString("Z", cx + 1, cy);
+				break;
+			case "open:challenge":  // crossed swords
+				g.setStroke(new BasicStroke(2, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+				g.drawLine(cx - 7, cy + 7, cx + 7, cy - 7);
+				g.drawLine(cx - 7, cy - 7, cx + 7, cy + 7);
+				g.drawLine(cx - 9, cy + 5, cx - 5, cy + 9);
+				g.drawLine(cx + 5, cy + 9, cx + 9, cy + 5);
+				break;
+			default:
+				break;
+		}
+		g.setStroke(os);
+	}
+
+	private void drawStar(Graphics2D g, int cx, int cy, double outer, double inner)
+	{
+		int[] xs = new int[10];
+		int[] ys = new int[10];
+		for (int i = 0; i < 10; i++)
+		{
+			double ang = -Math.PI / 2 + i * Math.PI / 5;
+			double rad = (i % 2 == 0) ? outer : inner;
+			xs[i] = cx + (int) Math.round(Math.cos(ang) * rad);
+			ys[i] = cy + (int) Math.round(Math.sin(ang) * rad);
+		}
+		g.fillPolygon(xs, ys, 10);
 	}
 
 	private int teamBody(Graphics2D g, List<Button> out)
@@ -739,6 +853,11 @@ public class HubOverlay extends Overlay
 		return y;
 	}
 
+	/**
+	 * Rewards laid out like a compact collection log: an "Obtained" tally and lifetime battle count,
+	 * then a grid of item slots (obtained bright, locked darkened). Clicking a slot prints the item's
+	 * examine text to the chatbox, like a RuneScape item examine.
+	 */
 	private int itemsBody(Graphics2D g, List<Button> out)
 	{
 		int y = 26;
@@ -746,74 +865,59 @@ public class HubOverlay extends Overlay
 		{
 			return loginHint(g, y);
 		}
-		List<Item> items = ownedItems();
-		if (items.isEmpty())
+		Item[] all = Item.values();
+		int obtained = 0;
+		for (Item item : all)
 		{
-			hint(g, "No items yet.", y);
-			y += 16;
-			hint(g, "Complete quests to earn rewards.", y);
-			return y + 16;
-		}
-		for (Item item : items)
-		{
-			y = itemCard(g, out, y, item);
-		}
-		return y;
-	}
-
-	/**
-	 * A held item: bundled icon on the left, name and a wrapped description on the right. Items are
-	 * passive rewards, so the card carries no buttons — the card height grows to fit the text.
-	 */
-	private int itemCard(Graphics2D g, List<Button> out, int y, Item item)
-	{
-		int cardW = WIDTH - 16;
-		int iconBox = 42;
-		int textX = 12 + iconBox + 8;
-		int textW = WIDTH - textX - 10;
-		int lineH = 14;
-
-		g.setFont(FontManager.getRunescapeFont());
-		List<String> desc = wrapText(g, item.getDescription(), textW);
-		int textBlockH = 8 /* name */ + 6 + desc.size() * lineH;
-		int cardH = Math.max(iconBox + 12, textBlockH + 14);
-
-		g.setColor(new Color(0, 0, 0, 90));
-		g.fillRoundRect(8, y, cardW, cardH, 6, 6);
-
-		Rectangle iconRect = new Rectangle(12, y + (cardH - iconBox) / 2, iconBox, iconBox);
-		g.setColor(new Color(255, 255, 255, 18));
-		g.fillRoundRect(iconRect.x, iconRect.y, iconBox, iconBox, 5, 5);
-		BufferedImage icon = itemIcon(item.getId());
-		if (icon != null)
-		{
-			drawFit(g, icon, iconRect.x + 5, iconRect.y + 5, iconBox - 10, iconBox - 10);
+			if (roster.ownsItem(item))
+			{
+				obtained++;
+			}
 		}
 
-		int ty = y + 16;
-		g.setFont(FontManager.getRunescapeBoldFont());
-		g.setColor(Color.WHITE);
-		g.drawString(clip(g, item.getName(), textW), textX, ty);
 		g.setFont(FontManager.getRunescapeFont());
 		g.setColor(TEXT);
-		ty += 6;
-		for (String line : desc)
-		{
-			ty += lineH;
-			g.drawString(line, textX, ty);
-		}
-		return y + cardH + 6;
-	}
+		g.drawString("Obtained: " + obtained + "/" + all.length, 10, y + 11);
+		g.setColor(MUTED);
+		String battles = "Battles: " + roster.getTotalBattles();
+		g.drawString(battles, WIDTH - 10 - g.getFontMetrics().stringWidth(battles), y + 11);
+		y += 18;
+		g.setColor(new Color(255, 255, 255, 24));
+		g.fillRect(8, y, WIDTH - 16, 1);
+		y += 9;
 
-	/** The items the player currently holds, derived from the roster state that granted each. */
-	private List<Item> ownedItems()
-	{
-		List<Item> out = new ArrayList<>();
-		if (roster.isRemoteBattlesUnlocked())
+		int cols = 5;
+		int slot = 34;
+		int gap = 4;
+		int gridW = cols * slot + (cols - 1) * gap;
+		int startX = (WIDTH - gridW) / 2;
+		Point hp = hoverPoint;
+		for (int i = 0; i < all.length; i++)
 		{
-			out.add(Item.REMOTE_BATTLE_DEVICE);
+			Item item = all[i];
+			Rectangle r = new Rectangle(startX + (i % cols) * (slot + gap), y + (i / cols) * (slot + gap), slot, slot);
+			boolean owned = roster.ownsItem(item);
+			g.setColor(new Color(0, 0, 0, 90));
+			g.fillRoundRect(r.x, r.y, slot, slot, 5, 5);
+			BufferedImage icon = itemIcon(item.getId());
+			if (icon != null)
+			{
+				drawFit(g, icon, r.x + 4, r.y + 4, slot - 8, slot - 8);
+			}
+			if (!owned)
+			{
+				// Darken like an unobtained collection-log slot.
+				g.setColor(new Color(12, 15, 17, 175));
+				g.fillRoundRect(r.x, r.y, slot, slot, 5, 5);
+			}
+			boolean hover = hp != null && r.contains(hp);
+			g.setColor(!owned ? BUTTON_DISABLED_EDGE : hover ? new Color(220, 200, 120) : BUTTON_EDGE);
+			g.setStroke(new BasicStroke(hover ? 2 : 1));
+			g.drawRoundRect(r.x, r.y, slot, slot, 5, 5);
+			out.add(new Button(r, "item.examine:" + item.getId()));
 		}
-		return out;
+		int rows = (all.length + cols - 1) / cols;
+		return y + rows * (slot + gap) + 2;
 	}
 
 	/** The bundled icon for an item id, or null (cached) if none is present. */
@@ -830,6 +934,24 @@ public class HubOverlay extends Overlay
 			img = ImageUtil.loadImageResource(getClass(), path);
 		}
 		itemIconCache.put(id, img);
+		return img;
+	}
+
+	/** The bundled clan-motif menu icon for a nav action, or null (cached) if none is present. */
+	private BufferedImage menuIcon(String action)
+	{
+		String name = action.startsWith("open:") ? action.substring(5) : action;
+		if (menuIconCache.containsKey(name))
+		{
+			return menuIconCache.get(name);
+		}
+		BufferedImage img = null;
+		String path = "/com/petbattles/icons/menu/" + name + ".png";
+		if (getClass().getResource(path) != null)
+		{
+			img = ImageUtil.loadImageResource(getClass(), path);
+		}
+		menuIconCache.put(name, img);
 		return img;
 	}
 

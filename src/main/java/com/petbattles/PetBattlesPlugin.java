@@ -39,6 +39,7 @@ import com.petbattles.data.PetDatabase;
 import com.petbattles.easteregg.EasterEggTracker;
 import com.petbattles.engine.Leveling;
 import com.petbattles.engine.TrainerDef;
+import com.petbattles.item.Item;
 import com.petbattles.follower.FollowerTracker;
 import com.petbattles.follower.HeldItemTracker;
 import com.petbattles.npc.NearTrainerTracker;
@@ -156,7 +157,7 @@ public class PetBattlesPlugin extends Plugin
 		hubOverlay = new HubOverlay(db, roster, sprites, new Portraits(), session,
 			atBankTracker::isAtBank, nearTrainerTracker::getNearTrainerIds);
 		hubInputHandler = new HubInputHandler(hubOverlay, roster, session,
-			this::startTrainerBattle, this::locateTrainer, restOverlay::play, clientThread);
+			this::startTrainerBattle, this::locateTrainer, this::examineItem, restOverlay::play, clientThread);
 		hubKeyListener = new HubKeyListener(hubOverlay, session, clientThread);
 		overlayManager.add(overlay);
 		overlayManager.add(restOverlay);
@@ -395,6 +396,22 @@ public class PetBattlesPlugin extends Plugin
 			worldMapPointManager.remove(pin);
 		}
 		locatePins.clear();
+	}
+
+	/**
+	 * Print a held item's examine text to the chatbox, like a RuneScape item examine. Dispatched
+	 * from the hub's Items grid on the client thread, so it may touch the client directly.
+	 */
+	private void examineItem(String itemId)
+	{
+		Item item = Item.byId(itemId);
+		if (item == null)
+		{
+			return;
+		}
+		String body = roster.ownsItem(item) ? item.getDescription() : "You haven't earned this yet.";
+		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
+			"<col=ff7700>" + item.getName() + ":</col> " + body, null);
 	}
 
 	/**

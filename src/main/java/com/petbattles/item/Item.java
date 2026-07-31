@@ -30,6 +30,19 @@ public enum Item
 		this.description = description;
 	}
 
+	/** The item with this id, or null if none matches. */
+	public static Item byId(String id)
+	{
+		for (Item item : values())
+		{
+			if (item.id.equals(id))
+			{
+				return item;
+			}
+		}
+		return null;
+	}
+
 	public String getId()
 	{
 		return id;

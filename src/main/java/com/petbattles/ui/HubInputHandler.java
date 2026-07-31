@@ -26,17 +26,20 @@ public class HubInputHandler extends MouseAdapter implements MouseWheelListener
 	private final BattleSession session;
 	private final Consumer<String> fightAction;
 	private final Consumer<String> locateAction;
+	private final Consumer<String> examineAction;
 	private final Runnable onRest;
 	private final ClientThread clientThread;
 
 	public HubInputHandler(HubOverlay overlay, RosterManager roster, BattleSession session,
-		Consumer<String> fightAction, Consumer<String> locateAction, Runnable onRest, ClientThread clientThread)
+		Consumer<String> fightAction, Consumer<String> locateAction, Consumer<String> examineAction,
+		Runnable onRest, ClientThread clientThread)
 	{
 		this.overlay = overlay;
 		this.roster = roster;
 		this.session = session;
 		this.fightAction = fightAction;
 		this.locateAction = locateAction;
+		this.examineAction = examineAction;
 		this.onRest = onRest;
 		this.clientThread = clientThread;
 	}
@@ -181,6 +184,10 @@ public class HubInputHandler extends MouseAdapter implements MouseWheelListener
 		else if (action.startsWith("locate:"))
 		{
 			locateAction.accept(action.substring(7));
+		}
+		else if (action.startsWith("item.examine:"))
+		{
+			examineAction.accept(action.substring("item.examine:".length()));
 		}
 		else if (action.startsWith("team.up:"))
 		{

@@ -42,6 +42,8 @@ public class RosterStore
 		// Highest RosterManager.PROGRESSION_RESET_VERSION already applied to this roster.
 		// When the code constant exceeds this, load() wipes progression once and bumps it.
 		public int progressionResetVersion = 0;
+		// Lifetime count of battles started, shown as a stat on the Items panel.
+		public int totalBattles = 0;
 	}
 
 	private final ConfigManager configManager;
