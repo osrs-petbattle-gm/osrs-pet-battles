@@ -150,6 +150,7 @@ public class BattleSession
 	private final RosterManager roster;
 	private final PetBattlesConfig config;
 	private final BattleEngine engine;
+	private final BattleSoundManager sound;
 	private final Runnable onRosterChanged;
 
 	/** Trainer whose defeat completes {@link Quest#WHERES_THE_REMOTE} and unlocks remote battles. */
@@ -205,6 +206,7 @@ public class BattleSession
 		this.roster = roster;
 		this.config = config;
 		this.engine = new BattleEngine(db.getTypeChart());
+		this.sound = new BattleSoundManager(client, config);
 		this.onRosterChanged = onRosterChanged;
 	}
 
@@ -434,6 +436,8 @@ public class BattleSession
 				// Remembered through the following DAMAGE/STATUS events for tinting
 				currentMove = event.getMove();
 			}
+			// One cue per surfaced line: the move's sound on MOVE_USED, a whiff on MISSED.
+			sound.play(event, currentMove);
 			if (event.isDeferredSwitch())
 			{
 				// Apply the enemy's on-faint swap now, so the fainted pet was shown through

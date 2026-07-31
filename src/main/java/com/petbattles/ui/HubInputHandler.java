@@ -130,10 +130,6 @@ public class HubInputHandler extends MouseAdapter implements MouseWheelListener
 		{
 			overlay.openPane(HubOverlay.Pane.TEAM);
 		}
-		else if ("open:rest".equals(action))
-		{
-			overlay.openPane(HubOverlay.Pane.REST);
-		}
 		else if ("open:challenge".equals(action))
 		{
 			overlay.openPane(HubOverlay.Pane.CHALLENGE);

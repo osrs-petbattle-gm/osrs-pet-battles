@@ -455,7 +455,9 @@ public class HubOverlay extends Overlay
 		if (roster.anyPetInjured())
 		{
 			boolean canRest = atBank.getAsBoolean();
-			y = fullButton(g, out, y, canRest ? "Rest pets" : "Rest pets (visit a bank)", "open:rest", canRest);
+			// Rest straight from the menu (one click), like the Team pane's button — no detour
+			// through the Rest pane, which still auto-opens on its own when you reach a bank hurt.
+			y = fullButton(g, out, y, canRest ? "Rest pets" : "Rest pets (visit a bank)", "rest", canRest);
 		}
 		if (!nearTrainers.get().isEmpty())
 		{

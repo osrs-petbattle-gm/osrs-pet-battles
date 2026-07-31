@@ -4,6 +4,7 @@ import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.Range;
+import net.runelite.client.config.Units;
 
 @ConfigGroup(PetBattlesConfig.GROUP)
 public interface PetBattlesConfig extends Config
@@ -51,6 +52,30 @@ public interface PetBattlesConfig extends Config
 	default boolean showXpMessages()
 	{
 		return true;
+	}
+
+	@ConfigItem(
+		keyName = "battleSoundEffects",
+		name = "Battle sound effects",
+		description = "Play a matching in-game sound when a pet uses a move in battle",
+		position = 4
+	)
+	default boolean battleSoundEffects()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "battleSoundVolume",
+		name = "Battle sound volume",
+		description = "Volume of the battle sound effects, independent of the in-game sound slider",
+		position = 5
+	)
+	@Range(min = 0, max = 100)
+	@Units(Units.PERCENT)
+	default int battleSoundVolume()
+	{
+		return 100;
 	}
 
 	// --- Developer-only affordances (gated on DEV; NOT config items) ---
