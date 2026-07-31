@@ -25,6 +25,7 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.overlay.OverlayManager;
+import net.runelite.client.ui.overlay.tooltip.TooltipManager;
 import net.runelite.client.ui.overlay.worldmap.WorldMapPoint;
 import net.runelite.client.ui.overlay.worldmap.WorldMapPointManager;
 import net.runelite.client.util.ImageUtil;
@@ -101,6 +102,9 @@ public class PetBattlesPlugin extends Plugin
 	@Inject
 	private WorldMapPointManager worldMapPointManager;
 
+	@Inject
+	private TooltipManager tooltipManager;
+
 	// "Locate" pins currently on the world map (one per known trainer location). Replaced on each
 	// Locate and cleared on shutdown. A trainer like Man has many, so this is a list.
 	private final java.util.List<WorldMapPoint> locatePins = new java.util.ArrayList<>();
@@ -155,7 +159,7 @@ public class PetBattlesPlugin extends Plugin
 		inputHandler = new BattleInputHandler(session, overlay, clientThread);
 		keyListener = new BattleKeyListener(client, session, clientThread);
 		hubOverlay = new HubOverlay(db, roster, sprites, new Portraits(), session,
-			atBankTracker::isAtBank, nearTrainerTracker::getNearTrainerIds);
+			atBankTracker::isAtBank, nearTrainerTracker::getNearTrainerIds, tooltipManager);
 		hubInputHandler = new HubInputHandler(hubOverlay, roster, session,
 			this::startTrainerBattle, this::locateTrainer, this::examineItem, restOverlay::play, clientThread);
 		hubKeyListener = new HubKeyListener(hubOverlay, session, clientThread);

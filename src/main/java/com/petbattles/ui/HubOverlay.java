@@ -35,6 +35,8 @@ import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
+import net.runelite.client.ui.overlay.tooltip.Tooltip;
+import net.runelite.client.ui.overlay.tooltip.TooltipManager;
 import net.runelite.client.util.ImageUtil;
 
 /**
@@ -77,15 +79,17 @@ public class HubOverlay extends Overlay
 		}
 	}
 
-	/** One entry in the menu's icon row: the click action and whether it's currently live. */
+	/** One entry in the menu's icon row: the click action, its hover tooltip, and whether it's live. */
 	private static final class MenuEntry
 	{
 		final String action;
+		final String label;
 		final boolean enabled;
 
-		MenuEntry(String action, boolean enabled)
+		MenuEntry(String action, String label, boolean enabled)
 		{
 			this.action = action;
+			this.label = label;
 			this.enabled = enabled;
 		}
 	}
@@ -102,7 +106,8 @@ public class HubOverlay extends Overlay
 	}
 
 	private static final int WIDTH = 234;
-	private static final int CHIP = 46;
+	// Collapsed launcher size, matched to an OSRS interface tab stone (~33px).
+	private static final int CHIP = 33;
 	private static final int ADD_VISIBLE = 4;
 	private static final int TRAINERS_VISIBLE = 3;
 	private static final int PAD = 8;
@@ -125,6 +130,7 @@ public class HubOverlay extends Overlay
 	private final BattleSession session;
 	private final BooleanSupplier atBank;
 	private final Supplier<Set<String>> nearTrainers;
+	private final TooltipManager tooltipManager;
 	private final BufferedImage chipIcon;
 	// Item icons loaded lazily from /com/petbattles/items/<id>.png; a null value caches a miss.
 	private final Map<String, BufferedImage> itemIconCache = new HashMap<>();
@@ -133,6 +139,9 @@ public class HubOverlay extends Overlay
 
 	private final List<Button> buttons = new ArrayList<>();
 	private volatile Point hoverPoint;
+	// The menu icon label to show as a cursor tooltip this frame (null = none). Written and read
+	// only on the render thread; added to the TooltipManager once per frame in render().
+	private String hoverTooltip;
 
 	// Pane the user has explicitly opened; null means "follow context / collapsed". Read from the
 	// AWT thread by the wheel handler (isScrollablePaneOpen), written on the client thread.
@@ -157,7 +166,8 @@ public class HubOverlay extends Overlay
 	private String expandedQuest;
 
 	public HubOverlay(PetDatabase db, RosterManager roster, Sprites sprites, Portraits portraits,
-		BattleSession session, BooleanSupplier atBank, Supplier<Set<String>> nearTrainers)
+		BattleSession session, BooleanSupplier atBank, Supplier<Set<String>> nearTrainers,
+		TooltipManager tooltipManager)
 	{
 		this.db = db;
 		this.roster = roster;
@@ -166,6 +176,7 @@ public class HubOverlay extends Overlay
 		this.session = session;
 		this.atBank = atBank;
 		this.nearTrainers = nearTrainers;
+		this.tooltipManager = tooltipManager;
 		this.chipIcon = ImageUtil.loadImageResource(getClass(), "/com/petbattles/icons/panel_icon.png");
 		setPosition(OverlayPosition.BOTTOM_LEFT);
 		setLayer(OverlayLayer.ABOVE_WIDGETS);
@@ -351,7 +362,14 @@ public class HubOverlay extends Overlay
 		g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
 
 		List<Button> out = new ArrayList<>();
+		// Reset before drawing; menuBody sets it while hovering. It's added to the TooltipManager
+		// once here rather than inside menuBody, which the frame's measure pass runs a second time.
+		hoverTooltip = null;
 		Dimension size = pane == Pane.COLLAPSED ? drawChip(g, out) : drawPane(g, out, pane);
+		if (hoverTooltip != null)
+		{
+			tooltipManager.add(new Tooltip(hoverTooltip));
+		}
 
 		synchronized (this)
 		{
@@ -385,13 +403,14 @@ public class HubOverlay extends Overlay
 	private Dimension drawChip(Graphics2D g, List<Button> out)
 	{
 		g.setColor(PANEL_BG);
-		g.fillRoundRect(0, 0, CHIP, CHIP, 10, 10);
+		g.fillRoundRect(0, 0, CHIP, CHIP, 8, 8);
 		g.setColor(PANEL_EDGE);
 		g.setStroke(new BasicStroke(2));
-		g.drawRoundRect(0, 0, CHIP, CHIP, 10, 10);
+		g.drawRoundRect(0, 0, CHIP, CHIP, 8, 8);
 		if (chipIcon != null)
 		{
-			g.drawImage(chipIcon, (CHIP - 32) / 2, (CHIP - 32) / 2, 32, 32, null);
+			int pad = 4;
+			g.drawImage(chipIcon, pad, pad, CHIP - 2 * pad, CHIP - 2 * pad, null);
 		}
 		out.add(new Button(new Rectangle(0, 0, CHIP, CHIP), "chip"));
 		return new Dimension(CHIP, CHIP);
@@ -469,19 +488,20 @@ public class HubOverlay extends Overlay
 		// Actions are unchanged, so the input handler needs no edits. Context-dependent entries
 		// (Rest when hurt, Challenge when a trainer is near) append like the old text menu did.
 		List<MenuEntry> entries = new ArrayList<>();
-		entries.add(new MenuEntry("open:team", true));
-		entries.add(new MenuEntry("open:trainers", true));
-		entries.add(new MenuEntry("open:quests", true));
-		entries.add(new MenuEntry("open:items", true));
+		entries.add(new MenuEntry("open:team", "Manage team", true));
+		entries.add(new MenuEntry("open:trainers", "Trainers", true));
+		entries.add(new MenuEntry("open:quests", "Quests", true));
+		entries.add(new MenuEntry("open:items", "Items", true));
 		if (roster.anyPetInjured())
 		{
 			// Rests in one click like the Team pane's button; the Rest pane still auto-opens on its
 			// own when you reach a bank hurt.
-			entries.add(new MenuEntry("rest", atBank.getAsBoolean()));
+			boolean canRest = atBank.getAsBoolean();
+			entries.add(new MenuEntry("rest", canRest ? "Rest pets" : "Rest pets (visit a bank)", canRest));
 		}
 		if (!nearTrainers.get().isEmpty())
 		{
-			entries.add(new MenuEntry("open:challenge", true));
+			entries.add(new MenuEntry("open:challenge", "Challenge nearby trainer", true));
 		}
 
 		int n = entries.size();
@@ -489,6 +509,7 @@ public class HubOverlay extends Overlay
 		int size = Math.min(32, (WIDTH - 2 * PAD - (n - 1) * gap) / n);
 		int rowW = n * size + (n - 1) * gap;
 		int x = (WIDTH - rowW) / 2;
+		Point hp = hoverPoint;
 		for (MenuEntry e : entries)
 		{
 			Rectangle r = new Rectangle(x, y, size, size);
@@ -503,6 +524,12 @@ public class HubOverlay extends Overlay
 				// Dim the whole slot when the action isn't available (e.g. Rest away from a bank).
 				g.setColor(new Color(20, 24, 28, 150));
 				g.fillRoundRect(r.x, r.y, r.width, r.height, 6, 6);
+			}
+			// Native hover tooltip near the cursor (no overlay space), like an OSRS tab. Recorded
+			// here and added once in render(), so the frame's measure pass can't double it.
+			if (hp != null && r.contains(hp))
+			{
+				hoverTooltip = e.label;
 			}
 			x += size + gap;
 		}
