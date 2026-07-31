@@ -29,6 +29,8 @@ public class HubInputHandler extends MouseAdapter implements MouseWheelListener
 	private final Consumer<String> examineAction;
 	private final Runnable onRest;
 	private final ClientThread clientThread;
+	// The team species currently being dragged to reorder, or null. AWT-thread only.
+	private String dragSpecies;
 
 	public HubInputHandler(HubOverlay overlay, RosterManager roster, BattleSession session,
 		Consumer<String> fightAction, Consumer<String> locateAction, Consumer<String> examineAction,
@@ -63,11 +65,56 @@ public class HubInputHandler extends MouseAdapter implements MouseWheelListener
 			if (button.rect.contains(local))
 			{
 				String action = button.action;
-				clientThread.invokeLater(() -> dispatch(action));
+				if (action.startsWith("team.slot:"))
+				{
+					// Press on a team slot begins a drag-to-reorder; the move happens on release.
+					dragSpecies = action.substring("team.slot:".length());
+					overlay.beginTeamDrag(dragSpecies, local);
+				}
+				else
+				{
+					clientThread.invokeLater(() -> dispatch(action));
+				}
 				break;
 			}
 		}
 		// Swallow every click on the hub so it never falls through to the game world.
+		e.consume();
+		return e;
+	}
+
+	@Override
+	public MouseEvent mouseDragged(MouseEvent e)
+	{
+		if (dragSpecies == null || session.isActive())
+		{
+			return e;
+		}
+		Rectangle bounds = overlay.getBounds();
+		if (bounds != null)
+		{
+			overlay.updateDragPoint(new Point(e.getX() - bounds.x, e.getY() - bounds.y));
+		}
+		e.consume();
+		return e;
+	}
+
+	@Override
+	public MouseEvent mouseReleased(MouseEvent e)
+	{
+		if (dragSpecies == null)
+		{
+			return e;
+		}
+		String dragged = dragSpecies;
+		dragSpecies = null;
+		overlay.endTeamDrag();
+		Rectangle bounds = overlay.getBounds();
+		if (bounds != null)
+		{
+			int index = overlay.teamDropIndex(e.getX() - bounds.x);
+			clientThread.invokeLater(() -> roster.reorderTeamToIndex(dragged, index));
+		}
 		e.consume();
 		return e;
 	}
@@ -188,14 +235,6 @@ public class HubInputHandler extends MouseAdapter implements MouseWheelListener
 		else if (action.startsWith("item.examine:"))
 		{
 			examineAction.accept(action.substring("item.examine:".length()));
-		}
-		else if (action.startsWith("team.up:"))
-		{
-			roster.moveTeamMember(action.substring(8), -1);
-		}
-		else if (action.startsWith("team.down:"))
-		{
-			roster.moveTeamMember(action.substring(10), +1);
 		}
 		else if (action.startsWith("team.remove:"))
 		{

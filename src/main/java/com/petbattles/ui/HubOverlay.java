@@ -111,6 +111,10 @@ public class HubOverlay extends Overlay
 	private static final int ADD_VISIBLE = 4;
 	private static final int TRAINERS_VISIBLE = 3;
 	private static final int PAD = 8;
+	// Team pane slot geometry (shared by the layout and the drag drop-index calculation).
+	private static final int TEAM_SLOT_W = 46;
+	private static final int TEAM_SLOT_H = 40;
+	private static final int TEAM_SLOT_GAP = 6;
 
 	private static final Color PANEL_BG = new Color(20, 24, 28, 235);
 	private static final Color PANEL_EDGE = new Color(90, 75, 40);
@@ -142,6 +146,10 @@ public class HubOverlay extends Overlay
 	// The menu icon label to show as a cursor tooltip this frame (null = none). Written and read
 	// only on the render thread; added to the TooltipManager once per frame in render().
 	private String hoverTooltip;
+	// Team drag-to-reorder: the species being dragged and the cursor's overlay-local position.
+	// Written from the AWT thread (input handler), read on the render thread; both volatile.
+	private volatile String draggingSpecies;
+	private volatile Point dragPoint;
 
 	// Pane the user has explicitly opened; null means "follow context / collapsed". Read from the
 	// AWT thread by the wheel handler (isScrollablePaneOpen), written on the client thread.
@@ -193,6 +201,28 @@ public class HubOverlay extends Overlay
 		this.hoverPoint = localPoint;
 	}
 
+	// --- team drag-to-reorder (driven from the input handler on the AWT thread) ---
+
+	public void beginTeamDrag(String speciesId, Point localPoint)
+	{
+		this.draggingSpecies = speciesId;
+		this.dragPoint = localPoint;
+	}
+
+	public void updateDragPoint(Point localPoint)
+	{
+		if (draggingSpecies != null)
+		{
+			this.dragPoint = localPoint;
+		}
+	}
+
+	public void endTeamDrag()
+	{
+		this.draggingSpecies = null;
+		this.dragPoint = null;
+	}
+
 	// --- state transitions, driven from the input handler on the client thread ---
 
 	public void openMenu()
@@ -209,6 +239,8 @@ public class HubOverlay extends Overlay
 		expandedQuest = null;
 		trainerSearch = "";
 		searchFocused = false;
+		draggingSpecies = null;
+		dragPoint = null;
 	}
 
 	// --- Trainers pane name search (fed by the sibling HubKeyListener while focused) ---
@@ -327,6 +359,8 @@ public class HubOverlay extends Overlay
 		if (session.isActive())
 		{
 			searchFocused = false;
+			draggingSpecies = null;
+			dragPoint = null;
 			clearButtons();
 			return null;
 		}
@@ -620,21 +654,22 @@ public class HubOverlay extends Overlay
 		if (team.isEmpty())
 		{
 			hint(g, "No pets on the team yet", y);
-			y += 18;
+			y += 20;
 		}
-		for (int i = 0; i < team.size(); i++)
+		else
 		{
-			y = teamRow(g, out, y, team, i, canEdit);
+			y = teamSlots(g, out, y, team, canEdit);
 		}
 
-		y += 4;
-		boolean injured = roster.anyPetInjured();
-		boolean canRest = canEdit && injured;
-		String restLabel = !injured ? "All pets rested" : !canEdit ? "Rest pets (visit a bank)" : "Rest pets";
-		y = fullButton(g, out, y, restLabel, "rest", canRest);
+		// Rest button only when there's something to rest (nothing shown once all pets are rested).
+		if (roster.anyPetInjured())
+		{
+			y += 4;
+			y = fullButton(g, out, y, canEdit ? "Rest pets" : "Rest pets (visit a bank)", "rest", canEdit);
+		}
 
-		// Add-a-pet picker: owned pets not already on the team, paged. Its own header
-		// row (with the paging arrows aligned to it) sits clear of the Rest button above.
+		// Add-a-pet picker: owned pets not already on the team, paged. Its header row (with the
+		// paging arrows aligned to it) sits clear of the slots above.
 		y += 10;
 		List<SpeciesDef> available = availableToAdd(team);
 		boolean teamFull = team.size() >= RosterManager.MAX_TEAM_SIZE;
@@ -675,48 +710,180 @@ public class HubOverlay extends Overlay
 			int end = Math.min(available.size(), addOffset + ADD_VISIBLE);
 			for (int i = addOffset; i < end; i++)
 			{
-				SpeciesDef species = available.get(i);
-				PetInstance pet = roster.getPet(species.getId());
-				String label = (pet != null ? species.nameFor(pet.getActiveVariantId(), pet.getLevel())
-					: species.getName()) + (pet != null ? "  Lv " + pet.getLevel() : "");
-				Rectangle r = new Rectangle(8, y, WIDTH - 16, 20);
-				drawButton(g, r, label, true, true);
-				out.add(new Button(r, "team.add:" + species.getId()));
-				y += 22;
+				y = addPetRow(g, out, y, available.get(i));
 			}
 		}
 		return y;
 	}
 
-	private int teamRow(Graphics2D g, List<Button> out, int y, List<String> team, int index, boolean canEdit)
+	/**
+	 * The battle team as a horizontal row of pet slots: item icon, level beneath, and a remove
+	 * cross in the corner. Slots can be dragged onto one another to reorder the battle positions;
+	 * hovering a slot tooltips the pet's name. The pet being dragged renders a floating copy that
+	 * follows the cursor.
+	 */
+	private int teamSlots(Graphics2D g, List<Button> out, int y, List<String> team, boolean canEdit)
 	{
-		String speciesId = team.get(index);
+		Point hp = hoverPoint;
+		String dragging = draggingSpecies;
+		Point dp = dragPoint;
+		int pitch = TEAM_SLOT_W + TEAM_SLOT_GAP;
+		int n = team.size();
+		int advance = TEAM_SLOT_H + 19;
+
+		// While dragging, the other pets shift to open a gap at the drop position — a live preview
+		// of the new order — and the dragged pet floats under the cursor.
+		if (dragging != null && dp != null && team.contains(dragging))
+		{
+			List<String> remaining = new ArrayList<>(team);
+			remaining.remove(dragging);
+			int insertIndex = teamDropIndex(dp.x);
+			int r = 0;
+			for (int col = 0; col < n; col++)
+			{
+				Rectangle slot = new Rectangle(8 + col * pitch, y, TEAM_SLOT_W, TEAM_SLOT_H);
+				if (col == insertIndex)
+				{
+					drawDropPlaceholder(g, slot);
+				}
+				else if (r < remaining.size())
+				{
+					drawPetSlotVisual(g, slot, remaining.get(r++), false);
+				}
+			}
+			SpeciesDef ds = db.species(dragging);
+			if (ds != null)
+			{
+				PetInstance dpet = roster.getPet(dragging);
+				drawFit(g, sprites.itemImage(ds.itemIdAt(dpet != null ? dpet.getLevel() : 1)),
+					dp.x - 18, dp.y - 18, 36, 36);
+			}
+			return y + advance;
+		}
+
+		for (int i = 0; i < n; i++)
+		{
+			String speciesId = team.get(i);
+			if (db.species(speciesId) == null)
+			{
+				continue;
+			}
+			Rectangle slot = new Rectangle(8 + i * pitch, y, TEAM_SLOT_W, TEAM_SLOT_H);
+			boolean hover = hp != null && slot.contains(hp);
+			drawPetSlotVisual(g, slot, speciesId, hover);
+
+			// Remove badge just outside the top-right corner; added before the slot button so it
+			// wins the hit-test over the drag.
+			Rectangle xr = null;
+			if (canEdit)
+			{
+				int d = 12;
+				xr = new Rectangle(slot.x + TEAM_SLOT_W - d / 2, slot.y - d / 2, d, d);
+				drawRemoveCross(g, xr);
+				out.add(new Button(xr, "team.remove:" + speciesId));
+			}
+			out.add(new Button(slot, "team.slot:" + speciesId));
+			if (xr != null && hp != null && xr.contains(hp))
+			{
+				hoverTooltip = "Remove from team";
+			}
+			else if (hover)
+			{
+				PetInstance pet = roster.getPet(speciesId);
+				SpeciesDef species = db.species(speciesId);
+				int level = pet != null ? pet.getLevel() : 1;
+				hoverTooltip = pet != null ? species.nameFor(pet.getActiveVariantId(), level) : species.getName();
+			}
+		}
+		return y + advance;
+	}
+
+	/** Draw a single team slot's frame, pet icon and level (no buttons). */
+	private void drawPetSlotVisual(Graphics2D g, Rectangle slot, String speciesId, boolean hover)
+	{
 		SpeciesDef species = db.species(speciesId);
 		if (species == null)
 		{
-			return y;
+			return;
 		}
 		PetInstance pet = roster.getPet(speciesId);
+		int level = pet != null ? pet.getLevel() : 1;
 		boolean fainted = pet != null && pet.isFainted();
 		boolean hurt = pet != null && !fainted && pet.getCurrentHp() != null;
-		String rowName = pet != null ? species.nameFor(pet.getActiveVariantId(), pet.getLevel()) : species.getName();
-		String label = (index + 1) + ". " + rowName
-			+ (pet != null ? "  Lv" + pet.getLevel() : "")
-			+ (fainted ? "  KO" : hurt ? "  " + pet.getCurrentHp() + "hp" : "");
 
 		g.setColor(new Color(0, 0, 0, 90));
-		g.fillRoundRect(8, y, WIDTH - 16, 20, 5, 5);
-		g.setFont(FontManager.getRunescapeFont());
-		g.setColor(fainted ? HP_RED : hurt ? HP_YELLOW : Color.WHITE);
-		g.drawString(clip(g, label, WIDTH - 16 - 56), 12, y + 15);
+		g.fillRoundRect(slot.x, slot.y, slot.width, slot.height, 5, 5);
+		g.setColor(hover ? new Color(220, 200, 120) : fainted ? HP_RED : hurt ? HP_YELLOW : BUTTON_EDGE);
+		g.setStroke(new BasicStroke(hover ? 2 : 1));
+		g.drawRoundRect(slot.x, slot.y, slot.width, slot.height, 5, 5);
+		drawFit(g, sprites.itemImage(species.itemIdAt(level)), slot.x + 3, slot.y + 3, slot.width - 6, slot.height - 6);
 
-		int bx = WIDTH - 8 - 16;
-		iconButton(g, out, new Rectangle(bx, y + 3, 14, 14), Icon.CLOSE, "team.remove:" + speciesId, canEdit);
-		bx -= 16;
-		iconButton(g, out, new Rectangle(bx, y + 3, 14, 14), Icon.DOWN, "team.down:" + speciesId, index < team.size() - 1);
-		bx -= 16;
-		iconButton(g, out, new Rectangle(bx, y + 3, 14, 14), Icon.UP, "team.up:" + speciesId, index > 0);
-		return y + 24;
+		g.setFont(FontManager.getRunescapeFont());
+		g.setColor(fainted ? HP_RED : hurt ? HP_YELLOW : TEXT);
+		String lv = fainted ? "KO" : "Lv " + level;
+		g.drawString(lv, slot.x + (slot.width - g.getFontMetrics().stringWidth(lv)) / 2, slot.y + slot.height + 15);
+	}
+
+	/** Draw the dashed "drop here" gap the dragged pet will fill. */
+	private void drawDropPlaceholder(Graphics2D g, Rectangle slot)
+	{
+		g.setColor(new Color(220, 200, 120, 45));
+		g.fillRoundRect(slot.x, slot.y, slot.width, slot.height, 5, 5);
+		g.setColor(new Color(220, 200, 120));
+		g.setStroke(new BasicStroke(2, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10, new float[]{4, 3}, 0));
+		g.drawRoundRect(slot.x, slot.y, slot.width, slot.height, 5, 5);
+	}
+
+	/** The battle position a drag would drop into, from the cursor's overlay-local x. */
+	public int teamDropIndex(int localX)
+	{
+		int n = roster.getTeam().size();
+		if (n <= 1)
+		{
+			return 0;
+		}
+		int pitch = TEAM_SLOT_W + TEAM_SLOT_GAP;
+		return Math.max(0, Math.min((localX - 8) / pitch, n - 1));
+	}
+
+	private int addPetRow(Graphics2D g, List<Button> out, int y, SpeciesDef species)
+	{
+		PetInstance pet = roster.getPet(species.getId());
+		int level = pet != null ? pet.getLevel() : 1;
+		String name = pet != null ? species.nameFor(pet.getActiveVariantId(), level) : species.getName();
+		Rectangle r = new Rectangle(8, y, WIDTH - 16, 24);
+		drawButtonBg(g, r, true);
+		drawFit(g, sprites.itemImage(species.itemIdAt(level)), r.x + 3, r.y + 2, 20, 20);
+		g.setFont(FontManager.getRunescapeFont());
+		String lv = "Lv " + level;
+		int lvW = g.getFontMetrics().stringWidth(lv);
+		g.setColor(MUTED);
+		g.drawString(lv, r.x + r.width - lvW - 8, r.y + 16);
+		g.setColor(Color.WHITE);
+		g.drawString(clip(g, name, r.width - 28 - lvW - 14), r.x + 28, r.y + 16);
+		out.add(new Button(r, "team.add:" + species.getId()));
+		Point hp = hoverPoint;
+		if (hp != null && r.contains(hp))
+		{
+			hoverTooltip = "Click to add to team";
+		}
+		return y + 26;
+	}
+
+	private void drawRemoveCross(Graphics2D g, Rectangle r)
+	{
+		g.setColor(new Color(200, 40, 36, 240));
+		g.fillOval(r.x, r.y, r.width, r.height);
+		g.setColor(new Color(35, 8, 8, 220));
+		g.setStroke(new BasicStroke(1));
+		g.drawOval(r.x, r.y, r.width, r.height);
+		g.setColor(Color.WHITE);
+		g.setStroke(new BasicStroke(1.6f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+		int cx = r.x + r.width / 2;
+		int cy = r.y + r.height / 2;
+		int s = r.width / 4;
+		g.drawLine(cx - s, cy - s, cx + s, cy + s);
+		g.drawLine(cx - s, cy + s, cx + s, cy - s);
 	}
 
 	private int restBody(Graphics2D g, List<Button> out)

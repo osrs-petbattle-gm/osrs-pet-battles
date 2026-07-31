@@ -335,6 +335,28 @@ public class RosterManager
 	}
 
 	/**
+	 * Drag-to-reorder: move {@code speciesId} to battle position {@code insertIndex} (0-based, among
+	 * the team). Not bank-gated, like {@link #moveTeamMember}. Returns true if the order changed.
+	 */
+	public synchronized boolean reorderTeamToIndex(String speciesId, int insertIndex)
+	{
+		int from = data.team.indexOf(speciesId);
+		if (from < 0)
+		{
+			return false;
+		}
+		int idx = Math.max(0, Math.min(insertIndex, data.team.size() - 1));
+		if (idx == from)
+		{
+			return false;
+		}
+		data.team.remove(from);
+		data.team.add(idx, speciesId);
+		save();
+		return true;
+	}
+
+	/**
 	 * Whether this trainer has been beaten at least once (in-world first win).
 	 */
 	public synchronized boolean isTrainerDefeated(String trainerId)
