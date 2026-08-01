@@ -6,10 +6,10 @@ playing the game with them out, and pit them against themed AI trainers.
 
 ![A Pet Battles fight drawn over the OSRS client — an Olmlet faces the Wise Old Man's Heron.](docs/plans/battle-example.png)
 
-> **[Browse all trainers and the full type chart →](docs/index.html)**
-> A standalone reference page ([`docs/index.html`](docs/index.html)) listing every trainer, their
-> party, and the type-effectiveness matrix. View it locally in a browser, or via GitHub Pages if
-> the `docs/` folder is published.
+> **[Browse all trainers and the full type chart →](https://osrs-petbattle-gm.github.io/osrs-pet-battles/)**
+> A standalone reference page listing every trainer, their party, and the type-effectiveness
+> matrix, published via GitHub Pages. The source lives at [`docs/index.html`](docs/index.html)
+> if you'd rather view it locally.
 
 ## Features
 
@@ -35,7 +35,7 @@ playing the game with them out, and pit them against themed AI trainers.
 - **46 themed trainers** — an eight-fight story ladder from Party Pete (easy) to the Wise Old
   Man (endgame), all 23 skillcape masters, wandering Men and Guards, plus random-event
   challengers (Genie, Drunken Dwarf, Evil Bob, …) that surface on a periodic **Random Battle**
-  cadence echoing OSRS's own random events. [See the full roster.](docs/index.html)
+  cadence echoing OSRS's own random events. [See the full roster.](https://osrs-petbattle-gm.github.io/osrs-pet-battles/)
 - **Interactive battle overlay** — a turn-based battle scene drawn over the game:
   HP bars, type badges, a battle log, and clickable move buttons.
 
