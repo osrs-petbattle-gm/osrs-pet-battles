@@ -44,6 +44,9 @@ public class RosterStore
 		public int progressionResetVersion = 0;
 		// Lifetime count of battles started, shown as a stat on the Items panel.
 		public int totalBattles = 0;
+		// Soft-currency wallet: coins earned from battles/quests, spent in the store. Purely local
+		// -- never in-game GP, never real money, never sent anywhere.
+		public long coins = 0;
 	}
 
 	private final ConfigManager configManager;

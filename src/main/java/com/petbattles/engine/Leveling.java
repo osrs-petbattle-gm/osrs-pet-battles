@@ -151,4 +151,25 @@ public final class Leveling
 		long xp = battleWinXp(enemyLevel, yourLevel);
 		return firstWin ? xp : Math.max(1, Math.round(xp * REPEAT_WIN_FACTOR));
 	}
+
+	/**
+	 * Coins for winning a plugin battle (first-win amount). A single flat per-battle reward for
+	 * the player's wallet — not shared per pet like XP — scaled by the combined level of the
+	 * trainer's team so tougher trainers pay more, then clamped to a sane band.
+	 */
+	public static long battleWinCoins(int totalEnemyLevels)
+	{
+		long coins = 10 + Math.max(0, totalEnemyLevels);
+		return Math.max(10, Math.min(500, coins));
+	}
+
+	/**
+	 * Coins for a battle win, reduced to {@link #REPEAT_WIN_FACTOR} on repeat wins against a
+	 * trainer that was already defeated, so a beaten trainer can't be farmed for currency.
+	 */
+	public static long battleWinCoins(int totalEnemyLevels, boolean firstWin)
+	{
+		long coins = battleWinCoins(totalEnemyLevels);
+		return firstWin ? coins : Math.max(1, Math.round(coins * REPEAT_WIN_FACTOR));
+	}
 }

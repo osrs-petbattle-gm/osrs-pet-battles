@@ -888,11 +888,38 @@ public class BattleSession
 		persistTeamHp();
 		if (state.getPhase() == BattleState.Phase.PLAYER_WON)
 		{
+			// firstWin must be read before recordTrainerDefeated flips it, so a first clear pays
+			// the full coin reward and re-fights the reduced rate.
+			boolean firstWin = !roster.isTrainerDefeated(trainer.getId());
+			awardCoins(firstWin);
 			roster.recordTrainerDefeated(trainer.getId());
 			grantQuestRewards();
 		}
 		roster.petChanged();
 		onRosterChanged.run();
+	}
+
+	/**
+	 * Grant the battle-win coin reward: a single flat per-battle amount (not shared per pet like XP)
+	 * scaled by the trainer's combined team level, halved on repeat wins. Coins land in the player's
+	 * wallet; a plugin system line reports the earning (never player chat), per AGENTS chat rules.
+	 */
+	private void awardCoins(boolean firstWin)
+	{
+		int totalEnemyLevels = 0;
+		for (TrainerDef.PartyEntry entry : trainer.getParty())
+		{
+			totalEnemyLevels += entry.getLevel();
+		}
+		long coins = Leveling.battleWinCoins(totalEnemyLevels, firstWin);
+		if (coins <= 0)
+		{
+			return;
+		}
+		long balance = roster.addCoins(coins);
+		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
+			"<col=ff7700>Pet Battles:</col> You earned <col=ffff00>" + coins + "</col> coins. "
+				+ "(Wallet: <col=ffff00>" + balance + "</col>)", null);
 	}
 
 	/**

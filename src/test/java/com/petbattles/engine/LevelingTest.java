@@ -93,6 +93,28 @@ public class LevelingTest
 	}
 
 	@Test
+	public void battleWinCoinsScaleWithTrainerStrengthAndClamp()
+	{
+		// Flat per-battle reward scales with the combined enemy team level.
+		assertTrue(Leveling.battleWinCoins(60) > Leveling.battleWinCoins(10));
+		// Clamped to [10, 500] so a trivial or a giant trainer can't pay nothing / a fortune.
+		assertEquals(10, Leveling.battleWinCoins(0));
+		assertEquals(500, Leveling.battleWinCoins(10_000));
+	}
+
+	@Test
+	public void repeatWinsGiveReducedCoins()
+	{
+		long first = Leveling.battleWinCoins(60, true);
+		long repeat = Leveling.battleWinCoins(60, false);
+		assertEquals(Leveling.battleWinCoins(60), first);
+		assertEquals(Math.round(first * Leveling.REPEAT_WIN_FACTOR), repeat);
+		assertTrue(repeat < first);
+		// Repeats never round down to zero.
+		assertTrue(Leveling.battleWinCoins(0, false) >= 1);
+	}
+
+	@Test
 	public void capBattleXpLimitsLevelsPerBattle()
 	{
 		int start = 1;

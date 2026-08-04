@@ -126,6 +126,7 @@ public class HubOverlay extends Overlay
 	private static final Color HP_RED = new Color(200, 60, 50);
 	private static final Color TEXT = new Color(230, 225, 210);
 	private static final Color MUTED = new Color(150, 145, 130);
+	private static final Color COIN = new Color(255, 210, 90);
 
 	private final PetDatabase db;
 	private final RosterManager roster;
@@ -1072,10 +1073,14 @@ public class HubOverlay extends Overlay
 		g.setFont(FontManager.getRunescapeFont());
 		g.setColor(TEXT);
 		g.drawString("Obtained: " + obtained + "/" + all.length, 10, y + 11);
+		// Wallet (gold) on the first row, lifetime battle count (muted) tucked beneath it.
+		String coins = "Coins: " + roster.getCoins();
+		g.setColor(COIN);
+		g.drawString(coins, WIDTH - 10 - g.getFontMetrics().stringWidth(coins), y + 11);
 		g.setColor(MUTED);
 		String battles = "Battles: " + roster.getTotalBattles();
-		g.drawString(battles, WIDTH - 10 - g.getFontMetrics().stringWidth(battles), y + 11);
-		y += 18;
+		g.drawString(battles, WIDTH - 10 - g.getFontMetrics().stringWidth(battles), y + 24);
+		y += 31;
 		g.setColor(new Color(255, 255, 255, 24));
 		g.fillRect(8, y, WIDTH - 16, 1);
 		y += 9;

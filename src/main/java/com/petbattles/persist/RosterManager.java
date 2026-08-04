@@ -434,6 +434,44 @@ public class RosterManager
 	}
 
 	/**
+	 * The player's soft-currency wallet balance: coins earned from battles and quests, spent in the
+	 * store. Purely local -- never in-game GP, never real money, never reported anywhere.
+	 */
+	public synchronized long getCoins()
+	{
+		return data.coins;
+	}
+
+	/**
+	 * Add coins to the wallet (a battle or quest reward), persisting. Non-positive amounts are
+	 * ignored (the wallet is never drained by an "award"). Returns the new balance.
+	 */
+	public synchronized long addCoins(long amount)
+	{
+		if (amount > 0)
+		{
+			data.coins += amount;
+			save();
+		}
+		return data.coins;
+	}
+
+	/**
+	 * Spend coins if the wallet can cover it: deducts and persists, returning true on success.
+	 * Returns false with no change if the amount is non-positive or exceeds the balance.
+	 */
+	public synchronized boolean spendCoins(long amount)
+	{
+		if (amount <= 0 || data.coins < amount)
+		{
+			return false;
+		}
+		data.coins -= amount;
+		save();
+		return true;
+	}
+
+	/**
 	 * Whether the player currently holds this reward item. Derived from the state that granted it
 	 * (so an item and the thing it unlocks can't drift apart), not stored separately.
 	 */
