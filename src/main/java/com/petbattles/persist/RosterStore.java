@@ -47,6 +47,9 @@ public class RosterStore
 		// Soft-currency wallet: coins earned from battles/quests, spent in the store. Purely local
 		// -- never in-game GP, never real money, never sent anywhere.
 		public long coins = 0;
+		// Owned equip items (EquipItemDef id -> count): held items and cosmetics won from quests or
+		// bought in the store. A pet's equipped item references an id it owns here.
+		public Map<String, Integer> itemInventory = new LinkedHashMap<>();
 	}
 
 	private final ConfigManager configManager;

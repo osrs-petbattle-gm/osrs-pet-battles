@@ -3,12 +3,14 @@ package com.petbattles.data;
 import com.google.gson.Gson;
 import com.petbattles.engine.EasterEggDef;
 import com.petbattles.engine.GrowthStage;
+import com.petbattles.engine.ItemEffect;
 import com.petbattles.engine.LearnsetEntry;
 import com.petbattles.engine.MoveDef;
 import com.petbattles.engine.PetType;
 import com.petbattles.engine.SpeciesDef;
 import com.petbattles.engine.TrainerDef;
 import com.petbattles.engine.TypeChart;
+import com.petbattles.item.EquipItemDef;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -18,6 +20,7 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -355,6 +358,40 @@ public class ContentValidationTest
 				assertTrue("npc id " + id + " claimed twice (" + s.getId() + ")", npcIds.add(id));
 			}
 		}
+	}
+
+	@Test
+	public void everyEquipItemIsComplete()
+	{
+		Set<String> ids = new HashSet<>();
+		int held = 0;
+		int cosmetic = 0;
+		for (EquipItemDef item : db.allEquipItems())
+		{
+			String ctx = "equip item " + item.getId();
+			assertNotNull(ctx + " id", item.getId());
+			assertTrue(ctx + " unique id", ids.add(item.getId()));
+			assertNotNull(ctx + " name", item.getName());
+			assertNotNull(ctx + " slot", item.getSlot());
+			assertNotNull(ctx + " sprite", item.getSprite());
+			assertNotNull(ctx + " examine", item.getExamine());
+			if (item.getSlot() == EquipItemDef.Slot.HELD)
+			{
+				held++;
+				ItemEffect effect = item.getEffect();
+				assertNotNull(ctx + " held item needs a stat effect", effect);
+				assertNotNull(ctx + " effect stat", effect.getStat());
+				assertTrue(ctx + " effect magnitude is non-zero", effect.getMagnitude() != 0);
+			}
+			else
+			{
+				cosmetic++;
+				assertTrue(ctx + " non-HELD slot is a cosmetic", item.isCosmetic());
+				assertNull(ctx + " cosmetic has no combat effect", item.getEffect());
+			}
+		}
+		assertTrue("at least 3 held items authored", held >= 3);
+		assertTrue("at least 1 cosmetic authored", cosmetic >= 1);
 	}
 
 	@Test

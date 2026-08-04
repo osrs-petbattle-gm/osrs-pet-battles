@@ -6,6 +6,7 @@ import com.petbattles.engine.MoveDef;
 import com.petbattles.engine.SpeciesDef;
 import com.petbattles.engine.TrainerDef;
 import com.petbattles.engine.TypeChart;
+import com.petbattles.item.EquipItemDef;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -47,6 +48,13 @@ public class ContentLoader
 	public List<TrainerDef> loadTrainers()
 	{
 		return load("trainers.json", new TypeToken<List<TrainerDef>>()
+		{
+		});
+	}
+
+	public List<EquipItemDef> loadEquipItems()
+	{
+		return load("items.json", new TypeToken<List<EquipItemDef>>()
 		{
 		});
 	}

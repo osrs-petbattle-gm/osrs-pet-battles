@@ -4,11 +4,14 @@ import com.petbattles.PetBattlesConfig;
 import com.petbattles.data.PetDatabase;
 import com.petbattles.engine.PetInstance;
 import com.petbattles.engine.SpeciesDef;
+import com.petbattles.item.EquipItemDef;
 import com.petbattles.item.Item;
 import com.petbattles.quest.Quest;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.BooleanSupplier;
 import lombok.extern.slf4j.Slf4j;
@@ -62,6 +65,10 @@ public class RosterManager
 		if (data.questProgress == null)
 		{
 			data.questProgress = new java.util.LinkedHashMap<>();
+		}
+		if (data.itemInventory == null)
+		{
+			data.itemInventory = new LinkedHashMap<>();
 		}
 		// Drop references to species/trainers that no longer exist in the content
 		data.team.removeIf(id -> db.species(id) == null);
@@ -467,6 +474,110 @@ public class RosterManager
 			return false;
 		}
 		data.coins -= amount;
+		save();
+		return true;
+	}
+
+	// --- Equip-item inventory (held items + cosmetics won from quests / bought in the store) ---
+
+	/**
+	 * A copy of the owned-equip-item counts ({@code EquipItemDef} id -> count). Callers iterate
+	 * outside the lock.
+	 */
+	public synchronized Map<String, Integer> getItemInventory()
+	{
+		return new LinkedHashMap<>(data.itemInventory);
+	}
+
+	/**
+	 * How many of this equip item the player owns (0 if none).
+	 */
+	public synchronized int itemCount(String itemId)
+	{
+		Integer n = data.itemInventory.get(itemId);
+		return n == null ? 0 : n;
+	}
+
+	/**
+	 * Whether the player owns at least one of this equip item.
+	 */
+	public synchronized boolean hasItem(String itemId)
+	{
+		return itemCount(itemId) > 0;
+	}
+
+	/**
+	 * Add {@code count} of an equip item to the inventory (a quest or store grant). Ignores unknown
+	 * ids and non-positive counts. Returns true if anything was added.
+	 */
+	public synchronized boolean grantItem(String itemId, int count)
+	{
+		if (count <= 0 || db.equipItem(itemId) == null)
+		{
+			return false;
+		}
+		data.itemInventory.merge(itemId, count, Integer::sum);
+		save();
+		return true;
+	}
+
+	/**
+	 * Remove {@code count} of an equip item if the player has enough (a store trade-in / consume).
+	 * Returns false with no change otherwise. The key is dropped when its count reaches zero.
+	 */
+	public synchronized boolean takeItem(String itemId, int count)
+	{
+		if (count <= 0 || itemCount(itemId) < count)
+		{
+			return false;
+		}
+		int remaining = itemCount(itemId) - count;
+		if (remaining > 0)
+		{
+			data.itemInventory.put(itemId, remaining);
+		}
+		else
+		{
+			data.itemInventory.remove(itemId);
+		}
+		save();
+		return true;
+	}
+
+	/**
+	 * Equip a HELD item on an owned pet: the pet must be owned, the item must exist, be a HELD-slot
+	 * item, and be owned in the inventory. No-op (returns false) otherwise. Holding does not consume
+	 * the item from the inventory — it stays owned while worn.
+	 */
+	public synchronized boolean setHeldItem(String speciesId, String itemId)
+	{
+		EquipItemDef item = db.equipItem(itemId);
+		if (!isOwned(speciesId) || item == null
+			|| item.getSlot() != EquipItemDef.Slot.HELD || !hasItem(itemId))
+		{
+			return false;
+		}
+		PetInstance pet = getOrCreatePet(speciesId);
+		if (pet == null || Objects.equals(pet.getHeldItemId(), itemId))
+		{
+			return false;
+		}
+		pet.setHeldItemId(itemId);
+		save();
+		return true;
+	}
+
+	/**
+	 * Remove whatever HELD item an owned pet is carrying. Returns true if it was holding one.
+	 */
+	public synchronized boolean clearHeldItem(String speciesId)
+	{
+		PetInstance pet = getPet(speciesId);
+		if (pet == null || pet.getHeldItemId() == null)
+		{
+			return false;
+		}
+		pet.setHeldItemId(null);
 		save();
 		return true;
 	}

@@ -4,6 +4,7 @@ import com.petbattles.engine.MoveDef;
 import com.petbattles.engine.SpeciesDef;
 import com.petbattles.engine.TrainerDef;
 import com.petbattles.engine.TypeChart;
+import com.petbattles.item.EquipItemDef;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -22,10 +23,11 @@ public class PetDatabase
 	// item/npc id -> the variant id it identifies (base-form ids never appear here)
 	private final Map<Integer, String> variantIdByItemId;
 	private final Map<Integer, String> variantIdByNpcId;
+	private final Map<String, EquipItemDef> equipItemsById;
 	private final TypeChart typeChart;
 
 	public PetDatabase(Collection<SpeciesDef> species, Collection<MoveDef> moves,
-		Collection<TrainerDef> trainers, TypeChart typeChart)
+		Collection<TrainerDef> trainers, Collection<EquipItemDef> equipItems, TypeChart typeChart)
 	{
 		Map<String, SpeciesDef> sById = new LinkedHashMap<>();
 		Map<Integer, SpeciesDef> sByItem = new LinkedHashMap<>();
@@ -74,6 +76,11 @@ public class PetDatabase
 		{
 			tById.put(t.getId(), t);
 		}
+		Map<String, EquipItemDef> eById = new LinkedHashMap<>();
+		for (EquipItemDef e : equipItems)
+		{
+			eById.put(e.getId(), e);
+		}
 		this.speciesById = Collections.unmodifiableMap(sById);
 		this.movesById = Collections.unmodifiableMap(mById);
 		this.trainersById = Collections.unmodifiableMap(tById);
@@ -81,13 +88,14 @@ public class PetDatabase
 		this.speciesByNpcId = Collections.unmodifiableMap(sByNpc);
 		this.variantIdByItemId = Collections.unmodifiableMap(vByItem);
 		this.variantIdByNpcId = Collections.unmodifiableMap(vByNpc);
+		this.equipItemsById = Collections.unmodifiableMap(eById);
 		this.typeChart = typeChart;
 	}
 
 	public static PetDatabase load(ContentLoader loader)
 	{
 		return new PetDatabase(loader.loadSpecies(), loader.loadMoves(),
-			loader.loadTrainers(), loader.loadTypeChart());
+			loader.loadTrainers(), loader.loadEquipItems(), loader.loadTypeChart());
 	}
 
 	public Collection<SpeciesDef> allSpecies()
@@ -118,6 +126,16 @@ public class PetDatabase
 	public TrainerDef trainer(String id)
 	{
 		return trainersById.get(id);
+	}
+
+	public EquipItemDef equipItem(String id)
+	{
+		return equipItemsById.get(id);
+	}
+
+	public Collection<EquipItemDef> allEquipItems()
+	{
+		return equipItemsById.values();
 	}
 
 	public SpeciesDef speciesByItemId(int itemId)

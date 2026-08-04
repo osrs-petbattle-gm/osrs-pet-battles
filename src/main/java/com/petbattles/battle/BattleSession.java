@@ -7,6 +7,7 @@ import com.petbattles.engine.BattleEngine;
 import com.petbattles.engine.BattleEvent;
 import com.petbattles.engine.BattlePet;
 import com.petbattles.engine.BattleState;
+import com.petbattles.engine.ItemEffect;
 import com.petbattles.engine.LearnsetEntry;
 import com.petbattles.engine.Leveling;
 import com.petbattles.engine.MoveDef;
@@ -16,6 +17,7 @@ import com.petbattles.engine.TrainerDef;
 import com.petbattles.engine.TypeChart;
 import com.petbattles.engine.controller.AiController;
 import com.petbattles.engine.controller.OpponentController;
+import com.petbattles.item.EquipItemDef;
 import com.petbattles.persist.RosterManager;
 import com.petbattles.quest.Quest;
 import java.util.ArrayDeque;
@@ -321,7 +323,22 @@ public class BattleSession
 		}
 		String name = instance.getNickname() != null ? instance.getNickname()
 			: species.nameFor(variantId, instance.getLevel());
-		return new BattlePet(species, name, instance.getLevel(), moves, instance.getCurrentHp(), variantId);
+		return new BattlePet(species, name, instance.getLevel(), moves, instance.getCurrentHp(), variantId,
+			heldEffect(instance.getHeldItemId()));
+	}
+
+	/**
+	 * The passive stat modifier for a pet's equipped held item, or null if it holds nothing, the id
+	 * is unknown, or the item is a cosmetic (no combat effect).
+	 */
+	private ItemEffect heldEffect(String heldItemId)
+	{
+		if (heldItemId == null)
+		{
+			return null;
+		}
+		EquipItemDef item = db.equipItem(heldItemId);
+		return item == null ? null : item.getEffect();
 	}
 
 	private List<MoveDef> enemyMoves(SpeciesDef species, int level)

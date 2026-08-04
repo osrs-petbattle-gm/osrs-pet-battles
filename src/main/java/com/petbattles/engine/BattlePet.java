@@ -24,6 +24,9 @@ public class BattlePet
 	// Active metamorphosis form id (null = base). Folds into every species lookup below so the
 	// battler's sprite/orientation/types/base follow the form; falls through to base when unset.
 	private final String variantId;
+	// Passive held-item modifier for this battler (null = holds nothing). Applied to the derived
+	// stats below and to max HP; enemy battlers hold nothing in v1.
+	private final ItemEffect heldEffect;
 	private final String displayName;
 	private int level;
 	private final List<MoveDef> moves;
@@ -48,20 +51,44 @@ public class BattlePet
 		this(species, displayName, level, moves, startingHp, null);
 	}
 
-	/**
-	 * @param startingHp carried-over HP from a previous battle; null starts at full
-	 * @param variantId  active metamorphosis form id, or null for the base form
-	 */
 	public BattlePet(SpeciesDef species, String displayName, int level, List<MoveDef> moves,
 		Integer startingHp, String variantId)
 	{
+		this(species, displayName, level, moves, startingHp, variantId, null);
+	}
+
+	/**
+	 * @param startingHp carried-over HP from a previous battle; null starts at full
+	 * @param variantId  active metamorphosis form id, or null for the base form
+	 * @param heldEffect passive held-item stat modifier, or null for none
+	 */
+	public BattlePet(SpeciesDef species, String displayName, int level, List<MoveDef> moves,
+		Integer startingHp, String variantId, ItemEffect heldEffect)
+	{
 		this.species = species;
 		this.variantId = variantId;
+		this.heldEffect = heldEffect;
 		this.displayName = displayName;
 		this.level = level;
 		this.moves = new ArrayList<>(moves);
-		this.maxHp = Leveling.hpAtLevel(species.baseFor(variantId).getHp(), level);
+		this.maxHp = computeMaxHp(level);
 		this.currentHp = startingHp == null ? maxHp : Math.max(0, Math.min(maxHp, startingHp));
+	}
+
+	/**
+	 * Max HP at {@code level}, folding in a held item's HP modifier (if any). Centralised so the
+	 * constructor and {@link #growTo} stay in step.
+	 */
+	private int computeMaxHp(int level)
+	{
+		int base = Leveling.hpAtLevel(species.baseFor(variantId).getHp(), level);
+		return Math.max(1, (int) Math.round(base * heldMultiplier(ItemEffect.Stat.HP)));
+	}
+
+	/** The held item's multiplier for {@code stat}, or 1.0 when this battler holds nothing. */
+	private double heldMultiplier(ItemEffect.Stat stat)
+	{
+		return heldEffect == null ? 1.0 : heldEffect.multiplierFor(stat);
 	}
 
 	public SpeciesDef getSpecies()
@@ -126,7 +153,7 @@ public class BattlePet
 		}
 		int oldMax = maxHp;
 		this.level = newLevel;
-		this.maxHp = Leveling.hpAtLevel(species.baseFor(variantId).getHp(), newLevel);
+		this.maxHp = computeMaxHp(newLevel);
 		int gain = maxHp - oldMax;
 		if (gain > 0)
 		{
@@ -286,12 +313,14 @@ public class BattlePet
 		{
 			v *= 0.5;
 		}
+		v *= heldMultiplier(ItemEffect.Stat.ATK);
 		return Math.max(1, (int) Math.round(v));
 	}
 
 	public int effectiveDef()
 	{
 		double v = Leveling.statAtLevel(species.baseFor(variantId).getDef(), level) * stageMultiplier(defStage);
+		v *= heldMultiplier(ItemEffect.Stat.DEF);
 		return Math.max(1, (int) Math.round(v));
 	}
 
@@ -302,6 +331,7 @@ public class BattlePet
 		{
 			v *= 0.5;
 		}
+		v *= heldMultiplier(ItemEffect.Stat.SPD);
 		return Math.max(1, (int) Math.round(v));
 	}
 

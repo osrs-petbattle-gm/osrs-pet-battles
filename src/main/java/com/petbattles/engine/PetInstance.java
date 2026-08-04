@@ -24,6 +24,8 @@ public class PetInstance
 	// read-only follower/inventory detection; a lens over presentation (and later combat), not a
 	// separate roster entry — progression stays on this one instance.
 	private String activeVariantId;
+	// Equipped HELD item (an EquipItemDef id), or null. Applies its passive stat modifier in battle.
+	private String heldItemId;
 
 	public PetInstance()
 	{
@@ -80,6 +82,19 @@ public class PetInstance
 	public void setActiveVariantId(String activeVariantId)
 	{
 		this.activeVariantId = activeVariantId;
+	}
+
+	/**
+	 * The equipped HELD item's id (an {@code EquipItemDef} id), or null if the pet holds nothing.
+	 */
+	public String getHeldItemId()
+	{
+		return heldItemId;
+	}
+
+	public void setHeldItemId(String heldItemId)
+	{
+		this.heldItemId = heldItemId;
 	}
 
 	public Integer getCurrentHp()

@@ -1,0 +1,48 @@
+[
+  {
+    "id": "stick",
+    "name": "Stick",
+    "slot": "HELD",
+    "sprite": "stick",
+    "examine": "A sturdy little stick. Better than nothing.",
+    "effect": { "stat": "ATK", "magnitude": 5 }
+  },
+  {
+    "id": "amulet_of_the_rogue",
+    "name": "Amulet of the Rogue",
+    "slot": "HELD",
+    "sprite": "amulet_of_the_rogue",
+    "examine": "Light on the feet — quickens the step.",
+    "effect": { "stat": "SPD", "magnitude": 15 }
+  },
+  {
+    "id": "sturdy_bracer",
+    "name": "Sturdy Bracer",
+    "slot": "HELD",
+    "sprite": "sturdy_bracer",
+    "examine": "Braces for impact.",
+    "effect": { "stat": "DEF", "magnitude": 15 }
+  },
+  {
+    "id": "plush_companion",
+    "name": "Plush Companion",
+    "slot": "HELD",
+    "sprite": "plush_companion",
+    "examine": "A cuddly friend that steadies the nerves.",
+    "effect": { "stat": "HP", "magnitude": 12 }
+  },
+  {
+    "id": "wizard_hat",
+    "name": "Wizard hat",
+    "slot": "HEAD",
+    "sprite": "wizard_hat",
+    "examine": "Pointy. Purely for show."
+  },
+  {
+    "id": "black_sunglasses",
+    "name": "Black sunglasses",
+    "slot": "FACE",
+    "sprite": "black_sunglasses",
+    "examine": "Cool in any dungeon."
+  }
+]
