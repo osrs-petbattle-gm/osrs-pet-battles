@@ -5,7 +5,8 @@
     "slot": "HELD",
     "sprite": "stick",
     "examine": "A sturdy little stick. Better than nothing.",
-    "effect": { "stat": "ATK", "magnitude": 5 }
+    "effect": { "stat": "ATK", "magnitude": 5 },
+    "price": 50
   },
   {
     "id": "amulet_of_the_rogue",
@@ -13,7 +14,8 @@
     "slot": "HELD",
     "sprite": "amulet_of_the_rogue",
     "examine": "Light on the feet — quickens the step.",
-    "effect": { "stat": "SPD", "magnitude": 15 }
+    "effect": { "stat": "SPD", "magnitude": 15 },
+    "price": 200
   },
   {
     "id": "sturdy_bracer",
@@ -21,7 +23,8 @@
     "slot": "HELD",
     "sprite": "sturdy_bracer",
     "examine": "Braces for impact.",
-    "effect": { "stat": "DEF", "magnitude": 15 }
+    "effect": { "stat": "DEF", "magnitude": 15 },
+    "price": 200
   },
   {
     "id": "plush_companion",
@@ -29,20 +32,23 @@
     "slot": "HELD",
     "sprite": "plush_companion",
     "examine": "A cuddly friend that steadies the nerves.",
-    "effect": { "stat": "HP", "magnitude": 12 }
+    "effect": { "stat": "HP", "magnitude": 12 },
+    "price": 150
   },
   {
     "id": "wizard_hat",
     "name": "Wizard hat",
     "slot": "HEAD",
     "sprite": "wizard_hat",
-    "examine": "Pointy. Purely for show."
+    "examine": "Pointy. Purely for show.",
+    "price": 300
   },
   {
     "id": "black_sunglasses",
     "name": "Black sunglasses",
     "slot": "FACE",
     "sprite": "black_sunglasses",
-    "examine": "Cool in any dungeon."
+    "examine": "Cool in any dungeon.",
+    "price": 250
   }
 ]

@@ -52,6 +52,9 @@ public class EquipItemDef
 	private String examine;
 	// Present only for HELD stat items; null for cosmetics.
 	private EffectData effect;
+	// Coin price in the store; 0 (or absent) means not sold. See the store MVP note: held items are
+	// priced for now so the loop is testable, but the design moves them to quest rewards later.
+	private int price;
 
 	public EquipItemDef()
 	{
@@ -95,5 +98,17 @@ public class EquipItemDef
 	public boolean isCosmetic()
 	{
 		return getSlot() != Slot.HELD;
+	}
+
+	/** Coin price in the store, or 0 if this item isn't sold there. */
+	public int getPrice()
+	{
+		return price;
+	}
+
+	/** Whether this item can currently be bought in the store. */
+	public boolean isSold()
+	{
+		return price > 0;
 	}
 }

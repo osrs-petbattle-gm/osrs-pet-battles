@@ -29,11 +29,14 @@ public class PetCard extends JPanel
 
 		void onEditMoves(String speciesId);
 
+		void onEditHeldItem(String speciesId);
+
 		void onToggleDevUnlock(String speciesId);
 	}
 
 	public PetCard(SpeciesDef species, PetInstance pet, boolean owned, boolean canJoin,
-		String joinDisabledTooltip, boolean devMode, boolean devUnlocked, Sprites sprites, Listener listener)
+		String joinDisabledTooltip, boolean devMode, boolean devUnlocked, String heldItemName,
+		Sprites sprites, Listener listener)
 	{
 		setLayout(new BorderLayout(6, 0));
 		setBorder(BorderFactory.createCompoundBorder(
@@ -117,6 +120,15 @@ public class PetCard extends JPanel
 			movesBtn.setMargin(new java.awt.Insets(1, 4, 1, 4));
 			movesBtn.addActionListener(e -> listener.onEditMoves(species.getId()));
 			buttons.add(movesBtn);
+
+			JButton itemBtn = new JButton(heldItemName != null ? "Item: " + heldItemName : "Item");
+			itemBtn.setFont(FontManager.getRunescapeSmallFont());
+			itemBtn.setMargin(new java.awt.Insets(1, 4, 1, 4));
+			itemBtn.setToolTipText(heldItemName != null
+				? "Holding " + heldItemName + " — click to change"
+				: "Equip a held item on this pet");
+			itemBtn.addActionListener(e -> listener.onEditHeldItem(species.getId()));
+			buttons.add(itemBtn);
 
 			if (devUnlocked)
 			{
