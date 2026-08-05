@@ -12,20 +12,20 @@ import net.runelite.client.input.KeyListener;
  */
 public class HubKeyListener implements KeyListener
 {
-	private final HubOverlay overlay;
+	private final HubView view;
 	private final BattleSession session;
 	private final ClientThread clientThread;
 
-	public HubKeyListener(HubOverlay overlay, BattleSession session, ClientThread clientThread)
+	public HubKeyListener(HubView view, BattleSession session, ClientThread clientThread)
 	{
-		this.overlay = overlay;
+		this.view = view;
 		this.session = session;
 		this.clientThread = clientThread;
 	}
 
 	private boolean active()
 	{
-		return overlay.isSearchFocused() && !session.isActive();
+		return view.isSearchFocused() && !session.isActive();
 	}
 
 	@Override
@@ -38,7 +38,7 @@ public class HubKeyListener implements KeyListener
 		char c = e.getKeyChar();
 		if (c != KeyEvent.CHAR_UNDEFINED && c >= ' ' && !Character.isISOControl(c))
 		{
-			clientThread.invokeLater(() -> overlay.appendSearch(c));
+			clientThread.invokeLater(() -> view.appendSearch(c));
 			e.consume();
 		}
 	}
@@ -53,12 +53,12 @@ public class HubKeyListener implements KeyListener
 		switch (e.getKeyCode())
 		{
 			case KeyEvent.VK_BACK_SPACE:
-				clientThread.invokeLater(overlay::backspaceSearch);
+				clientThread.invokeLater(view::backspaceSearch);
 				e.consume();
 				break;
 			case KeyEvent.VK_ESCAPE:
 			case KeyEvent.VK_ENTER:
-				clientThread.invokeLater(overlay::blurSearch);
+				clientThread.invokeLater(view::blurSearch);
 				e.consume();
 				break;
 			default:

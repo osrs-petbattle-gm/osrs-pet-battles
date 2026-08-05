@@ -24,6 +24,7 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
+import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.ui.overlay.tooltip.TooltipManager;
 import net.runelite.client.ui.overlay.worldmap.WorldMapPoint;
@@ -47,9 +48,12 @@ import com.petbattles.npc.NearTrainerTracker;
 import com.petbattles.persist.RosterManager;
 import com.petbattles.persist.RosterStore;
 import com.petbattles.ui.BattleOverlay;
+import com.petbattles.ui.HubActions;
 import com.petbattles.ui.HubInputHandler;
 import com.petbattles.ui.HubKeyListener;
 import com.petbattles.ui.HubOverlay;
+import com.petbattles.ui.HubPanel;
+import com.petbattles.ui.HubView;
 import com.petbattles.ui.PetBattlesPanel;
 import com.petbattles.ui.PetChatheads;
 import com.petbattles.ui.Portraits;
@@ -152,17 +156,36 @@ public class PetBattlesPlugin extends Plugin
 			}
 		});
 		restOverlay = new RestOverlay();
-		panel = new PetBattlesPanel(db, roster, sprites, this::startTrainerBattle,
-			() -> restOverlay.play(), nearTrainerTracker::isNear);
-		session = new BattleSession(client, db, roster, config, () -> panel.refresh());
+		session = new BattleSession(client, db, roster, config, () ->
+		{
+			if (panel != null)
+			{
+				panel.refresh();
+			}
+		});
 		overlay = new BattleOverlay(session, sprites, new PetChatheads(), new Portraits());
 		inputHandler = new BattleInputHandler(session, overlay, clientThread);
 		keyListener = new BattleKeyListener(client, session, clientThread);
+
+		// Floating hub: the HubView drawn by a movable RuneLite overlay.
 		hubOverlay = new HubOverlay(db, roster, sprites, new Portraits(), session,
 			atBankTracker::isAtBank, nearTrainerTracker::getNearTrainerIds, tooltipManager);
-		hubInputHandler = new HubInputHandler(hubOverlay, roster, session,
-			this::startTrainerBattle, this::locateTrainer, this::examineItem, restOverlay::play, clientThread);
-		hubKeyListener = new HubKeyListener(hubOverlay, session, clientThread);
+		HubActions hubActions = new HubActions(hubOverlay.getView(), db, roster,
+			this::startTrainerBattle, this::locateTrainer, this::examineItem, restOverlay::play);
+		hubInputHandler = new HubInputHandler(hubOverlay.getView(), hubActions, hubOverlay::getBounds,
+			roster, session, clientThread);
+		hubKeyListener = new HubKeyListener(hubOverlay.getView(), session, clientThread);
+
+		// Docked hub: the same HubView, embedded in the side panel as a Swing component. Its dispatch
+		// runs on the EDT, so the client-touching Locate/Examine callbacks are marshalled to the
+		// client thread here (Fight already marshals internally).
+		HubView panelView = new HubView(db, roster, sprites, new Portraits(), session,
+			atBankTracker::isAtBank, nearTrainerTracker::getNearTrainerIds, tooltipManager,
+			PluginPanel.PANEL_WIDTH, true);
+		HubActions panelActions = new HubActions(panelView, db, roster, this::startTrainerBattle,
+			id -> clientThread.invokeLater(() -> locateTrainer(id)),
+			id -> clientThread.invokeLater(() -> examineItem(id)), restOverlay::play);
+		panel = new PetBattlesPanel(new HubPanel(panelView, panelActions, roster, session));
 		overlayManager.add(overlay);
 		overlayManager.add(restOverlay);
 		overlayManager.add(hubOverlay);
