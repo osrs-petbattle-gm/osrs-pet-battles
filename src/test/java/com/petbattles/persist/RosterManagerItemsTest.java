@@ -17,6 +17,7 @@ import static org.junit.Assert.assertTrue;
 public class RosterManagerItemsTest
 {
 	private static final String SPECIES = "baby_mole";
+	private static final String SPECIES2 = "pet_snakeling";
 
 	private RosterManager loadedManager()
 	{
@@ -125,5 +126,57 @@ public class RosterManagerItemsTest
 		assertNull(roster.getPet(SPECIES).getHeldItemId());
 		// Nothing to clear now.
 		assertFalse(roster.clearHeldItem(SPECIES));
+	}
+
+	@Test
+	public void equipConsumesOneUnitFromStock()
+	{
+		RosterManager roster = loadedManager();
+		roster.unlock(SPECIES);
+		roster.grantItem("stick", 2);
+		assertTrue(roster.setHeldItem(SPECIES, "stick"));
+		assertEquals("equipping consumes one unit", 1, roster.itemCount("stick"));
+	}
+
+	@Test
+	public void cannotEquipTheSameUnitOnTwoPets()
+	{
+		RosterManager roster = loadedManager();
+		roster.unlock(SPECIES);
+		roster.unlock(SPECIES2);
+		roster.grantItem("stick", 1);
+		assertTrue(roster.setHeldItem(SPECIES, "stick"));
+		assertEquals(0, roster.itemCount("stick"));
+		// The single unit is now worn; there is no stock left for the second pet.
+		assertFalse(roster.setHeldItem(SPECIES2, "stick"));
+		assertNull(roster.getPet(SPECIES2));
+	}
+
+	@Test
+	public void unequipReturnsTheUnitToStock()
+	{
+		RosterManager roster = loadedManager();
+		roster.unlock(SPECIES);
+		roster.grantItem("stick", 1);
+		roster.setHeldItem(SPECIES, "stick");
+		assertEquals(0, roster.itemCount("stick"));
+		assertTrue(roster.clearHeldItem(SPECIES));
+		assertEquals("unequipping returns the unit", 1, roster.itemCount("stick"));
+	}
+
+	@Test
+	public void swappingReturnsPreviousAndConsumesNew()
+	{
+		RosterManager roster = loadedManager();
+		roster.unlock(SPECIES);
+		roster.grantItem("stick", 1);
+		roster.grantItem("sturdy_bracer", 1);
+		roster.setHeldItem(SPECIES, "stick");
+		assertEquals(0, roster.itemCount("stick"));
+
+		assertTrue(roster.setHeldItem(SPECIES, "sturdy_bracer"));
+		assertEquals("sturdy_bracer", roster.getPet(SPECIES).getHeldItemId());
+		assertEquals("previous item returned to stock", 1, roster.itemCount("stick"));
+		assertEquals("new item consumed", 0, roster.itemCount("sturdy_bracer"));
 	}
 }

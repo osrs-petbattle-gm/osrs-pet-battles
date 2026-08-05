@@ -79,9 +79,25 @@ public class HubActions
 		{
 			view.openPane(HubView.Pane.DEV);
 		}
+		else if ("open:devpets".equals(action))
+		{
+			view.openPane(HubView.Pane.DEVPETS);
+		}
+		else if ("devpets.page:1".equals(action))
+		{
+			view.devPetsPage(+1);
+		}
+		else if ("devpets.page:-1".equals(action))
+		{
+			view.devPetsPage(-1);
+		}
 		else if (action.startsWith("open:pet:"))
 		{
 			view.openPet(action.substring("open:pet:".length()));
+		}
+		else if (action.startsWith("equip.open:"))
+		{
+			view.openEquip(action.substring("equip.open:".length()));
 		}
 		else if (action.startsWith("store.buy:"))
 		{

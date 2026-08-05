@@ -29,6 +29,7 @@ import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -73,7 +74,9 @@ public class HubView
 		TRAINERS,
 		STORE,
 		PET,
-		DEV
+		EQUIP,
+		DEV,
+		DEVPETS
 	}
 
 	public static final class Button
@@ -190,8 +193,12 @@ public class HubView
 	private String expandedQuest;
 	// Store list scroll offset.
 	private int storeOffset;
+	// Dev pet-unlock list scroll offset.
+	private int devPetsOffset;
 	// PET pane: the species whose detail (moves / held item / dev) is shown.
 	private String petSpecies;
+	// EQUIP pane: the held item being assigned to a team pet.
+	private String equipItemId;
 	// Dev pane: a pending destructive action awaiting a second "confirm" click, or null.
 	private String pendingConfirm;
 
@@ -270,6 +277,7 @@ public class HubView
 		challengePage = 0;
 		trainersOffset = 0;
 		storeOffset = 0;
+		devPetsOffset = 0;
 		expandedQuest = null;
 		trainerSearch = "";
 		searchFocused = false;
@@ -283,6 +291,13 @@ public class HubView
 	{
 		openPane(Pane.PET);
 		petSpecies = speciesId;
+	}
+
+	/** Open the equip chooser for a held item (pick which team pet wears it). */
+	public void openEquip(String itemId)
+	{
+		openPane(Pane.EQUIP);
+		equipItemId = itemId;
 	}
 
 	// --- Trainers pane name search (fed by the sibling HubKeyListener while focused) ---
@@ -308,6 +323,7 @@ public class HubView
 		{
 			trainerSearch += c;
 			trainersOffset = 0;
+			devPetsOffset = 0;
 		}
 	}
 
@@ -317,6 +333,7 @@ public class HubView
 		{
 			trainerSearch = trainerSearch.substring(0, trainerSearch.length() - 1);
 			trainersOffset = 0;
+			devPetsOffset = 0;
 		}
 	}
 
@@ -324,6 +341,7 @@ public class HubView
 	{
 		trainerSearch = "";
 		trainersOffset = 0;
+		devPetsOffset = 0;
 	}
 
 	/**
@@ -340,6 +358,10 @@ public class HubView
 		{
 			storeOffset = Math.max(0, storeOffset + rotation);
 		}
+		else if (pinned == Pane.DEVPETS)
+		{
+			devPetsOffset = Math.max(0, devPetsOffset + rotation);
+		}
 		else if (pinned == Pane.TEAM)
 		{
 			addPage(rotation);
@@ -349,7 +371,8 @@ public class HubView
 	/** Whether an open pane has a scrollable list, so the wheel handler knows to claim the event. */
 	public boolean isScrollablePaneOpen()
 	{
-		return pinned == Pane.TRAINERS || pinned == Pane.TEAM || pinned == Pane.STORE;
+		return pinned == Pane.TRAINERS || pinned == Pane.TEAM
+			|| pinned == Pane.STORE || pinned == Pane.DEVPETS;
 	}
 
 	public void toggleQuest(String questId)
@@ -365,6 +388,11 @@ public class HubView
 	public void storePage(int delta)
 	{
 		storeOffset = Math.max(0, storeOffset + delta);
+	}
+
+	public void devPetsPage(int delta)
+	{
+		devPetsOffset = Math.max(0, devPetsOffset + delta);
 	}
 
 	/**
@@ -442,8 +470,8 @@ public class HubView
 			pane = docked ? Pane.MENU : Pane.COLLAPSED;
 		}
 
-		// The search box only lives on the Trainers pane; drop focus if we've left it.
-		if (pane != Pane.TRAINERS)
+		// The search box lives on the Trainers and dev pet-unlock panes; drop focus if we've left them.
+		if (pane != Pane.TRAINERS && pane != Pane.DEVPETS)
 		{
 			searchFocused = false;
 		}
@@ -556,8 +584,12 @@ public class HubView
 				return storeBody(g, out);
 			case PET:
 				return petBody(g, out);
+			case EQUIP:
+				return equipBody(g, out);
 			case DEV:
 				return devBody(g, out);
+			case DEVPETS:
+				return devPetsBody(g, out);
 			case TEAM:
 			default:
 				return teamBody(g, out);
@@ -582,8 +614,15 @@ public class HubView
 				return "Trainers";
 			case STORE:
 				return "Store";
+			case EQUIP:
+			{
+				EquipItemDef it = equipItemId == null ? null : db.equipItem(equipItemId);
+				return it == null ? "Equip" : "Equip " + it.getName();
+			}
 			case DEV:
 				return "Dev tools";
+			case DEVPETS:
+				return "Unlock pets";
 			case PET:
 			{
 				SpeciesDef s = petSpecies == null ? null : db.species(petSpecies);
@@ -1219,7 +1258,101 @@ public class HubView
 			out.add(new Button(r, "item.examine:" + item.getId()));
 		}
 		int rows = (all.length + cols - 1) / cols;
-		return y + rows * (slot + gap) + 2;
+		y += rows * (slot + gap) + 6;
+
+		// Held items you own, and a tap-through to equip them on a team pet. This is the discoverable
+		// home for anything bought in the Store: buy here, then equip here.
+		y = heldItemsSection(g, out, y);
+		return y;
+	}
+
+	/** The owned held-item inventory as equip rows (icon, name, effect, who wears it). */
+	private int heldItemsSection(Graphics2D g, List<Button> out, int y)
+	{
+		g.setColor(new Color(255, 255, 255, 24));
+		g.fillRect(8, y, width - 16, 1);
+		y += 9;
+		g.setFont(FontManager.getRunescapeBoldFont());
+		g.setColor(new Color(200, 190, 160));
+		g.drawString("Held items", 10, y + 11);
+		y += 18;
+
+		// Held items in stock plus any currently worn — a fully-equipped item keeps its row so it can
+		// still be unequipped from here (returning the unit to stock).
+		LinkedHashMap<String, EquipItemDef> held = new LinkedHashMap<>();
+		for (Map.Entry<String, Integer> e : roster.getItemInventory().entrySet())
+		{
+			EquipItemDef item = db.equipItem(e.getKey());
+			if (item != null && item.getSlot() == EquipItemDef.Slot.HELD && e.getValue() > 0)
+			{
+				held.put(item.getId(), item);
+			}
+		}
+		for (String speciesId : roster.getTeam())
+		{
+			PetInstance pet = roster.getPet(speciesId);
+			if (pet != null && pet.getHeldItemId() != null)
+			{
+				EquipItemDef item = db.equipItem(pet.getHeldItemId());
+				if (item != null && item.getSlot() == EquipItemDef.Slot.HELD)
+				{
+					held.putIfAbsent(item.getId(), item);
+				}
+			}
+		}
+		if (held.isEmpty())
+		{
+			hint(g, "None yet - buy one in the Store.", y);
+			return y + 16;
+		}
+		for (EquipItemDef item : held.values())
+		{
+			y = heldItemRow(g, out, y, item);
+		}
+		return y;
+	}
+
+	private int heldItemRow(Graphics2D g, List<Button> out, int y, EquipItemDef item)
+	{
+		int h = 32;
+		Rectangle row = new Rectangle(8, y, width - 16, h);
+		drawButtonBg(g, row, true);
+
+		int icon = 24;
+		BufferedImage img = item.getSprite() == null ? null : itemIcon(item.getSprite());
+		if (img != null)
+		{
+			drawFit(g, img, row.x + 5, row.y + (h - icon) / 2, icon, icon);
+		}
+		int textX = row.x + 5 + icon + 6;
+
+		// Who's wearing it right now, so the player can see it's in use without opening the chooser.
+		List<String> wearers = new ArrayList<>();
+		for (String speciesId : roster.getTeam())
+		{
+			PetInstance pet = roster.getPet(speciesId);
+			SpeciesDef sp = db.species(speciesId);
+			if (pet != null && sp != null && item.getId().equals(pet.getHeldItemId()))
+			{
+				wearers.add(sp.getName());
+			}
+		}
+		int spare = roster.itemCount(item.getId());
+		g.setFont(FontManager.getRunescapeFont());
+		g.setColor(Color.WHITE);
+		String name = item.getName() + (spare > 0 ? "  x" + spare : "");
+		g.drawString(clip(g, name, row.width - (textX - row.x) - 60), textX, y + 14);
+		g.setColor(MUTED);
+		String sub = wearers.isEmpty() ? effectText(item) : "Worn by " + String.join(", ", wearers);
+		g.drawString(clip(g, sub, row.width - (textX - row.x) - 60), textX, y + 27);
+
+		// The row opens the equip chooser to equip a spare or unequip a worn one.
+		g.setColor(new Color(220, 200, 120));
+		g.setFont(FontManager.getRunescapeFont());
+		String label = spare > 0 ? "Equip" : "Manage";
+		g.drawString(label, row.x + row.width - g.getFontMetrics().stringWidth(label) - 8, y + 20);
+		out.add(new Button(row, "equip.open:" + item.getId()));
+		return y + h + 4;
 	}
 
 	/** The bundled icon for an item id, or null (cached) if none is present. */
@@ -1666,13 +1799,23 @@ public class HubView
 		y += 18;
 		String heldId = pet.getHeldItemId();
 		y = selectRow(g, out, y, "None", heldId == null, "pet.held.clear:" + species.getId(), true);
-		List<EquipItemDef> heldOwned = new ArrayList<>();
+		// Spare held items to choose from, plus whatever this pet already wears (so it stays selectable
+		// even with no spares left).
+		LinkedHashMap<String, EquipItemDef> heldOwned = new LinkedHashMap<>();
 		for (Map.Entry<String, Integer> e : roster.getItemInventory().entrySet())
 		{
 			EquipItemDef item = db.equipItem(e.getKey());
 			if (item != null && item.getSlot() == EquipItemDef.Slot.HELD && e.getValue() > 0)
 			{
-				heldOwned.add(item);
+				heldOwned.put(item.getId(), item);
+			}
+		}
+		if (heldId != null)
+		{
+			EquipItemDef worn = db.equipItem(heldId);
+			if (worn != null && worn.getSlot() == EquipItemDef.Slot.HELD)
+			{
+				heldOwned.putIfAbsent(worn.getId(), worn);
 			}
 		}
 		if (heldOwned.isEmpty())
@@ -1680,7 +1823,7 @@ public class HubView
 			hint(g, "No held items yet - buy one in the Store.", y);
 			y += 16;
 		}
-		for (EquipItemDef item : heldOwned)
+		for (EquipItemDef item : heldOwned.values())
 		{
 			y = selectRow(g, out, y, item.getName() + "  [" + effectText(item) + "]",
 				item.getId().equals(heldId), "pet.held:" + species.getId() + ":" + item.getId(), true);
@@ -1778,6 +1921,122 @@ public class HubView
 		return y + 26;
 	}
 
+	// --- Equip pane (held item -> team pet) ---------------------------------
+
+	/**
+	 * Assign a held item to a team pet: an item header, then a tappable list of the team where each
+	 * row equips (or, if already worn, removes) the item. Reached from the Items pane's held-item
+	 * list, so a freshly-bought item can be put to use straight away.
+	 */
+	private int equipBody(Graphics2D g, List<Button> out)
+	{
+		int y = 26;
+		if (!roster.isLoaded())
+		{
+			return loginHint(g, y);
+		}
+		EquipItemDef item = equipItemId == null ? null : db.equipItem(equipItemId);
+		if (item == null)
+		{
+			hint(g, "No item selected.", y);
+			return y + 16;
+		}
+
+		int pw = 34;
+		Rectangle box = new Rectangle(10, y, pw, pw);
+		g.setColor(new Color(255, 255, 255, 18));
+		g.fillRoundRect(box.x, box.y, pw, pw, 6, 6);
+		BufferedImage img = item.getSprite() == null ? null : itemIcon(item.getSprite());
+		if (img != null)
+		{
+			drawFit(g, img, box.x + 2, box.y + 2, pw - 4, pw - 4);
+		}
+		int textX = box.x + pw + 10;
+		g.setFont(FontManager.getRunescapeBoldFont());
+		g.setColor(Color.WHITE);
+		g.drawString(clip(g, item.getName(), width - textX - 10), textX, y + 14);
+		g.setFont(FontManager.getRunescapeFont());
+		g.setColor(MUTED);
+		g.drawString(clip(g, effectText(item), width - textX - 10), textX, y + 30);
+		y += pw + 8;
+
+		List<String> team = roster.getTeam();
+		if (team.isEmpty())
+		{
+			hint(g, "Add a pet to your team first.", y);
+			return y + 16;
+		}
+		g.setFont(FontManager.getRunescapeFont());
+		g.setColor(TEXT);
+		g.drawString("Tap a team pet to equip:", 10, y + 11);
+		y += 18;
+		for (String speciesId : team)
+		{
+			y = equipPetRow(g, out, y, speciesId, item);
+		}
+		return y;
+	}
+
+	private int equipPetRow(Graphics2D g, List<Button> out, int y, String speciesId, EquipItemDef item)
+	{
+		SpeciesDef species = db.species(speciesId);
+		if (species == null)
+		{
+			return y;
+		}
+		PetInstance pet = roster.getPet(speciesId);
+		boolean wearing = pet != null && item.getId().equals(pet.getHeldItemId());
+		// A pet can only hold an item if you actually own it. A team can carry a dev-unlocked pet with
+		// dev-select later switched off; such a pet can't be equipped, so the row goes inert.
+		boolean owned = roster.isOwned(speciesId);
+		int h = 30;
+		Rectangle row = new Rectangle(8, y, width - 16, h);
+		drawButtonBg(g, row, owned);
+		if (wearing)
+		{
+			g.setColor(new Color(220, 200, 120));
+			g.setStroke(new BasicStroke(2));
+			g.drawRoundRect(row.x, row.y, row.width, row.height, 6, 6);
+		}
+
+		int level = pet != null ? pet.getLevel() : 1;
+		int iconId = pet != null ? species.itemIdFor(pet.getActiveVariantId(), level) : species.getItemId();
+		drawFit(g, sprites.itemImage(iconId), row.x + 4, row.y + 3, 24, 24);
+
+		int actionW = 54;
+		int textX = row.x + 34;
+		g.setFont(FontManager.getRunescapeFont());
+		g.setColor(owned ? Color.WHITE : MUTED);
+		g.drawString(clip(g, species.getName(), row.width - (textX - row.x) - actionW), textX, y + 13);
+		String cur = pet != null && pet.getHeldItemId() != null
+			? (db.equipItem(pet.getHeldItemId()) != null ? db.equipItem(pet.getHeldItemId()).getName() : null)
+			: null;
+		g.setColor(MUTED);
+		String sub = !owned ? "Not unlocked" : wearing ? "Equipped"
+			: cur != null ? "Holds " + cur : "Lv " + level;
+		g.drawString(clip(g, sub, row.width - (textX - row.x) - actionW), textX, y + 26);
+
+		if (owned && wearing)
+		{
+			g.setColor(new Color(200, 90, 80));
+			g.drawString("Remove", row.x + row.width - g.getFontMetrics().stringWidth("Remove") - 8, y + 20);
+			out.add(new Button(row, "pet.held.clear:" + speciesId));
+		}
+		else if (owned && roster.itemCount(item.getId()) > 0)
+		{
+			g.setColor(new Color(220, 200, 120));
+			g.drawString("Equip", row.x + row.width - g.getFontMetrics().stringWidth("Equip") - 8, y + 20);
+			out.add(new Button(row, "pet.held:" + speciesId + ":" + item.getId()));
+		}
+		else if (owned)
+		{
+			// Owned pet, but every unit of this item is already equipped elsewhere.
+			g.setColor(MUTED);
+			g.drawString("None left", row.x + row.width - g.getFontMetrics().stringWidth("None left") - 8, y + 20);
+		}
+		return y + h + 4;
+	}
+
 	// --- Dev tools pane -----------------------------------------------------
 
 	private int devBody(Graphics2D g, List<Button> out)
@@ -1788,12 +2047,100 @@ public class HubView
 			hint(g, "Dev tools are disabled.", y);
 			return y + 16;
 		}
+		y = fullButton(g, out, y, "Unlock pets", "open:devpets", true);
+		y += 8;
 		y = devAction(g, out, y, "progression", "Reset progression",
 			"Reset ALL pets to level 1? Wipes every pet's XP, level and moveset (owned pets and team kept).");
 		y += 4;
 		y = devAction(g, out, y, "quests", "Reset quests",
 			"Reset ALL quest progress and relock their rewards (e.g. remote battles)?");
 		return y;
+	}
+
+	/**
+	 * Dev-only pet unlocker: a name search over every species with an Unlock / Lock toggle, so a
+	 * developer can build teams from pets they don't own. Reached from the Dev tools pane; the whole
+	 * pane is inert without dev select, so it never appears in a production build.
+	 */
+	private int devPetsBody(Graphics2D g, List<Button> out)
+	{
+		int y = 26;
+		if (!roster.isDevSelectEnabled())
+		{
+			hint(g, "Dev tools are disabled.", y);
+			return y + 16;
+		}
+		y = searchBox(g, out, y);
+
+		String query = trainerSearch.trim().toLowerCase(Locale.ROOT);
+		List<SpeciesDef> list = new ArrayList<>();
+		for (SpeciesDef species : db.allSpecies())
+		{
+			if (query.isEmpty() || species.getName().toLowerCase(Locale.ROOT).contains(query))
+			{
+				list.add(species);
+			}
+		}
+		if (list.isEmpty())
+		{
+			hint(g, "No pets match \"" + trainerSearch + "\".", y);
+			return y + 16;
+		}
+		int visible = 6;
+		int maxOffset = Math.max(0, list.size() - visible);
+		if (devPetsOffset > maxOffset)
+		{
+			devPetsOffset = maxOffset;
+		}
+		int end = Math.min(list.size(), devPetsOffset + visible);
+		g.setFont(FontManager.getRunescapeFont());
+		g.setColor(MUTED);
+		g.drawString((devPetsOffset + 1) + "-" + end + " of " + list.size(), 10, y + 11);
+		if (list.size() > visible)
+		{
+			iconButton(g, out, new Rectangle(width - 42, y, 14, 14), Icon.UP, "devpets.page:-1", devPetsOffset > 0);
+			iconButton(g, out, new Rectangle(width - 24, y, 14, 14), Icon.DOWN, "devpets.page:1", devPetsOffset < maxOffset);
+		}
+		y += 20;
+		for (int i = devPetsOffset; i < end; i++)
+		{
+			y = devPetRow(g, out, y, list.get(i));
+		}
+		return y;
+	}
+
+	private int devPetRow(Graphics2D g, List<Button> out, int y, SpeciesDef species)
+	{
+		boolean devUnlocked = roster.isDevUnlocked(species.getId());
+		boolean owned = roster.isOwned(species.getId());
+		int h = 26;
+		Rectangle row = new Rectangle(8, y, width - 16, h);
+		drawButtonBg(g, row, true);
+		drawFit(g, sprites.itemImage(species.getItemId()), row.x + 4, row.y + 3, 20, 20);
+
+		int btnW = 52;
+		int textX = row.x + 30;
+		g.setFont(FontManager.getRunescapeFont());
+		g.setColor(owned ? Color.WHITE : MUTED);
+		g.drawString(clip(g, species.getName(), row.width - (textX - row.x) - btnW - 8), textX, y + 17);
+
+		Rectangle btn = new Rectangle(row.x + row.width - btnW - 6, y + (h - 18) / 2, btnW, 18);
+		if (devUnlocked)
+		{
+			drawButton(g, btn, "Lock", true, false);
+			out.add(new Button(btn, "dev.lock:" + species.getId()));
+		}
+		else if (owned)
+		{
+			g.setColor(new Color(120, 200, 110));
+			g.drawString("Owned", btn.x + 6, y + 17);
+		}
+		else
+		{
+			drawButton(g, btn, "Unlock", true, false);
+			out.add(new Button(btn, "dev.unlock:" + species.getId()));
+		}
+		return y + h + 4;
 	}
 
 	/** A destructive dev button that arms an inline Yes/No confirm on first click. */

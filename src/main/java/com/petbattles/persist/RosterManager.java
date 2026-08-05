@@ -546,8 +546,9 @@ public class RosterManager
 
 	/**
 	 * Equip a HELD item on an owned pet: the pet must be owned, the item must exist, be a HELD-slot
-	 * item, and be owned in the inventory. No-op (returns false) otherwise. Holding does not consume
-	 * the item from the inventory — it stays owned while worn.
+	 * item, and be in stock. No-op (returns false) otherwise. Equipping consumes one unit from the
+	 * inventory and returns whatever the pet was previously holding, so a given unit can only be worn
+	 * by one pet at a time.
 	 */
 	public synchronized boolean setHeldItem(String speciesId, String itemId)
 	{
@@ -562,13 +563,24 @@ public class RosterManager
 		{
 			return false;
 		}
+		data.itemInventory.merge(itemId, -1, Integer::sum);
+		if (data.itemInventory.getOrDefault(itemId, 0) <= 0)
+		{
+			data.itemInventory.remove(itemId);
+		}
+		String previous = pet.getHeldItemId();
+		if (previous != null)
+		{
+			data.itemInventory.merge(previous, 1, Integer::sum);
+		}
 		pet.setHeldItemId(itemId);
 		save();
 		return true;
 	}
 
 	/**
-	 * Remove whatever HELD item an owned pet is carrying. Returns true if it was holding one.
+	 * Remove whatever HELD item an owned pet is carrying, returning the unit to the inventory so it can
+	 * be re-equipped elsewhere. Returns true if it was holding one.
 	 */
 	public synchronized boolean clearHeldItem(String speciesId)
 	{
@@ -577,7 +589,9 @@ public class RosterManager
 		{
 			return false;
 		}
+		String held = pet.getHeldItemId();
 		pet.setHeldItemId(null);
+		data.itemInventory.merge(held, 1, Integer::sum);
 		save();
 		return true;
 	}
