@@ -37,6 +37,11 @@ public class BattlePet
 	private int spdStage;
 	private Status status = Status.NONE;
 	private int statusTurns;
+	// Cosmetics worn into the fight (EquipItemDef ids, null for none). Presentation only — they never
+	// touch a stat, so they're set after construction rather than widening the constructor chain
+	// again. Enemy battlers wear nothing.
+	private String headCosmeticId;
+	private String faceCosmeticId;
 
 	public BattlePet(SpeciesDef species, String displayName, int level, List<MoveDef> moves)
 	{
@@ -110,6 +115,25 @@ public class BattlePet
 	public List<PetType> getTypes()
 	{
 		return species.typesFor(variantId);
+	}
+
+	/** The HEAD cosmetic worn into this fight (an {@code EquipItemDef} id), or null. */
+	public String getHeadCosmeticId()
+	{
+		return headCosmeticId;
+	}
+
+	/** The FACE cosmetic worn into this fight (an {@code EquipItemDef} id), or null. */
+	public String getFaceCosmeticId()
+	{
+		return faceCosmeticId;
+	}
+
+	/** Dress this battler for the scene. Purely cosmetic; safe to call at any point. */
+	public void setCosmetics(String headCosmeticId, String faceCosmeticId)
+	{
+		this.headCosmeticId = headCosmeticId;
+		this.faceCosmeticId = faceCosmeticId;
 	}
 
 	/**

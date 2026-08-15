@@ -39,12 +39,12 @@ public class RosterManager
 	 */
 	public static final int PROGRESSION_RESET_VERSION = 0;
 
-	// The capstone story quest id and the step thresholds its key-item trophies (Sealed Envelope,
-	// Blue party hat) derive their ownership from -- see ownsItem. Kept here (not in QuestManager)
-	// because ownership is read straight off questProgress, mirroring the REMOTE_BATTLE_DEVICE case.
+	// The capstone story quest whose key-item trophies (Sealed Envelope, Blue party hat) derive their
+	// ownership from its progress -- see ownsItem. Kept here (not in QuestManager) because ownership
+	// is read straight off questProgress, mirroring the REMOTE_BATTLE_DEVICE case. The steps that
+	// grant them are read from the quest content, so re-ordering or dropping chapters can't desync
+	// them.
 	private static final String CAPSTONE_QUEST_ID = "series_of_fortunate_events";
-	private static final int CAPSTONE_ENVELOPE_STEP = 6;
-	private static final int CAPSTONE_COMPLETE_STEP = 8;
 
 	// The intro quest that hands over the Remote Battle Device. Completing it lets the player battle
 	// already-defeated trainers remotely (see canRemoteFight). The complete step is read from the
@@ -76,6 +76,10 @@ public class RosterManager
 		{
 			data.defeatedTrainers = new java.util.LinkedHashSet<>();
 		}
+		if (data.trainerWins == null)
+		{
+			data.trainerWins = new LinkedHashMap<>();
+		}
 		if (data.questProgress == null)
 		{
 			data.questProgress = new java.util.LinkedHashMap<>();
@@ -93,6 +97,7 @@ public class RosterManager
 		data.ownedSpecies.removeIf(id -> db.species(id) == null);
 		data.devUnlocked.removeIf(id -> db.species(id) == null);
 		data.defeatedTrainers.removeIf(id -> db.trainer(id) == null);
+		data.trainerWins.keySet().removeIf(id -> db.trainer(id) == null);
 		// One-shot progression wipe when the code constant outruns what this roster has seen.
 		if (data.progressionResetVersion < PROGRESSION_RESET_VERSION)
 		{
@@ -390,14 +395,37 @@ public class RosterManager
 	}
 
 	/**
-	 * Record a trainer win; no-op if already recorded.
+	 * How many times this trainer has been beaten, which sets the re-fight reward taper (see
+	 * {@link com.petbattles.engine.Leveling#repeatFactor(int)}). Saves written before the counter
+	 * existed only know that a trainer was beaten, so one of those reads as a single win rather than
+	 * handing a long-farmed trainer its first-win rate back.
+	 */
+	public synchronized int trainerWins(String trainerId)
+	{
+		Integer wins = data.trainerWins.get(trainerId);
+		if (wins != null)
+		{
+			return wins;
+		}
+		return data.defeatedTrainers.contains(trainerId) ? 1 : 0;
+	}
+
+	/**
+	 * Record a trainer win: flags the first defeat (which unlocks remote re-fights) and counts every
+	 * win for the reward taper.
 	 */
 	public synchronized void recordTrainerDefeated(String trainerId)
 	{
-		if (db.trainer(trainerId) != null && data.defeatedTrainers.add(trainerId))
+		if (db.trainer(trainerId) == null)
 		{
-			save();
+			return;
 		}
+		// Count first: flagging the defeat would make trainerWins' legacy fallback read this very win
+		// as a prior one, so a first clear would land on 2.
+		int wins = trainerWins(trainerId);
+		data.defeatedTrainers.add(trainerId);
+		data.trainerWins.put(trainerId, wins + 1);
+		save();
 	}
 
 	/**
@@ -645,6 +673,114 @@ public class RosterManager
 		return true;
 	}
 
+	// --- Cosmetics (HEAD/FACE) ---
+	//
+	// Cosmetics work as a wardrobe, not as stock: equipping one does NOT consume it, so the same hat
+	// can be worn by every pet on the team at once. This differs deliberately from HELD items, which
+	// consume-on-equip so a stat bonus can't be duplicated across the team. Two reasons: a cosmetic
+	// grants nothing, so there's nothing to duplicate; and a trophy like the blue party hat has
+	// *derived* ownership (see ownsItem) with no inventory unit to move around, which the
+	// consume-and-return dance can't represent.
+
+	/**
+	 * Whether the player owns a cosmetic they could equip: either it's in the equip-item inventory
+	 * (bought or granted) or it's a key-item trophy whose ownership is derived from quest state.
+	 */
+	public synchronized boolean ownsCosmetic(String itemId)
+	{
+		if (hasItem(itemId))
+		{
+			return true;
+		}
+		Item keyItem = Item.byId(itemId);
+		return keyItem != null && ownsItem(keyItem);
+	}
+
+	/**
+	 * Every cosmetic the player owns, in content order — the wardrobe the equip UI offers. Includes
+	 * derived-ownership trophies, which never appear in the item inventory.
+	 */
+	public synchronized List<EquipItemDef> ownedCosmetics()
+	{
+		List<EquipItemDef> owned = new ArrayList<>();
+		for (EquipItemDef item : db.allEquipItems())
+		{
+			if (item.isCosmetic() && ownsCosmetic(item.getId()))
+			{
+				owned.add(item);
+			}
+		}
+		return owned;
+	}
+
+	/**
+	 * Equip a cosmetic on an owned pet, into whichever slot ({@code HEAD}/{@code FACE}) the item
+	 * declares — replacing whatever occupied that slot. The pet must be owned, the item must exist,
+	 * be a cosmetic, and be owned. No-op (returns false) otherwise, including when it's already worn.
+	 */
+	public synchronized boolean setCosmetic(String speciesId, String itemId)
+	{
+		EquipItemDef item = db.equipItem(itemId);
+		if (!isOwned(speciesId) || item == null || !item.isCosmetic() || !ownsCosmetic(itemId))
+		{
+			return false;
+		}
+		PetInstance pet = getOrCreatePet(speciesId);
+		if (pet == null || Objects.equals(cosmeticId(pet, item.getSlot()), itemId))
+		{
+			return false;
+		}
+		applyCosmetic(pet, item.getSlot(), itemId);
+		save();
+		return true;
+	}
+
+	/**
+	 * Clear a pet's cosmetic slot. Returns true if it was wearing something there. Nothing returns to
+	 * the inventory — cosmetics are never consumed on equip.
+	 */
+	public synchronized boolean clearCosmetic(String speciesId, EquipItemDef.Slot slot)
+	{
+		PetInstance pet = getPet(speciesId);
+		if (pet == null || cosmeticId(pet, slot) == null)
+		{
+			return false;
+		}
+		applyCosmetic(pet, slot, null);
+		save();
+		return true;
+	}
+
+	/** What this pet wears in a cosmetic slot, or null (also null for the HELD slot). */
+	private static String cosmeticId(PetInstance pet, EquipItemDef.Slot slot)
+	{
+		switch (slot)
+		{
+			case HEAD:
+				return pet.getHeadItemId();
+			case FACE:
+				return pet.getFaceItemId();
+			default:
+				return null;
+		}
+	}
+
+	/** Write a cosmetic slot on a pet; a no-op for the HELD slot. */
+	private static void applyCosmetic(PetInstance pet, EquipItemDef.Slot slot, String itemId)
+	{
+		switch (slot)
+		{
+			case HEAD:
+				pet.setHeadItemId(itemId);
+				break;
+			case FACE:
+				pet.setFaceItemId(itemId);
+				break;
+			default:
+				break;
+		}
+	}
+
 	/**
 	 * Whether the player currently holds this reward item. Derived from the state that granted it
 	 * (so an item and the thing it unlocks can't drift apart), not stored separately.
@@ -656,14 +792,40 @@ public class RosterManager
 			case REMOTE_BATTLE_DEVICE:
 				return isRemoteBattlesUnlocked();
 			case SEALED_ENVELOPE:
-				// Wrung from Ambassador Gimblewap in chapter 6 of the capstone.
-				return getQuestStep(CAPSTONE_QUEST_ID) >= CAPSTONE_ENVELOPE_STEP;
+				// Wrung from Ambassador Gimblewap partway through the capstone.
 			case BLUE_PARTY_HAT:
 				// The Wise Old Man's parting gift for finishing the capstone.
-				return getQuestStep(CAPSTONE_QUEST_ID) >= CAPSTONE_COMPLETE_STEP;
+			{
+				int granted = capstoneStepAwarding(item);
+				return granted >= 0 && getQuestStep(CAPSTONE_QUEST_ID) >= granted;
+			}
 			default:
 				return false;
 		}
+	}
+
+	/**
+	 * The capstone step at which a key-item trophy is in the player's hands: one past the chapter whose
+	 * reward names it, since a chapter's reward lands as its step moves on. Read from the quest content
+	 * so re-ordering or dropping chapters can't leave a trophy stranded behind a step that no longer
+	 * exists. -1 if no chapter awards this item.
+	 */
+	private int capstoneStepAwarding(Item item)
+	{
+		QuestDef quest = db.quest(CAPSTONE_QUEST_ID);
+		if (quest == null)
+		{
+			return -1;
+		}
+		for (QuestDef.Chapter chapter : quest.getChapters())
+		{
+			QuestDef.Reward reward = chapter.getReward();
+			if (reward != null && item.getId().equals(reward.getKeyItem()))
+			{
+				return chapter.getStep() + 1;
+			}
+		}
+		return -1;
 	}
 
 	/**

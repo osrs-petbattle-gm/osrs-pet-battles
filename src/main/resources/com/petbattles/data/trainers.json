@@ -395,15 +395,15 @@
     "party": [
       {
         "species": "rocky",
-        "level": 45
+        "level": 30
       },
       {
-        "species": "olmlet",
-        "level": 48
+        "species": "kalphite_princess",
+        "level": 32
       },
       {
-        "species": "lil_zik",
-        "level": 50
+        "species": "hellpuppy",
+        "level": 35
       }
     ]
   },

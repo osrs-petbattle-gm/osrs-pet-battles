@@ -52,17 +52,30 @@ public class PetChatheads
 	 */
 	public BufferedImage chathead(String speciesId, String variantId, String stageKey)
 	{
+		Chathead resolved = resolve(speciesId, variantId, stageKey);
+		return resolved == null ? null : resolved.getImage();
+	}
+
+	/**
+	 * As {@link #chathead(String, String, String)}, but reporting which key the art resolved from
+	 * alongside it — cosmetic placement is measured per image and cached under that key, and a
+	 * hand-tuned override can name it to correct one variant or growth stage on its own.
+	 *
+	 * @return the resolved chathead, or null if no art is bundled for this pet at all
+	 */
+	public Chathead resolve(String speciesId, String variantId, String stageKey)
+	{
 		if (variantId != null)
 		{
 			if (stageKey != null)
 			{
-				BufferedImage staged = load(speciesId + "__" + variantId + "__" + stageKey);
+				Chathead staged = at(speciesId + "__" + variantId + "__" + stageKey);
 				if (staged != null)
 				{
 					return staged;
 				}
 			}
-			BufferedImage variant = load(speciesId + "__" + variantId);
+			Chathead variant = at(speciesId + "__" + variantId);
 			if (variant != null)
 			{
 				return variant;
@@ -70,13 +83,44 @@ public class PetChatheads
 		}
 		if (stageKey != null)
 		{
-			BufferedImage baseStage = load(speciesId + "__" + stageKey);
+			Chathead baseStage = at(speciesId + "__" + stageKey);
 			if (baseStage != null)
 			{
 				return baseStage;
 			}
 		}
-		return load(speciesId);
+		return at(speciesId);
+	}
+
+	/** The chathead bundled at this exact key, or null if there is none. */
+	private Chathead at(String key)
+	{
+		BufferedImage img = load(key);
+		return img == null ? null : new Chathead(key, img);
+	}
+
+	/** A resolved chathead: the art, and the key it was found under. */
+	public static class Chathead
+	{
+		private final String key;
+		private final BufferedImage image;
+
+		Chathead(String key, BufferedImage image)
+		{
+			this.key = key;
+			this.image = image;
+		}
+
+		/** The chathead key this art resolved from, e.g. {@code cat__black__kitten}. */
+		public String getKey()
+		{
+			return key;
+		}
+
+		public BufferedImage getImage()
+		{
+			return image;
+		}
 	}
 
 	/** Load and cache the chathead at {@code <key>.png}, or null (cached) if none is bundled. */

@@ -1,0 +1,17 @@
+{
+  "_comment": [
+    "Hand-tuned corrections to the automatic cosmetic placement in ChatheadAnchors.",
+    "Keys are chathead keys (the PNG basename under /com/petbattles/chatheads/) — so",
+    "'beaver__oak__baby' corrects that one image, while a bare 'beaver' covers every",
+    "form and stage of the species. The specific key wins.",
+    "",
+    "Every field is optional; whatever you leave out keeps its derived value, so a hat",
+    "that is placed correctly but too big only needs a 'width'. Units are fractions of",
+    "the chathead image (0..1). x is the horizontal centre. y is the bottom edge of a",
+    "head cosmetic (where the hat meets the skull) but the centre of a face cosmetic.",
+    "width is the drawn width as a fraction of the image width.",
+    "",
+    "Entries starting with _ are ignored. Example:",
+    "  \"beaver\": { \"head\": { \"y\": 0.14, \"width\": 0.48 }, \"face\": { \"x\": 0.54 } }"
+  ]
+}

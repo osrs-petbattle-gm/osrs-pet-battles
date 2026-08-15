@@ -1,0 +1,9 @@
+{
+  "_comment": [
+    "A doc block shaped like the real file's, to prove comment keys are skipped rather than",
+    "parsed as an entry."
+  ],
+  "some_species__blue": { "head": { "x": 0.11, "y": 0.22, "width": 0.33 } },
+  "some_species": { "face": { "width": 0.44 } },
+  "broken_pet": { "head": "not an object" }
+}

@@ -12,8 +12,6 @@ import com.petbattles.engine.TrainerDef;
 import com.petbattles.item.EquipItemDef;
 import com.petbattles.item.Item;
 import com.petbattles.persist.RosterManager;
-import com.petbattles.quest.Conversation;
-import com.petbattles.quest.ConversationState;
 import com.petbattles.quest.QuestDef;
 import com.petbattles.quest.QuestManager;
 import java.awt.BasicStroke;
@@ -221,21 +219,6 @@ public class HubView
 	private volatile boolean searchFocused;
 	// Quests pane: the quest id whose detail box is expanded (null = none).
 	private String expandedQuest;
-	// The current chapter's intro-conversation cursor, plus which quest+step it belongs to (rebuilt
-	// when the open chapter changes). Mutated from dispatch, read on render (same as the other pane
-	// state); each hub surface has its own HubView instance so the two never share a cursor.
-	private String convoQuestId;
-	private int convoStep = -1;
-	private ConversationState convo;
-	// "questId#step" of a conversation the player has already started. Hans patrols Lumbridge, so the
-	// NPC can wander out of range mid-sentence; the latch keeps the open conversation on screen rather
-	// than snapping back to the objective and making the player chase him down. Cleared once the
-	// conversation is spent, so the Challenge that follows it still needs the NPC genuinely in reach.
-	private String convoLatchKey;
-	// A hunt suspect's accusation cursor, keyed "questId|trainerId". Kept separate from the chapter
-	// intro cursor above so confronting a suspect can't rewind the chapter's own conversation.
-	private String accuseKey;
-	private ConversationState accuseConvo;
 	// Store list scroll offset.
 	private int storeOffset;
 	// Dev pet-unlock list scroll offset.
@@ -1330,7 +1313,7 @@ public class HubView
 			y = questRow(g, out, quest.getId(), quest.getTitle(), complete, y);
 			if (expanded)
 			{
-				y = storyBody(g, out, quest, complete, y);
+				y = storyBody(g, quest, complete, y);
 			}
 		}
 		return y;
@@ -1376,55 +1359,23 @@ public class HubView
 	}
 
 	/**
-	 * The expanded story view for a data quest. While the chapter's NPC is out of reach it shows only
-	 * the indirect {@code objective} (point, don't name the place). Once reachable, it pages the
-	 * chapter's intro conversation (chathead + line + Continue, or reply buttons for a choice); when
-	 * that finishes, a talk chapter has already advanced, and a battle/hunt chapter reveals its
-	 * Challenge(s). A completed quest just reads as done.
+	 * The expanded story view for a data quest: a read-only log of where the player has got to — the
+	 * chapter title and its indirect {@code objective} (point, don't name the place), plus the hunt's
+	 * tally when one is running. The talking and the Challenge that follows it belong to the quest
+	 * dialog frame ({@link com.petbattles.quest.QuestDialogSession}), which is the only surface the
+	 * player converses on. A completed quest just reads as done.
 	 */
-	private int storyBody(Graphics2D g, List<Button> out, QuestDef quest, boolean complete, int y)
+	private int storyBody(Graphics2D g, QuestDef quest, boolean complete, int y)
 	{
 		QuestDef.Chapter chapter = complete ? null : questManager.currentChapter(quest.getId());
 		if (chapter == null)
 		{
 			return questDetailBox(g, "Quest completed.", y);
 		}
-		String gate = chapter.getGateTrainer();
-		boolean reachable = gate == null || nearTrainers.get().contains(gate);
-		String latch = quest.getId() + "#" + chapter.getStep();
 		String objective = chapter.getObjective() != null ? chapter.getObjective()
 			: "Seek out your next lead.";
-		if (!reachable && !latch.equals(convoLatchKey))
-		{
-			return objectiveBox(g, chapter.getTitle(), objective, y);
-		}
-
-		ensureConvo(quest.getId(), chapter.getStep(), chapter.getIntro());
-		ConversationState.Frame frame = convo != null ? convo.current() : null;
-		if (frame != null)
-		{
-			convoLatchKey = latch;
-			return convoFrame(g, out, quest.getId(), chapter.getTitle(), frame, y);
-		}
-		// Conversation spent: the latch ends here, so what follows it (a Challenge, the hunt list)
-		// still requires the NPC actually in reach - a walked-away NPC can't be fought from afar.
-		convoLatchKey = null;
-		if (!reachable)
-		{
-			return objectiveBox(g, chapter.getTitle(), objective, y);
-		}
-		// Intro finished: resolve the chapter's objective.
-		if (chapter.isBattle())
-		{
-			return battleChallenge(g, out, chapter, y);
-		}
-		if (chapter.isHunt())
-		{
-			return huntChallenge(g, out, quest, chapter, y);
-		}
-		// A talk chapter whose conversation ran out but hasn't advanced yet (e.g. re-opened): a
-		// Continue that completes it.
-		return fullButton(g, out, y, "Continue", "quest.done:" + quest.getId(), true);
+		y = objectiveBox(g, chapter.getTitle(), objective, y);
+		return chapter.isHunt() ? huntProgress(g, quest, chapter, y) : y;
 	}
 
 	/** The indirect objective box: chapter title + a muted-yellow "where to look" hint, no chathead. */
@@ -1451,144 +1402,16 @@ public class HubView
 	}
 
 	/**
-	 * One frame of a conversation: a spoken line (speaker chathead — the player's own for a "player"
-	 * line — plus text and a Continue) or a choice (reply buttons the player picks). {@code actionKey}
-	 * routes the buttons back to the right cursor: a quest id for the chapter intro, or
-	 * "questId|trainerId" for a hunt suspect's accusation.
+	 * The hunt's tally in the log: how many suspects are down, and who is still to be found. Every
+	 * Challenge lives in the quest dialog frame, in front of the suspect, so this stays read-only.
 	 */
-	private int convoFrame(Graphics2D g, List<Button> out, String actionKey, String title,
-		ConversationState.Frame frame, int y)
+	private int huntProgress(Graphics2D g, QuestDef quest, QuestDef.Chapter chapter, int y)
 	{
-		if (frame.getKind() == ConversationState.Kind.CHOICE)
-		{
-			g.setFont(FontManager.getRunescapeBoldFont());
-			g.setColor(new Color(200, 190, 160));
-			g.drawString(clip(g, title, width - 24), 12, y + 12);
-			y += 18;
-			List<String> options = frame.getOptions();
-			for (int i = 0; i < options.size(); i++)
-			{
-				y = fullButton(g, out, y, options.get(i), "convo.pick:" + actionKey + ":" + i, true);
-			}
-			return y;
-		}
-
-		g.setFont(FontManager.getRunescapeFont());
-		List<String> lines = wrapText(g, frame.getText(), width - 28);
-		// The player has no chathead — RuneLite exposes no clean way to render the local player's —
-		// so a "player" line, or any speaker whose portrait isn't bundled, drops the picture frame and
-		// keeps just its name row. An empty frame reads as a missing asset; no frame reads as narration.
-		String name = speakerName(frame.getSpeaker());
-		BufferedImage portrait = frame.getSpeaker() != null && !"player".equals(frame.getSpeaker())
-			? portraits.portrait(frame.getSpeaker()) : null;
-		int pw = 48;
-		int ph = 56;
-		int lineH = 15;
-		int headH = portrait != null ? ph : (name.isEmpty() ? 0 : 18);
-		int boxH = headH + 8 + lines.size() * lineH + 12;
-		g.setColor(new Color(0, 0, 0, 90));
-		g.fillRoundRect(8, y, width - 16, boxH, 6, 6);
-
-		int nameX = 15;
-		if (portrait != null)
-		{
-			Rectangle pr = new Rectangle(14, y + 6, pw, ph);
-			g.setColor(new Color(255, 255, 255, 18));
-			g.fillRoundRect(pr.x, pr.y, pw, ph, 6, 6);
-			drawFit(g, portrait, pr.x + 2, pr.y + 2, pw - 4, ph - 4);
-			nameX = pr.x + pw + 8;
-		}
-		if (!name.isEmpty())
-		{
-			g.setFont(FontManager.getRunescapeBoldFont());
-			g.setColor(Color.WHITE);
-			g.drawString(clip(g, name, width - nameX - 16), nameX, y + (portrait != null ? 22 : 15));
-		}
-		g.setFont(FontManager.getRunescapeFont());
-		g.setColor(TEXT);
-		int ty = y + headH + 8 + 12;
-		for (String line : lines)
-		{
-			g.drawString(line, 15, ty);
-			ty += lineH;
-		}
-		y += boxH + 8;
-		return fullButton(g, out, y, "Continue", "convo.next:" + actionKey, true);
-	}
-
-	/** The battle chapter's Challenge, once its intro conversation is done (proximity already met). */
-	private int battleChallenge(Graphics2D g, List<Button> out, QuestDef.Chapter chapter, int y)
-	{
-		TrainerDef bt = db.trainer(chapter.getBattleTrainer());
-		String name = bt != null ? bt.getName() : chapter.getBattleTrainer();
-		boolean canFight = !roster.getTeam().isEmpty() && roster.teamCanFight();
-		if (!canFight)
-		{
-			hint(g, roster.getTeam().isEmpty() ? "Add a pet to your team first"
-				: "Team knocked out - rest at a bank", y);
-			y += 16;
-		}
-		return fullButton(g, out, y, "Challenge " + name, "fight:" + chapter.getBattleTrainer(), canFight);
-	}
-
-	/**
-	 * The white-beard hunt: an N/M counter plus, per suspect still standing, either a Challenge (when
-	 * you're near them — a first fight is in person) or a "seek them out" prompt.
-	 */
-	private int huntChallenge(Graphics2D g, List<Button> out, QuestDef quest, QuestDef.Chapter chapter, int y)
-	{
-		// An accusation already under way keeps playing even if the suspect wanders off, for the same
-		// reason storyBody latches its intro: finishing a scene shouldn't mean chasing someone.
-		if (accuseConvo != null && accuseKey != null && accuseKey.startsWith(quest.getId() + "|"))
-		{
-			ConversationState.Frame open = accuseConvo.current();
-			String started = accuseKey.substring(quest.getId().length() + 1);
-			if (open != null && chapter.getBattlePool().contains(started)
-				&& !questManager.isHuntMemberBeaten(quest, started))
-			{
-				return convoFrame(g, out, accuseKey, chapter.getTitle(), open, y);
-			}
-		}
-		// Standing in front of an unbeaten suspect is a scene: their accusation plays out first, and
-		// only when it is spent does the suspect list (and their Challenge) come back.
-		for (String memberId : chapter.getBattlePool())
-		{
-			if (questManager.isHuntMemberBeaten(quest, memberId)
-				|| !nearTrainers.get().contains(memberId))
-			{
-				continue;
-			}
-			QuestDef.Suspect suspect = chapter.getSuspect(memberId);
-			if (suspect == null || suspect.getAccuse().isEmpty())
-			{
-				continue;
-			}
-			String key = quest.getId() + "|" + memberId;
-			if (!key.equals(accuseKey))
-			{
-				accuseKey = key;
-				accuseConvo = new ConversationState(suspect.getAccuse());
-			}
-			ConversationState.Frame frame = accuseConvo.current();
-			if (frame != null)
-			{
-				return convoFrame(g, out, key, chapter.getTitle(), frame, y);
-			}
-			break;
-		}
-		int required = chapter.getBattlesRequired();
-		int beaten = questManager.countHuntBeaten(quest, chapter);
 		g.setFont(FontManager.getRunescapeFont());
 		g.setColor(HP_YELLOW);
-		g.drawString("Suspects defeated: " + beaten + "/" + required, 12, y + 12);
+		g.drawString("Suspects defeated: " + questManager.countHuntBeaten(quest, chapter)
+			+ "/" + chapter.getBattlesRequired(), 12, y + 12);
 		y += 18;
-		boolean teamReady = !roster.getTeam().isEmpty() && roster.teamCanFight();
-		if (!teamReady)
-		{
-			hint(g, roster.getTeam().isEmpty() ? "Add a pet to your team first"
-				: "Team knocked out - rest at a bank", y);
-			y += 16;
-		}
 		for (String memberId : chapter.getBattlePool())
 		{
 			if (questManager.isHuntMemberBeaten(quest, memberId))
@@ -1596,107 +1419,12 @@ public class HubView
 				continue;
 			}
 			TrainerDef bt = db.trainer(memberId);
-			String name = bt != null ? bt.getName() : memberId;
-			boolean near = nearTrainers.get().contains(memberId) || roster.canRemoteFight(memberId);
-			if (near)
-			{
-				y = fullButton(g, out, y, "Challenge " + name, "fight:" + memberId, teamReady);
-			}
-			else
-			{
-				g.setFont(FontManager.getRunescapeFont());
-				g.setColor(MUTED);
-				g.drawString(clip(g, "Seek out " + name, width - 24), 12, y + 12);
-				y += 16;
-			}
+			g.setColor(MUTED);
+			g.drawString(clip(g, "Seek out " + (bt != null ? bt.getName() : memberId), width - 24),
+				12, y + 12);
+			y += 16;
 		}
 		return y;
-	}
-
-	/** Display name for a conversation speaker id: "You" for the player, else the trainer's name. */
-	private String speakerName(String speaker)
-	{
-		if (speaker == null)
-		{
-			return "";
-		}
-		if ("player".equals(speaker))
-		{
-			return "You";
-		}
-		return db.trainer(speaker) != null ? db.trainer(speaker).getName() : "";
-	}
-
-	/** (Re)build the intro conversation cursor when the open chapter changes. */
-	private void ensureConvo(String questId, int step, List<Conversation.Node> intro)
-	{
-		if (convo == null || !questId.equals(convoQuestId) || step != convoStep)
-		{
-			convo = new ConversationState(intro);
-			convoQuestId = questId;
-			convoStep = step;
-		}
-	}
-
-	/**
-	 * Click-to-continue on the open conversation; completes a talk chapter when it runs out. A key
-	 * containing '|' is a hunt suspect's accusation (see {@link #convoFrame}), which clears no chapter
-	 * — beating the suspect does that.
-	 */
-	public void convoNext(String key)
-	{
-		if (key.indexOf('|') >= 0)
-		{
-			if (accuseConvo != null && key.equals(accuseKey))
-			{
-				accuseConvo.advance();
-			}
-			return;
-		}
-		if (convo == null || !key.equals(convoQuestId))
-		{
-			return;
-		}
-		convo.advance();
-		completeTalkIfDone(key);
-	}
-
-	/** Pick a reply in the open conversation; completes a talk chapter if that ends it. */
-	public void convoPick(String key, int option)
-	{
-		if (key.indexOf('|') >= 0)
-		{
-			if (accuseConvo != null && key.equals(accuseKey))
-			{
-				accuseConvo.pick(option);
-			}
-			return;
-		}
-		if (convo == null || !key.equals(convoQuestId))
-		{
-			return;
-		}
-		convo.pick(option);
-		completeTalkIfDone(key);
-	}
-
-	/** Finish + advance a talk chapter (non-battle, non-hunt) once its conversation is spent. */
-	public void completeTalk(String questId)
-	{
-		questManager.completeTalk(questId);
-	}
-
-	private void completeTalkIfDone(String questId)
-	{
-		if (convo == null || !convo.isDone())
-		{
-			return;
-		}
-		QuestDef.Chapter chapter = questManager.currentChapter(questId);
-		if (chapter != null && !chapter.isBattle() && !chapter.isHunt())
-		{
-			questManager.completeTalk(questId);
-		}
 	}
 
 	/**
@@ -1772,7 +1500,98 @@ public class HubView
 		// Held items you own, and a tap-through to equip them on a team pet. This is the discoverable
 		// home for anything bought in the Store: buy here, then equip here.
 		y = heldItemsSection(g, out, y);
+		y = cosmeticsSection(g, out, y);
 		return y;
+	}
+
+	/** The owned cosmetics as equip rows (icon, name, slot, who wears them). */
+	private int cosmeticsSection(Graphics2D g, List<Button> out, int y)
+	{
+		List<EquipItemDef> owned = roster.ownedCosmetics();
+		if (owned.isEmpty())
+		{
+			return y;
+		}
+		g.setColor(new Color(255, 255, 255, 24));
+		g.fillRect(8, y, width - 16, 1);
+		y += 9;
+		g.setFont(FontManager.getRunescapeBoldFont());
+		g.setColor(new Color(200, 190, 160));
+		g.drawString("Cosmetics", 10, y + 11);
+		y += 18;
+		for (EquipItemDef item : owned)
+		{
+			y = cosmeticItemRow(g, out, y, item);
+		}
+		return y;
+	}
+
+	private int cosmeticItemRow(Graphics2D g, List<Button> out, int y, EquipItemDef item)
+	{
+		int h = 32;
+		Rectangle row = new Rectangle(8, y, width - 16, h);
+		drawButtonBg(g, row, true);
+
+		int icon = 24;
+		BufferedImage img = item.getSprite() == null ? null : itemIcon(item.getSprite());
+		if (img != null)
+		{
+			drawFit(g, img, row.x + 5, row.y + (h - icon) / 2, icon, icon);
+		}
+		int textX = row.x + 5 + icon + 6;
+
+		List<String> wearers = new ArrayList<>();
+		for (String speciesId : roster.getTeam())
+		{
+			PetInstance pet = roster.getPet(speciesId);
+			SpeciesDef sp = db.species(speciesId);
+			if (pet != null && sp != null && item.getId().equals(wornCosmetic(pet, item.getSlot())))
+			{
+				wearers.add(sp.getName());
+			}
+		}
+		g.setFont(FontManager.getRunescapeFont());
+		g.setColor(Color.WHITE);
+		g.drawString(clip(g, item.getName(), row.width - (textX - row.x) - 60), textX, y + 14);
+		g.setColor(MUTED);
+		String sub = wearers.isEmpty()
+			? item.getSlot().name().toLowerCase(Locale.ROOT) + " slot"
+			: "Worn by " + String.join(", ", wearers);
+		g.drawString(clip(g, sub, row.width - (textX - row.x) - 60), textX, y + 27);
+
+		g.setColor(new Color(220, 200, 120));
+		g.setFont(FontManager.getRunescapeFont());
+		String label = "Equip";
+		g.drawString(label, row.x + row.width - g.getFontMetrics().stringWidth(label) - 8, y + 20);
+		out.add(new Button(row, "equip.open:" + item.getId()));
+		return y + h + 4;
+	}
+
+	/** Whether the content defines any cosmetic for this slot, i.e. whether the slot is live at all. */
+	private boolean slotExistsInContent(EquipItemDef.Slot slot)
+	{
+		for (EquipItemDef item : db.allEquipItems())
+		{
+			if (item.getSlot() == slot)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/** What a pet wears in an item's slot — the held id for HELD, the matching cosmetic otherwise. */
+	private static String wornCosmetic(PetInstance pet, EquipItemDef.Slot slot)
+	{
+		switch (slot)
+		{
+			case HEAD:
+				return pet.getHeadItemId();
+			case FACE:
+				return pet.getFaceItemId();
+			default:
+				return pet.getHeldItemId();
+		}
 	}
 
 	/** The owned held-item inventory as equip rows (icon, name, effect, who wears it). */
@@ -2340,6 +2159,11 @@ public class HubView
 		}
 		y += 6;
 
+		// Cosmetic choosers. Unlike held items these aren't stock-limited, so every owned cosmetic is
+		// always offered — the same hat can sit on all three team pets at once.
+		y = cosmeticChooser(g, out, y, species, pet, EquipItemDef.Slot.HEAD, "Head");
+		y = cosmeticChooser(g, out, y, species, pet, EquipItemDef.Slot.FACE, "Face");
+
 		// Move loadout.
 		g.setFont(FontManager.getRunescapeBoldFont());
 		g.setColor(new Color(200, 190, 160));
@@ -2366,6 +2190,48 @@ public class HubView
 			y = fullButton(g, out, y, "Lock (dev)", "dev.lock:" + species.getId(), true);
 		}
 		return y;
+	}
+
+	/**
+	 * One cosmetic slot's chooser on the pet detail page: a "None" row plus every owned cosmetic that
+	 * fits this slot. Renders nothing but a hint when the player owns none for the slot yet.
+	 */
+	private int cosmeticChooser(Graphics2D g, List<Button> out, int y, SpeciesDef species,
+		PetInstance pet, EquipItemDef.Slot slot, String label)
+	{
+		// A slot with nothing in the content at all gets no section: "none yet" would be a promise
+		// the game can't keep. A slot that exists but is unearned still shows, as a nudge.
+		if (!slotExistsInContent(slot))
+		{
+			return y;
+		}
+		g.setFont(FontManager.getRunescapeBoldFont());
+		g.setColor(new Color(200, 190, 160));
+		g.drawString(label, 10, y + 11);
+		y += 18;
+
+		String wornId = slot == EquipItemDef.Slot.HEAD ? pet.getHeadItemId() : pet.getFaceItemId();
+		List<EquipItemDef> fits = new ArrayList<>();
+		for (EquipItemDef item : roster.ownedCosmetics())
+		{
+			if (item.getSlot() == slot)
+			{
+				fits.add(item);
+			}
+		}
+		if (fits.isEmpty())
+		{
+			hint(g, "No " + label.toLowerCase(Locale.ROOT) + " cosmetics yet.", y);
+			return y + 22;
+		}
+		y = selectRow(g, out, y, "None", wornId == null,
+			"pet.cosmetic.clear:" + species.getId() + ":" + slot.name(), true);
+		for (EquipItemDef item : fits)
+		{
+			y = selectRow(g, out, y, item.getName(), item.getId().equals(wornId),
+				"pet.cosmetic:" + species.getId() + ":" + item.getId(), true);
+		}
+		return y + 6;
 	}
 
 	/** A short XP progress bar with the "x / y xp" label (or "Max level"). */
@@ -2495,7 +2361,8 @@ public class HubView
 			return y;
 		}
 		PetInstance pet = roster.getPet(speciesId);
-		boolean wearing = pet != null && item.getId().equals(pet.getHeldItemId());
+		boolean cosmetic = item.isCosmetic();
+		boolean wearing = pet != null && item.getId().equals(wornCosmetic(pet, item.getSlot()));
 		// A pet can only hold an item if you actually own it. A team can carry a dev-unlocked pet with
 		// dev-select later switched off; such a pet can't be equipped, so the row goes inert.
 		boolean owned = roster.isOwned(speciesId);
@@ -2518,25 +2385,30 @@ public class HubView
 		g.setFont(FontManager.getRunescapeFont());
 		g.setColor(owned ? Color.WHITE : MUTED);
 		g.drawString(clip(g, species.getName(), row.width - (textX - row.x) - actionW), textX, y + 13);
-		String cur = pet != null && pet.getHeldItemId() != null
-			? (db.equipItem(pet.getHeldItemId()) != null ? db.equipItem(pet.getHeldItemId()).getName() : null)
-			: null;
+		// What already occupies the slot this item would go into, so the swap is visible up front.
+		String occupantId = pet == null ? null : wornCosmetic(pet, item.getSlot());
+		EquipItemDef occupant = occupantId == null ? null : db.equipItem(occupantId);
+		String cur = occupant == null ? null : occupant.getName();
 		g.setColor(MUTED);
 		String sub = !owned ? "Not unlocked" : wearing ? "Equipped"
-			: cur != null ? "Holds " + cur : "Lv " + level;
+			: cur != null ? (cosmetic ? "Wears " + cur : "Holds " + cur) : "Lv " + level;
 		g.drawString(clip(g, sub, row.width - (textX - row.x) - actionW), textX, y + 26);
 
 		if (owned && wearing)
 		{
 			g.setColor(new Color(200, 90, 80));
 			g.drawString("Remove", row.x + row.width - g.getFontMetrics().stringWidth("Remove") - 8, y + 20);
-			out.add(new Button(row, "pet.held.clear:" + speciesId));
+			out.add(new Button(row, cosmetic
+				? "pet.cosmetic.clear:" + speciesId + ":" + item.getSlot().name()
+				: "pet.held.clear:" + speciesId));
 		}
-		else if (owned && roster.itemCount(item.getId()) > 0)
+		// Cosmetics are a wardrobe, not stock, so they're always equippable; held items need a spare.
+		else if (owned && (cosmetic || roster.itemCount(item.getId()) > 0))
 		{
 			g.setColor(new Color(220, 200, 120));
 			g.drawString("Equip", row.x + row.width - g.getFontMetrics().stringWidth("Equip") - 8, y + 20);
-			out.add(new Button(row, "pet.held:" + speciesId + ":" + item.getId()));
+			out.add(new Button(row, (cosmetic ? "pet.cosmetic:" : "pet.held:")
+				+ speciesId + ":" + item.getId()));
 		}
 		else if (owned)
 		{

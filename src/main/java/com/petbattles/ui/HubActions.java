@@ -128,6 +128,22 @@ public class HubActions
 				roster.setHeldItem(parts[0], parts[1]);
 			}
 		}
+		else if (action.startsWith("pet.cosmetic.clear:"))
+		{
+			String[] parts = action.substring("pet.cosmetic.clear:".length()).split(":", 2);
+			if (parts.length == 2)
+			{
+				clearCosmetic(parts[0], parts[1]);
+			}
+		}
+		else if (action.startsWith("pet.cosmetic:"))
+		{
+			String[] parts = action.substring("pet.cosmetic:".length()).split(":", 2);
+			if (parts.length == 2)
+			{
+				roster.setCosmetic(parts[0], parts[1]);
+			}
+		}
 		else if (action.startsWith("pet.move:"))
 		{
 			String[] parts = action.substring("pet.move:".length()).split(":", 2);
@@ -164,22 +180,6 @@ public class HubActions
 				roster.resetQuests();
 			}
 			view.clearConfirm();
-		}
-		else if (action.startsWith("convo.next:"))
-		{
-			view.convoNext(action.substring("convo.next:".length()));
-		}
-		else if (action.startsWith("convo.pick:"))
-		{
-			String[] parts = action.substring("convo.pick:".length()).split(":", 2);
-			if (parts.length == 2)
-			{
-				view.convoPick(parts[0], Integer.parseInt(parts[1]));
-			}
-		}
-		else if (action.startsWith("quest.done:"))
-		{
-			view.completeTalk(action.substring("quest.done:".length()));
 		}
 		else if (action.startsWith("quest:"))
 		{
@@ -265,6 +265,19 @@ public class HubActions
 		if (item != null && item.isSold() && roster.spendCoins(item.getPrice()))
 		{
 			roster.grantItem(item.getId(), 1);
+		}
+	}
+
+	/** Clear a cosmetic slot named by the action string; ignores anything that isn't a real slot. */
+	private void clearCosmetic(String speciesId, String slotName)
+	{
+		for (EquipItemDef.Slot slot : EquipItemDef.Slot.values())
+		{
+			if (slot.name().equals(slotName))
+			{
+				roster.clearCosmetic(speciesId, slot);
+				return;
+			}
 		}
 	}
 

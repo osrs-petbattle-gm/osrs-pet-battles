@@ -8,7 +8,7 @@ import com.petbattles.engine.BattleState;
 import com.petbattles.engine.MoveDef;
 import com.petbattles.engine.PetType;
 import com.petbattles.engine.SpeciesDef;
-import com.petbattles.quest.ConversationState;
+import com.petbattles.item.EquipItemDef;
 import java.awt.AlphaComposite;
 import java.awt.BasicStroke;
 import java.awt.Color;
@@ -76,19 +76,21 @@ public class BattleOverlay extends Overlay
 	private final PetDatabase db;
 	private final Sprites sprites;
 	private final PetChatheads chatheads;
-	private final Portraits portraits;
+	private final ChatheadAnchors anchors;
+	private final ItemSprites itemSprites;
 	private final List<Button> buttons = new ArrayList<>();
 	private Point hoverPoint;
 	private volatile boolean swapMenuOpen;
 
 	public BattleOverlay(BattleSession session, PetDatabase db, Sprites sprites, PetChatheads chatheads,
-		Portraits portraits)
+		ChatheadAnchors anchors, ItemSprites itemSprites)
 	{
 		this.session = session;
 		this.db = db;
 		this.sprites = sprites;
 		this.chatheads = chatheads;
-		this.portraits = portraits;
+		this.anchors = anchors;
+		this.itemSprites = itemSprites;
 		setPosition(OverlayPosition.TOP_CENTER);
 		setLayer(OverlayLayer.ABOVE_WIDGETS);
 		setMovable(true);
@@ -148,20 +150,13 @@ public class BattleOverlay extends Overlay
 		String title = session.getTrainer() != null ? "vs " + session.getTrainer().getName() : "Battle";
 		g.drawString(title, 10, 14);
 
-		// The end-of-battle summary replaces the battle scene entirely. A pending quest reward
-		// conversation pages through first, gating the summary until it finishes.
+		// The end-of-battle summary replaces the battle scene entirely. A quest chapter cleared by this
+		// battle plays its payoff in the quest dialog frame alongside it (see QuestDialogSession), so
+		// the summary is all this panel has left to show.
 		if (session.getPhase() == BattleSession.Phase.ENDED)
 		{
 			List<Button> endButtons = new ArrayList<>();
-			ConversationState convo = session.getQuestConversation();
-			if (convo != null && convo.current() != null)
-			{
-				drawQuestDialog(g, endButtons, convo.current());
-			}
-			else
-			{
-				drawSummary(g, state, endButtons);
-			}
+			drawSummary(g, state, endButtons);
 			synchronized (this)
 			{
 				buttons.clear();
@@ -196,7 +191,7 @@ public class BattleOverlay extends Overlay
 		// Player: the near pet is drawn as a foreground chathead (bundled, pre-oriented to face
 		// right) when one exists, giving the scene depth; otherwise it falls back to the item icon.
 		SpeciesDef playerSpecies = player.getSpecies();
-		BufferedImage playerChat = chatheads.chathead(playerSpecies.getId(), player.getVariantId(),
+		PetChatheads.Chathead playerChat = chatheads.resolve(playerSpecies.getId(), player.getVariantId(),
 			playerSpecies.chatheadStageKeyFor(player.getVariantId(), player.getLevel()));
 		drawPetSprite(g, player, PLAYER_SPRITE,
 			AttackAnimator.spriteTransform(current, currentMove, progress, BattleState.PLAYER, PLAYER_SPRITE, ENEMY_SPRITE),
@@ -305,98 +300,6 @@ public class BattleOverlay extends Overlay
 	 * Close button. Level-up fireworks play over the pet's own icon here, so the celebration
 	 * always lands on the pet that actually grew rather than whoever was last on the field.
 	 */
-	/**
-	 * One frame of the end-screen quest conversation: the speaker's chathead on the left (the player's
-	 * own portrait for a "player" line), their speech wrapped on the right, and either a Continue
-	 * button (a line) or one button per option (a choice). Missing chatheads leave the framed box
-	 * empty; the name header still identifies the speaker.
-	 */
-	private void drawQuestDialog(Graphics2D g, List<Button> newButtons, ConversationState.Frame frame)
-	{
-		boolean choice = frame.getKind() == ConversationState.Kind.CHOICE;
-		String speaker = frame.getSpeaker();
-		g.setFont(FontManager.getRunescapeBoldFont());
-		g.setColor(new Color(240, 210, 120));
-		g.drawString(clip(g, choice ? "" : speakerName(speaker), WIDTH - 24), 12, 24);
-
-		int px = 12;
-		int py = 36;
-		int pw = 74;
-		int ph = 84;
-		// No frame unless there's actually a chathead to put in it: the player has none (see
-		// HubView.convoFrame), and a choice menu takes the full width for its option buttons.
-		BufferedImage chathead = choice || speaker == null || "player".equals(speaker)
-			? null : portraits.portrait(speaker);
-		if (chathead != null)
-		{
-			g.setColor(new Color(255, 255, 255, 18));
-			g.fillRoundRect(px, py, pw, ph, 6, 6);
-			g.setColor(PANEL_EDGE);
-			g.setStroke(new BasicStroke(1));
-			g.drawRoundRect(px, py, pw, ph, 6, 6);
-			drawFit(g, chathead, px + 2, py + 2, pw - 4, ph - 4);
-		}
-
-		int textX = chathead != null ? px + pw + 12 : px;
-		int textW = WIDTH - textX - 12;
-		g.setFont(FontManager.getRunescapeFont());
-		if (choice)
-		{
-			// Stack the option buttons on the right; each dispatches its index.
-			g.setColor(LOG_TEXT);
-			g.drawString("Choose:", textX, py + 12);
-			int by = py + 20;
-			List<String> options = frame.getOptions();
-			for (int i = 0; i < options.size(); i++)
-			{
-				Rectangle r = new Rectangle(textX, by, textW, 22);
-				drawButton(g, r, clip(g, options.get(i), textW - 12), true, null);
-				newButtons.add(new Button(r, "questdialog.pick:" + i));
-				by += 26;
-			}
-			return;
-		}
-
-		g.setColor(LOG_TEXT);
-		int ty = py + 14;
-		for (String line : wrap(g, frame.getText(), textW))
-		{
-			g.drawString(line, textX, ty);
-			ty += 16;
-		}
-
-		Rectangle cont = new Rectangle(WIDTH / 2 - 50, HEIGHT - 32, 100, 24);
-		drawButton(g, cont, "Continue", true, null);
-		newButtons.add(new Button(cont, "questdialog.continue"));
-	}
-
-	/** Display name for a conversation speaker id: "You" for the player, else the trainer's name. */
-	private String speakerName(String speaker)
-	{
-		if (speaker == null)
-		{
-			return "";
-		}
-		if ("player".equals(speaker))
-		{
-			return "You";
-		}
-		return db.trainer(speaker) != null ? db.trainer(speaker).getName() : "";
-	}
-
-	/** Draw an image scaled to fit the box while preserving aspect ratio, centred. */
-	private void drawFit(Graphics2D g, BufferedImage img, int bx, int by, int bw, int bh)
-	{
-		if (img == null || img.getWidth() <= 0 || img.getHeight() <= 0)
-		{
-			return;
-		}
-		double scale = Math.min(bw / (double) img.getWidth(), bh / (double) img.getHeight());
-		int w = Math.max(1, (int) Math.round(img.getWidth() * scale));
-		int h = Math.max(1, (int) Math.round(img.getHeight() * scale));
-		g.drawImage(img, bx + (bw - w) / 2, by + (bh - h) / 2, w, h, null);
-	}
-
 	private void drawSummary(Graphics2D g, BattleState state, List<Button> newButtons)
 	{
 		BattleState.Phase phase = state.getPhase();
@@ -853,16 +756,21 @@ public class BattleOverlay extends Overlay
 	/**
 	 * Draw one pet into its sprite box. When {@code override} is non-null (the player's foreground
 	 * chathead) it is used verbatim — already oriented to face right, so the {@code mirror} flag is
-	 * ignored — and blitted with aspect preserved and bilinear smoothing. Otherwise the pet's item
-	 * icon is used with the mirror flag and the overlay's nearest-neighbour pixel look.
+	 * ignored — and blitted with aspect preserved and bilinear smoothing, with any worn cosmetics
+	 * placed on top of it. Otherwise the pet's item icon is used with the mirror flag and the
+	 * overlay's nearest-neighbour pixel look.
+	 *
+	 * <p>Cosmetics ride the chathead only. The icon fallback and the far enemy are full-body art, so
+	 * the head-finding measurement has no head to find and would sit a hat on a tail; a bare pet is
+	 * a better miss than a wrong one.
 	 */
 	private void drawPetSprite(Graphics2D g, BattlePet pet, Rectangle rect, AttackAnimator.Transform t,
-		boolean settledFaint, boolean mirror, Image override)
+		boolean settledFaint, boolean mirror, PetChatheads.Chathead override)
 	{
 		int size = Math.round(rect.width * t.scale);
 		int x = rect.x + t.dx + (rect.width - size) / 2;
 		int y = rect.y + t.dy + (rect.height - size) / 2;
-		Image img = override != null ? override : sprites.itemImage(pet.getDisplayItemId());
+		Image img = override != null ? override.getImage() : sprites.itemImage(pet.getDisplayItemId());
 		if (img == null)
 		{
 			return;
@@ -878,7 +786,10 @@ public class BattleOverlay extends Overlay
 		}
 		if (override != null)
 		{
-			blitFit(g, override, x, y, size);
+			// Cosmetics are drawn inside this composite so they fade with the pet during a faint
+			// rather than hanging in the air over a vanishing head.
+			Rectangle placed = blitFit(g, override.getImage(), x, y, size);
+			drawCosmetics(g, pet, override, placed);
 		}
 		else
 		{
@@ -891,17 +802,75 @@ public class BattleOverlay extends Overlay
 	}
 
 	/**
+	 * Place this pet's worn cosmetics on its drawn chathead. The anchors are normalised to the
+	 * chathead image, so {@code placed} — where that image actually landed on screen — is the only
+	 * transform needed, and the cosmetics track the pet through every lunge and recoil for free.
+	 *
+	 * <p>The chathead art is pre-oriented facing right and the override path ignores the mirror
+	 * flag, so no anchor ever needs flipping.
+	 */
+	private void drawCosmetics(Graphics2D g, BattlePet pet, PetChatheads.Chathead chathead, Rectangle placed)
+	{
+		if (placed == null || (pet.getHeadCosmeticId() == null && pet.getFaceCosmeticId() == null))
+		{
+			return;
+		}
+		ChatheadAnchors.Anchors a = anchors.anchors(chathead.getKey(), pet.getSpecies().getId(),
+			chathead.getImage());
+		// Face first, then head: a hat brim should overlap glasses, never the other way round.
+		drawCosmetic(g, pet.getFaceCosmeticId(), a.getFace(), placed, false);
+		drawCosmetic(g, pet.getHeadCosmeticId(), a.getHead(), placed, true);
+	}
+
+	/**
+	 * Draw one cosmetic at its anchor. {@code bottomAligned} distinguishes the two slots: a head
+	 * cosmetic hangs its bottom edge on the anchor (so the hat meets the skull whatever its height),
+	 * while a face cosmetic centres on it.
+	 */
+	private void drawCosmetic(Graphics2D g, String itemId, ChatheadAnchors.Anchor anchor,
+		Rectangle placed, boolean bottomAligned)
+	{
+		if (itemId == null)
+		{
+			return;
+		}
+		EquipItemDef item = db.equipItem(itemId);
+		BufferedImage art = item == null ? null : itemSprites.sprite(item.getSprite());
+		if (art == null || art.getWidth() <= 0 || art.getHeight() <= 0)
+		{
+			return;
+		}
+		int w = Math.max(1, Math.round(placed.width * anchor.getWidth()));
+		int h = Math.max(1, Math.round(w * (art.getHeight() / (float) art.getWidth())));
+		int cx = placed.x + Math.round(placed.width * anchor.getX());
+		int cy = placed.y + Math.round(placed.height * anchor.getY());
+		int dx = cx - w / 2;
+		int dy = bottomAligned ? cy - h : cy - h / 2;
+
+		Object prevHint = g.getRenderingHint(RenderingHints.KEY_INTERPOLATION);
+		g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+		g.drawImage(art, dx, dy, w, h, null);
+		if (prevHint != null)
+		{
+			g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, prevHint);
+		}
+	}
+
+	/**
 	 * Blit an already-oriented image into a size×size box, preserving its aspect ratio (centred)
 	 * and using bilinear scaling — chatheads are wider than tall and low-res, so squashing them to
 	 * a square or hard-scaling them with nearest-neighbour would look poor.
+	 *
+	 * @return where the image actually landed, so callers can place things relative to it, or null
+	 *         if there was nothing to draw
 	 */
-	private static void blitFit(Graphics2D g, Image img, int x, int y, int size)
+	private static Rectangle blitFit(Graphics2D g, Image img, int x, int y, int size)
 	{
 		int iw = img.getWidth(null);
 		int ih = img.getHeight(null);
 		if (iw <= 0 || ih <= 0)
 		{
-			return;
+			return null;
 		}
 		float scale = Math.min((float) size / iw, (float) size / ih);
 		int w = Math.max(1, Math.round(iw * scale));
@@ -915,6 +884,7 @@ public class BattleOverlay extends Overlay
 		{
 			g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, prevHint);
 		}
+		return new Rectangle(dx, dy, w, h);
 	}
 
 	/**

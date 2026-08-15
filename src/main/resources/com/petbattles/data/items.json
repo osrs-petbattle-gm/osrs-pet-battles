@@ -44,11 +44,11 @@
     "price": 300
   },
   {
-    "id": "black_sunglasses",
-    "name": "Black sunglasses",
-    "slot": "FACE",
-    "sprite": "black_sunglasses",
-    "examine": "Cool in any dungeon.",
-    "price": 250
+    "id": "blue_party_hat",
+    "name": "Blue party hat",
+    "slot": "HEAD",
+    "sprite": "blue_party_hat",
+    "examine": "An old thief's treasure. Prestige you fought for, not bought.",
+    "price": 0
   }
 ]

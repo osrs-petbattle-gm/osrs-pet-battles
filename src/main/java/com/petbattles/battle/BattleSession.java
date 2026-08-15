@@ -19,7 +19,7 @@ import com.petbattles.engine.controller.AiController;
 import com.petbattles.engine.controller.OpponentController;
 import com.petbattles.item.EquipItemDef;
 import com.petbattles.persist.RosterManager;
-import com.petbattles.quest.ConversationState;
+import com.petbattles.quest.QuestDialogSession;
 import com.petbattles.quest.QuestManager;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -152,6 +152,9 @@ public class BattleSession
 	private final PetDatabase db;
 	private final RosterManager roster;
 	private final QuestManager questManager;
+	// Where a cleared chapter's payoff conversation goes: the quest dialog frame holds it until this
+	// battle window is gone (learn prompts and the level-up summary included), then plays it.
+	private final QuestDialogSession questDialog;
 	private final PetBattlesConfig config;
 	private final BattleEngine engine;
 	private final BattleSoundManager sound;
@@ -174,9 +177,6 @@ public class BattleSession
 	// Set true while an enemy replacement is surfaced after a KO; if the player still has a
 	// benched pet to switch to, the queue drains into FREE_SWITCH to offer one cost-free swap.
 	private boolean freeSwitchOffer;
-	// The quest reward conversation to page through on the end screen (NPC/player chatheads + lines +
-	// optional choices), or null when there's none pending.
-	private ConversationState questConversation;
 	private BattleEvent currentEvent;
 	private MoveDef currentMove;
 	private long eventStartMs;
@@ -199,12 +199,13 @@ public class BattleSession
 	private final Set<BattlePet> enemyParticipants = new LinkedHashSet<>();
 
 	public BattleSession(Client client, PetDatabase db, RosterManager roster, QuestManager questManager,
-		PetBattlesConfig config, Runnable onRosterChanged)
+		QuestDialogSession questDialog, PetBattlesConfig config, Runnable onRosterChanged)
 	{
 		this.client = client;
 		this.db = db;
 		this.roster = roster;
 		this.questManager = questManager;
+		this.questDialog = questDialog;
 		this.config = config;
 		this.engine = new BattleEngine(db.getTypeChart());
 		this.sound = new BattleSoundManager(client, config);
@@ -322,8 +323,10 @@ public class BattleSession
 		}
 		String name = instance.getNickname() != null ? instance.getNickname()
 			: species.nameFor(variantId, instance.getLevel());
-		return new BattlePet(species, name, instance.getLevel(), moves, instance.getCurrentHp(), variantId,
-			heldEffect(instance.getHeldItemId()));
+		BattlePet battler = new BattlePet(species, name, instance.getLevel(), moves,
+			instance.getCurrentHp(), variantId, heldEffect(instance.getHeldItemId()));
+		battler.setCosmetics(instance.getHeadItemId(), instance.getFaceItemId());
+		return battler;
 	}
 
 	/**
@@ -654,7 +657,8 @@ public class BattleSession
 		hpAnimPet = null;
 		currentEvent = null;
 		currentMove = null;
-		dismissQuestDialog();
+		// A pending payoff conversation is deliberately left alone: closing this window is what
+		// releases it to the quest dialog frame.
 	}
 
 	/**
@@ -682,9 +686,9 @@ public class BattleSession
 				earners.add(active);
 			}
 		}
-		// Repeat wins against an already-beaten trainer award reduced XP (recorded at battle end,
-		// so every faint in a first-clear battle still pays the full first-win rate).
-		boolean firstWin = !roster.isTrainerDefeated(trainer.getId());
+		// Re-fights taper toward half rate, 10% per previous win (Leveling.repeatFactor). The win
+		// count is only bumped at battle end, so every faint in this fight pays the same rate.
+		int priorWins = roster.trainerWins(trainer.getId());
 		// Dev XP boost multiplies rewards so abilities/growth stages are quick to reach in testing
 		int mult = Math.max(1, PetBattlesConfig.devXpMultiplier());
 		// Split evenly across everyone who was on the field, so a shared KO dilutes each share.
@@ -704,7 +708,7 @@ public class BattleSession
 			int oldLevel = pet.getLevel();
 			Progress p = progress.computeIfAbsent(speciesId, k -> new Progress(oldLevel));
 			long xp = Math.max(1,
-				Leveling.battleWinXp(fallen.getLevel(), pet.getLevel(), firstWin) * mult / share);
+				Leveling.battleWinXp(fallen.getLevel(), pet.getLevel(), priorWins) * mult / share);
 			// Cap the per-battle jump relative to the level this pet entered the battle at, so a
 			// single win can't rocket a low-level pet up the compressed early curve (feedback #3).
 			xp = Leveling.capBattleXp(pet.getXp(), xp, p.startLevel);
@@ -904,10 +908,9 @@ public class BattleSession
 		persistTeamHp();
 		if (state.getPhase() == BattleState.Phase.PLAYER_WON)
 		{
-			// firstWin must be read before recordTrainerDefeated flips it, so a first clear pays
-			// the full coin reward and re-fights the reduced rate.
-			boolean firstWin = !roster.isTrainerDefeated(trainer.getId());
-			awardCoins(firstWin);
+			// The win count must be read before recordTrainerDefeated bumps it, so this win is paid
+			// at the rate its own prior-win count earned.
+			awardCoins(roster.trainerWins(trainer.getId()));
 			roster.recordTrainerDefeated(trainer.getId());
 			grantQuestRewards();
 		}
@@ -917,17 +920,17 @@ public class BattleSession
 
 	/**
 	 * Grant the battle-win coin reward: a single flat per-battle amount (not shared per pet like XP)
-	 * scaled by the trainer's combined team level, halved on repeat wins. Coins land in the player's
+	 * scaled by the trainer's combined team level, tapering on repeat wins. Coins land in the player's
 	 * wallet; a plugin system line reports the earning (never player chat), per AGENTS chat rules.
 	 */
-	private void awardCoins(boolean firstWin)
+	private void awardCoins(int priorWins)
 	{
 		int totalEnemyLevels = 0;
 		for (TrainerDef.PartyEntry entry : trainer.getParty())
 		{
 			totalEnemyLevels += entry.getLevel();
 		}
-		long coins = Leveling.battleWinCoins(totalEnemyLevels, firstWin);
+		long coins = Leveling.battleWinCoins(totalEnemyLevels, priorWins);
 		if (coins <= 0)
 		{
 			return;
@@ -940,16 +943,16 @@ public class BattleSession
 
 	/**
 	 * Story-quest progress tied to beating this trainer: {@link QuestManager#onTrainerDefeated(String)}
-	 * advances the matching chapter and grants its reward. On a hit we queue the chapter's end-screen
-	 * conversation (NPC/player chatheads + lines) and log a plugin system line for the reward (never
-	 * player chat), per AGENTS chat rules.
+	 * advances the matching chapter and grants its reward. On a hit we hand the chapter's payoff
+	 * conversation to the quest dialog frame — the one surface quest talking happens on — and log a
+	 * plugin system line for the reward (never player chat), per AGENTS chat rules.
 	 */
 	private void grantQuestRewards()
 	{
 		QuestManager.DefeatResult story = questManager.onTrainerDefeated(trainer.getId());
 		if (story != null)
 		{
-			questConversation = new ConversationState(story.getConversation());
+			questDialog.play(story.getConversation());
 			announceStoryReward(story);
 		}
 	}
@@ -973,48 +976,6 @@ public class BattleSession
 		{
 			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", msg.toString(), null);
 		}
-	}
-
-	/**
-	 * The quest reward conversation to page through on the end screen (before the battle summary), or
-	 * null when none is pending. The overlay drives it via {@link #advanceQuestConversation()} /
-	 * {@link #pickQuestConversation(int)} and dismisses it once {@link ConversationState#isDone()}.
-	 */
-	public ConversationState getQuestConversation()
-	{
-		return questConversation;
-	}
-
-	/** Click-to-continue on the reward conversation; clears it once it finishes. */
-	public void advanceQuestConversation()
-	{
-		if (questConversation != null)
-		{
-			questConversation.advance();
-			if (questConversation.isDone())
-			{
-				questConversation = null;
-			}
-		}
-	}
-
-	/** Pick an option in the reward conversation; clears it if that finishes it. */
-	public void pickQuestConversation(int option)
-	{
-		if (questConversation != null)
-		{
-			questConversation.pick(option);
-			if (questConversation.isDone())
-			{
-				questConversation = null;
-			}
-		}
-	}
-
-	/** Dismiss the reward conversation outright (e.g. closing the battle). */
-	public void dismissQuestDialog()
-	{
-		questConversation = null;
 	}
 
 	/**

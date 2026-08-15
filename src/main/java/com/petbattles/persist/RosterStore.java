@@ -35,8 +35,12 @@ public class RosterStore
 		public Set<String> devUnlocked = new LinkedHashSet<>();
 		public Map<String, PetInstance> pets = new LinkedHashMap<>();
 		public List<String> team = new ArrayList<>();
-		// Trainers beaten at least once (unlocks remote re-fights at reduced XP)
+		// Trainers beaten at least once (unlocks remote re-fights)
 		public Set<String> defeatedTrainers = new LinkedHashSet<>();
+		// How many times each trainer has been beaten, for the re-fight reward taper
+		// (Leveling.repeatFactor). Absent for a trainer in defeatedTrainers means a pre-taper save,
+		// which RosterManager.trainerWins reads as a single win.
+		public Map<String, Integer> trainerWins = new LinkedHashMap<>();
 		// Step reached per quest id (see com.petbattles.quest.Quest); absent = step 0 (not started).
 		public Map<String, Integer> questProgress = new LinkedHashMap<>();
 		// One-off / branch quest flags (e.g. a data-quest chapter's marker); see QuestManager.

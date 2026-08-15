@@ -26,6 +26,11 @@ public class PetInstance
 	private String activeVariantId;
 	// Equipped HELD item (an EquipItemDef id), or null. Applies its passive stat modifier in battle.
 	private String heldItemId;
+	// Equipped cosmetics (EquipItemDef ids), or null for a bare pet. Purely presentational: drawn on
+	// the pet's battle chathead, no combat effect. Kept as two plain fields rather than a slot map so
+	// the roster blob stays flat and this class keeps no dependency on the item package.
+	private String headItemId;
+	private String faceItemId;
 
 	public PetInstance()
 	{
@@ -95,6 +100,32 @@ public class PetInstance
 	public void setHeldItemId(String heldItemId)
 	{
 		this.heldItemId = heldItemId;
+	}
+
+	/**
+	 * The equipped HEAD cosmetic's id (an {@code EquipItemDef} id), or null if the pet wears none.
+	 */
+	public String getHeadItemId()
+	{
+		return headItemId;
+	}
+
+	public void setHeadItemId(String headItemId)
+	{
+		this.headItemId = headItemId;
+	}
+
+	/**
+	 * The equipped FACE cosmetic's id (an {@code EquipItemDef} id), or null if the pet wears none.
+	 */
+	public String getFaceItemId()
+	{
+		return faceItemId;
+	}
+
+	public void setFaceItemId(String faceItemId)
+	{
+		this.faceItemId = faceItemId;
 	}
 
 	public Integer getCurrentHp()

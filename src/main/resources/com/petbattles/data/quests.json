@@ -27,7 +27,7 @@
           },
           {
             "speaker": "hans",
-            "text": "I've heard there's a tinkerer out west. They say he battles trainers clear across the realm without ever leaving his chair."
+            "text": "I've heard some folks around town keen to show off what they've got. Rumors also say there's a tinkerer out west. They say he battles trainers clear across the realm without ever leaving his chair."
           },
           {
             "speaker": "player",
@@ -162,7 +162,7 @@
       {
         "step": 1,
         "title": "Draynor Village",
-        "objective": "I should ask the people Draynor if they've seen anything unusual.",
+        "objective": "I should ask the people of Draynor if they've seen anything unusual.",
         "battleTrainer": "draynor_guard",
         "intro": [
           {
@@ -241,7 +241,7 @@
           },
           {
             "speaker": "probita",
-            "text": "A stolen companion? That's rediculous, you can't theive pets! Anyway, every pet is insured the moment you find it, automatically, and reclaiming one costs you nothing at all. Free!"
+            "text": "A stolen companion? That's ridiculous, you can't thieve pets! Anyway, every pet is insured the moment you find it, automatically, and reclaiming one costs you nothing at all. Free!"
           },
           {
             "choice": [
@@ -376,6 +376,8 @@
       {
         "step": 4,
         "title": "Audience with the King",
+        "objective": "Martin pointed at the crown itself. The audience chamber sits above the castle in East Ardougne.",
+        "nearTrainer": "king_of_ardougne",
         "intro": [
           {
             "speaker": "player",

@@ -47,17 +47,22 @@ import com.petbattles.follower.HeldItemTracker;
 import com.petbattles.npc.NearTrainerTracker;
 import com.petbattles.persist.RosterManager;
 import com.petbattles.persist.RosterStore;
+import com.petbattles.quest.QuestDialogSession;
 import com.petbattles.quest.QuestManager;
 import com.petbattles.ui.BattleOverlay;
 import com.petbattles.ui.HubActions;
 import com.petbattles.ui.HubInputHandler;
+import com.petbattles.ui.ChatheadAnchors;
 import com.petbattles.ui.HubKeyListener;
 import com.petbattles.ui.HubOverlay;
 import com.petbattles.ui.HubPanel;
 import com.petbattles.ui.HubView;
+import com.petbattles.ui.ItemSprites;
 import com.petbattles.ui.PetBattlesPanel;
 import com.petbattles.ui.PetChatheads;
 import com.petbattles.ui.Portraits;
+import com.petbattles.ui.QuestDialogInputHandler;
+import com.petbattles.ui.QuestDialogOverlay;
 import com.petbattles.ui.RestOverlay;
 import com.petbattles.ui.Sprites;
 import com.petbattles.xp.KillXpTracker;
@@ -123,6 +128,9 @@ public class PetBattlesPlugin extends Plugin
 	private BattleOverlay overlay;
 	private RestOverlay restOverlay;
 	private HubOverlay hubOverlay;
+	private QuestDialogSession questDialog;
+	private QuestDialogOverlay questDialogOverlay;
+	private QuestDialogInputHandler questDialogInputHandler;
 	private HubInputHandler hubInputHandler;
 	private HubKeyListener hubKeyListener;
 	private BattleInputHandler inputHandler;
@@ -153,16 +161,27 @@ public class PetBattlesPlugin extends Plugin
 		questManager = new QuestManager(db, roster);
 		nearTrainerTracker = new NearTrainerTracker(client, db, this::onNearTrainersChanged);
 		restOverlay = new RestOverlay();
-		session = new BattleSession(client, db, roster, questManager, config, () ->
+		// The quest dialog frame: the one surface quest conversations play on, from a chapter's first
+		// line through to the payoff a battle earns. It owns the live cursor, so the hub surfaces are
+		// only a log of where the player has got to. The battle-active gate reads the session field
+		// below, which is assigned right after this.
+		questDialog = new QuestDialogSession(db, roster, questManager,
+			nearTrainerTracker::getNearTrainerIds, () -> session != null && session.isActive());
+		session = new BattleSession(client, db, roster, questManager, questDialog, config, () ->
 		{
 			if (panel != null)
 			{
 				panel.refresh();
 			}
 		});
-		overlay = new BattleOverlay(session, db, sprites, new PetChatheads(), new Portraits());
+		overlay = new BattleOverlay(session, db, sprites, new PetChatheads(),
+			new ChatheadAnchors(gson), new ItemSprites());
 		inputHandler = new BattleInputHandler(session, overlay, clientThread);
 		keyListener = new BattleKeyListener(client, session, clientThread);
+
+		questDialogOverlay = new QuestDialogOverlay(questDialog, new Portraits());
+		questDialogInputHandler = new QuestDialogInputHandler(questDialogOverlay, questDialog,
+			clientThread, this::startTrainerBattle);
 
 		// Floating hub: the HubView drawn by a movable RuneLite overlay.
 		hubOverlay = new HubOverlay(db, roster, questManager, sprites, new Portraits(), session,
@@ -186,7 +205,9 @@ public class PetBattlesPlugin extends Plugin
 		overlayManager.add(overlay);
 		overlayManager.add(restOverlay);
 		overlayManager.add(hubOverlay);
+		overlayManager.add(questDialogOverlay);
 		mouseManager.registerMouseListener(inputHandler);
+		mouseManager.registerMouseListener(questDialogInputHandler);
 		mouseManager.registerMouseListener(hubInputHandler);
 		mouseManager.registerMouseWheelListener(hubInputHandler);
 		keyManager.registerKeyListener(keyListener);
@@ -254,6 +275,14 @@ public class PetBattlesPlugin extends Plugin
 		{
 			overlayManager.remove(hubOverlay);
 		}
+		if (questDialogOverlay != null)
+		{
+			overlayManager.remove(questDialogOverlay);
+		}
+		if (questDialogInputHandler != null)
+		{
+			mouseManager.unregisterMouseListener(questDialogInputHandler);
+		}
 		if (hubInputHandler != null)
 		{
 			mouseManager.unregisterMouseListener(hubInputHandler);
@@ -287,6 +316,9 @@ public class PetBattlesPlugin extends Plugin
 		overlay = null;
 		restOverlay = null;
 		hubOverlay = null;
+		questDialog = null;
+		questDialogOverlay = null;
+		questDialogInputHandler = null;
 		hubInputHandler = null;
 		hubKeyListener = null;
 		inputHandler = null;
@@ -324,6 +356,8 @@ public class PetBattlesPlugin extends Plugin
 			{
 				roster.unload();
 				easterEggTracker.resetBaselines();
+				// Conversation cursors are per-login: the next account gets its own chapter intros.
+				questDialog.reset();
 			}
 			panel.refresh();
 		}

@@ -81,15 +81,29 @@ public class LevelingTest
 	}
 
 	@Test
-	public void repeatWinsGiveReducedFirstWinXp()
+	public void repeatWinsTaperTenPercentPerWinToAHalfRateFloor()
 	{
-		long first = Leveling.battleWinXp(50, 50, true);
-		long repeat = Leveling.battleWinXp(50, 50, false);
+		assertEquals(1.0, Leveling.repeatFactor(0), 1e-9);
+		assertEquals(0.9, Leveling.repeatFactor(1), 1e-9);
+		assertEquals(0.5, Leveling.repeatFactor(5), 1e-9);
+		// The taper settles at the floor rather than running to nothing.
+		assertEquals(Leveling.REPEAT_FLOOR, Leveling.repeatFactor(6), 1e-9);
+		assertEquals(Leveling.REPEAT_FLOOR, Leveling.repeatFactor(500), 1e-9);
+		// A nonsensical negative count can't pay more than the first win.
+		assertEquals(1.0, Leveling.repeatFactor(-3), 1e-9);
+	}
+
+	@Test
+	public void repeatWinXpFollowsTheTaper()
+	{
+		long first = Leveling.battleWinXp(50, 50, 0);
 		assertEquals(Leveling.battleWinXp(50, 50), first);
-		assertEquals(Math.round(first * Leveling.REPEAT_WIN_FACTOR), repeat);
-		assertTrue(repeat < first);
+		assertEquals(Math.round(first * 0.9), Leveling.battleWinXp(50, 50, 1));
+		assertTrue("the second win still beats the old flat half rate",
+			Leveling.battleWinXp(50, 50, 1) > Math.round(first * Leveling.REPEAT_FLOOR));
+		assertEquals(Math.round(first * Leveling.REPEAT_FLOOR), Leveling.battleWinXp(50, 50, 9));
 		// Repeats never round down to zero
-		assertTrue(Leveling.battleWinXp(1, 99, false) >= 1);
+		assertTrue(Leveling.battleWinXp(1, 99, 9) >= 1);
 	}
 
 	@Test
@@ -103,15 +117,15 @@ public class LevelingTest
 	}
 
 	@Test
-	public void repeatWinsGiveReducedCoins()
+	public void repeatWinCoinsFollowTheSameTaper()
 	{
-		long first = Leveling.battleWinCoins(60, true);
-		long repeat = Leveling.battleWinCoins(60, false);
+		long first = Leveling.battleWinCoins(60, 0);
 		assertEquals(Leveling.battleWinCoins(60), first);
-		assertEquals(Math.round(first * Leveling.REPEAT_WIN_FACTOR), repeat);
-		assertTrue(repeat < first);
+		assertEquals(Math.round(first * 0.9), Leveling.battleWinCoins(60, 1));
+		assertEquals(Math.round(first * Leveling.REPEAT_FLOOR), Leveling.battleWinCoins(60, 5));
+		assertTrue(Leveling.battleWinCoins(60, 1) < first);
 		// Repeats never round down to zero.
-		assertTrue(Leveling.battleWinCoins(0, false) >= 1);
+		assertTrue(Leveling.battleWinCoins(0, 9) >= 1);
 	}
 
 	@Test

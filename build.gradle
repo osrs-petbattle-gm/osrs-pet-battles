@@ -76,6 +76,17 @@ tasks.register('previewAnimations', JavaExec) {
 	args layout.buildDirectory.dir('animations').get().asFile.path
 }
 
+// Build-time QA tool: composites every chathead with every cosmetic using the real anchor
+// placement, so hats and glasses can be checked without levelling pets in-game. Output goes to
+// build/cosmetics/ only (gitignored); on-demand, like previewAnimations.
+tasks.register('previewCosmetics', JavaExec) {
+	group = 'documentation'
+	description = 'Render every chathead + cosmetic composite to build/cosmetics/*.png + index.html'
+	classpath = sourceSets.test.runtimeClasspath
+	mainClass = 'com.petbattles.tools.CosmeticPreviewGenerator'
+	args layout.buildDirectory.dir('cosmetics').get().asFile.path
+}
+
 tasks.named('build') {
 	dependsOn 'generatePetReference'
 }

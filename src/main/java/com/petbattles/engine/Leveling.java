@@ -94,11 +94,25 @@ public final class Leveling
 		return typeMatch ? xp * 3 : xp;
 	}
 
+	/** How much each previous win against a trainer shaves off the next win's reward. */
+	public static final double REPEAT_STEP = 0.10;
+
+	/** The floor the {@link #repeatFactor(int) taper} settles at, however often you re-fight. */
+	public static final double REPEAT_FLOOR = 0.50;
+
 	/**
-	 * Fraction of first-win XP awarded when re-fighting an already-defeated trainer. Kept
-	 * generous (half of the first-win amount) so re-fights still feel worth doing (feedback #3).
+	 * Reward multiplier for beating a trainer you have already beaten {@code priorWins} times: full
+	 * value the first time, then 10% less per prior win down to a 50% floor (so the 6th win and every
+	 * one after pays half).
+	 *
+	 * <p>It replaced a flat half-rate on every re-fight, which made the Remote Battle Device — a whole
+	 * quest's reward — barely worth using. A taper keeps the pull toward fresh trainers without
+	 * punishing the second fight as harshly as the twentieth.
 	 */
-	public static final double REPEAT_WIN_FACTOR = 0.5;
+	public static double repeatFactor(int priorWins)
+	{
+		return Math.max(REPEAT_FLOOR, 1.0 - REPEAT_STEP * Math.max(0, priorWins));
+	}
 
 	/**
 	 * Most levels a single pet may gain from one battle. On the compressed low-level curve a
@@ -143,13 +157,13 @@ public final class Leveling
 	}
 
 	/**
-	 * XP for a battle win, reduced to {@link #REPEAT_WIN_FACTOR} on repeat wins
-	 * against a trainer that was already defeated.
+	 * XP for a battle win, tapered by {@link #repeatFactor(int)} against a trainer already beaten
+	 * {@code priorWins} times.
 	 */
-	public static long battleWinXp(int enemyLevel, int yourLevel, boolean firstWin)
+	public static long battleWinXp(int enemyLevel, int yourLevel, int priorWins)
 	{
 		long xp = battleWinXp(enemyLevel, yourLevel);
-		return firstWin ? xp : Math.max(1, Math.round(xp * REPEAT_WIN_FACTOR));
+		return Math.max(1, Math.round(xp * repeatFactor(priorWins)));
 	}
 
 	/**
@@ -164,12 +178,12 @@ public final class Leveling
 	}
 
 	/**
-	 * Coins for a battle win, reduced to {@link #REPEAT_WIN_FACTOR} on repeat wins against a
-	 * trainer that was already defeated, so a beaten trainer can't be farmed for currency.
+	 * Coins for a battle win, tapered by {@link #repeatFactor(int)} against a trainer already beaten
+	 * {@code priorWins} times, so a beaten trainer can't be farmed indefinitely for currency.
 	 */
-	public static long battleWinCoins(int totalEnemyLevels, boolean firstWin)
+	public static long battleWinCoins(int totalEnemyLevels, int priorWins)
 	{
 		long coins = battleWinCoins(totalEnemyLevels);
-		return firstWin ? coins : Math.max(1, Math.round(coins * REPEAT_WIN_FACTOR));
+		return Math.max(1, Math.round(coins * repeatFactor(priorWins)));
 	}
 }

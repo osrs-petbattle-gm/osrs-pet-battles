@@ -21,10 +21,12 @@ public enum Item
 
 	/**
 	 * The clue wrung from Ambassador Gimblewap in "A Series of Fortunate Events" — instructions to
-	 * cook Ardougne's books, signed in an elegant hand: "White Beard." Owned once that chapter is done.
+	 * hide a tax that funds Probita's insurance fees, signed in an elegant hand: "White Beard." Owned
+	 * once that chapter is done.
 	 */
 	SEALED_ENVELOPE("sealed_envelope", "Sealed Envelope",
-		"A letter cooking Ardougne's tax books, signed in an elegant hand: \"White Beard.\""),
+		"A letter with instructions to Gimblewap to sneak in a tax to pay Probita insurance fees, "
+			+ "signed in an elegant hand: \"White Beard\"."),
 
 	/**
 	 * The reformed Wise Old Man's parting gift for finishing "A Series of Fortunate Events" — the one
