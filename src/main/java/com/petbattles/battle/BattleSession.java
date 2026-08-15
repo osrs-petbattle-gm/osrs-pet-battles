@@ -19,7 +19,8 @@ import com.petbattles.engine.controller.AiController;
 import com.petbattles.engine.controller.OpponentController;
 import com.petbattles.item.EquipItemDef;
 import com.petbattles.persist.RosterManager;
-import com.petbattles.quest.Quest;
+import com.petbattles.quest.ConversationState;
+import com.petbattles.quest.QuestManager;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -150,13 +151,11 @@ public class BattleSession
 	private final Client client;
 	private final PetDatabase db;
 	private final RosterManager roster;
+	private final QuestManager questManager;
 	private final PetBattlesConfig config;
 	private final BattleEngine engine;
 	private final BattleSoundManager sound;
 	private final Runnable onRosterChanged;
-
-	/** Trainer whose defeat completes {@link Quest#WHERES_THE_REMOTE} and unlocks remote battles. */
-	private static final String TRAINER_PROFESSOR = "professor_oddenstein";
 
 	private Phase phase = Phase.IDLE;
 	private BattleState state;
@@ -175,10 +174,9 @@ public class BattleSession
 	// Set true while an enemy replacement is surfaced after a KO; if the player still has a
 	// benched pet to switch to, the queue drains into FREE_SWITCH to offer one cost-free swap.
 	private boolean freeSwitchOffer;
-	// A one-off NPC dialog to show on the end screen (e.g. Professor Oddenstein's quest reward):
-	// the speaker's trainer id (for the chathead) and the speech text; null = no dialog pending.
-	private String questDialogTrainerId;
-	private String questDialogText;
+	// The quest reward conversation to page through on the end screen (NPC/player chatheads + lines +
+	// optional choices), or null when there's none pending.
+	private ConversationState questConversation;
 	private BattleEvent currentEvent;
 	private MoveDef currentMove;
 	private long eventStartMs;
@@ -200,12 +198,13 @@ public class BattleSession
 	// LinkedHashSet gives identity semantics (BattlePet has no equals override) + stable order.
 	private final Set<BattlePet> enemyParticipants = new LinkedHashSet<>();
 
-	public BattleSession(Client client, PetDatabase db, RosterManager roster, PetBattlesConfig config,
-		Runnable onRosterChanged)
+	public BattleSession(Client client, PetDatabase db, RosterManager roster, QuestManager questManager,
+		PetBattlesConfig config, Runnable onRosterChanged)
 	{
 		this.client = client;
 		this.db = db;
 		this.roster = roster;
+		this.questManager = questManager;
 		this.config = config;
 		this.engine = new BattleEngine(db.getTypeChart());
 		this.sound = new BattleSoundManager(client, config);
@@ -940,46 +939,82 @@ public class BattleSession
 	}
 
 	/**
-	 * One-off quest rewards tied to beating a specific trainer. Beating Professor Oddenstein on
-	 * Draynor Manor's top floor completes "Where's the remote?" — he hands over the Remote Battle
-	 * Device, unlocking remote battles. Queues an end-screen dialog (with his chathead) and logs a
-	 * plugin system line (never player chat), per AGENTS chat rules.
+	 * Story-quest progress tied to beating this trainer: {@link QuestManager#onTrainerDefeated(String)}
+	 * advances the matching chapter and grants its reward. On a hit we queue the chapter's end-screen
+	 * conversation (NPC/player chatheads + lines) and log a plugin system line for the reward (never
+	 * player chat), per AGENTS chat rules.
 	 */
 	private void grantQuestRewards()
 	{
-		if (TRAINER_PROFESSOR.equals(trainer.getId())
-			&& roster.advanceQuest(Quest.WHERES_THE_REMOTE.getId(), Quest.STEP_COMPLETE))
+		QuestManager.DefeatResult story = questManager.onTrainerDefeated(trainer.getId());
+		if (story != null)
 		{
-			questDialogTrainerId = trainer.getId();
-			questDialogText = "Marvellous battling! I built this Remote Battle Device to challenge "
-				+ "trainers all across the realm from my tower... but I keep losing! I'm retiring from "
-				+ "pet battles — you take it. Now you can battle any trainer remotely.";
-			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
-				"<col=ff7700>Pet Battles:</col> You received the <col=ffffff>Remote Battle Device</col>! "
-					+ "You can now battle trainers remotely from the panel.", null);
+			questConversation = new ConversationState(story.getConversation());
+			announceStoryReward(story);
 		}
 	}
 
 	/**
-	 * The one-off end-screen NPC dialog to show (speaker chathead + speech), or null. Shown on the
-	 * ENDED screen before the battle summary; cleared by {@link #dismissQuestDialog()}.
+	 * Report a story chapter's reward (item and/or coins) as a plugin system line — never player chat.
 	 */
-	public String getQuestDialogText()
+	private void announceStoryReward(QuestManager.DefeatResult story)
 	{
-		return questDialogText;
+		StringBuilder msg = new StringBuilder("<col=ff7700>Pet Battles:</col>");
+		String itemName = story.getRewardItemName();
+		if (itemName != null)
+		{
+			msg.append(" You received the <col=ffffff>").append(itemName).append("</col>!");
+		}
+		if (story.getRewardCoins() > 0)
+		{
+			msg.append(" You earned <col=ffff00>").append(story.getRewardCoins()).append("</col> coins.");
+		}
+		if (itemName != null || story.getRewardCoins() > 0)
+		{
+			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", msg.toString(), null);
+		}
 	}
 
-	/** Trainer id of the {@link #getQuestDialogText() quest dialog} speaker (for the chathead). */
-	public String getQuestDialogTrainerId()
+	/**
+	 * The quest reward conversation to page through on the end screen (before the battle summary), or
+	 * null when none is pending. The overlay drives it via {@link #advanceQuestConversation()} /
+	 * {@link #pickQuestConversation(int)} and dismisses it once {@link ConversationState#isDone()}.
+	 */
+	public ConversationState getQuestConversation()
 	{
-		return questDialogTrainerId;
+		return questConversation;
 	}
 
-	/** Dismiss the quest dialog so the end screen proceeds to the battle summary. */
+	/** Click-to-continue on the reward conversation; clears it once it finishes. */
+	public void advanceQuestConversation()
+	{
+		if (questConversation != null)
+		{
+			questConversation.advance();
+			if (questConversation.isDone())
+			{
+				questConversation = null;
+			}
+		}
+	}
+
+	/** Pick an option in the reward conversation; clears it if that finishes it. */
+	public void pickQuestConversation(int option)
+	{
+		if (questConversation != null)
+		{
+			questConversation.pick(option);
+			if (questConversation.isDone())
+			{
+				questConversation = null;
+			}
+		}
+	}
+
+	/** Dismiss the reward conversation outright (e.g. closing the battle). */
 	public void dismissQuestDialog()
 	{
-		questDialogTrainerId = null;
-		questDialogText = null;
+		questConversation = null;
 	}
 
 	/**

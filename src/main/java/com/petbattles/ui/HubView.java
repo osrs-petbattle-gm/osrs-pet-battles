@@ -12,7 +12,10 @@ import com.petbattles.engine.TrainerDef;
 import com.petbattles.item.EquipItemDef;
 import com.petbattles.item.Item;
 import com.petbattles.persist.RosterManager;
-import com.petbattles.quest.Quest;
+import com.petbattles.quest.Conversation;
+import com.petbattles.quest.ConversationState;
+import com.petbattles.quest.QuestDef;
+import com.petbattles.quest.QuestManager;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -33,6 +36,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.IntSupplier;
@@ -46,10 +50,10 @@ import net.runelite.client.util.ImageUtil;
  * In-client control hub. Collapsed it's a small launcher chip; it expands to one of several
  * panes — Team (reorder / remove / add / rest), Trainers (searchable chathead card list with
  * Locate / Battle), Quests (quest log with expandable objectives), Rest, or Challenge ("Battle
- * &lt;trainer&gt;" with the trainer's chathead and party). Expansion is context-driven
- * (near a bank with an injured pet → Rest; near a battleable trainer → Challenge) with
- * the chip and menu as the manual fallback. Hidden entirely during a battle, which locks the
- * swap/rest controls while a fight runs.
+ * &lt;trainer&gt;" with the trainer's chathead and party). Walking up to a trainer or a quest NPC
+ * never takes the screen: the collapsed chip flashes instead, and clicking it opens what is
+ * flashing (see {@link #currentAlert()}). Only Rest still auto-opens (at a bank with an injured
+ * pet). Hidden entirely during a battle, which locks the swap/rest controls while a fight runs.
  *
  * <p>Each pane's body is laid out twice per frame: once under an empty clip to measure
  * its height (so the frame can be filled at exactly the right size), then again to
@@ -58,7 +62,7 @@ import net.runelite.client.util.ImageUtil;
  * <p>Rendering-agnostic: this owns all pane state and drawing but knows nothing about how it is
  * shown. Two adapters consume it — {@link HubOverlay} (a floating RuneLite overlay) and
  * {@link HubPanel} (a Swing component docked in the side panel). A {@code docked} view fills its
- * host width, never collapses to a chip, and does not auto-open world-context panes.
+ * host width, never collapses to a chip, and neither auto-opens nor flashes for world context.
  */
 public class HubView
 {
@@ -106,6 +110,26 @@ public class HubView
 		}
 	}
 
+	/**
+	 * A "there's something right here" prompt: what the collapsed chip flashes for, where clicking
+	 * it leads, and an identity ({@code key}) so acknowledging one prompt doesn't silence the next.
+	 */
+	private static final class Alert
+	{
+		final Pane pane;
+		final String action;
+		final String label;
+		final String key;
+
+		Alert(Pane pane, String action, String label, String key)
+		{
+			this.pane = pane;
+			this.action = action;
+			this.label = label;
+			this.key = key;
+		}
+	}
+
 	/** Vector glyphs for the small square controls (arrows, close cross, menu). */
 	private enum Icon
 	{
@@ -147,6 +171,7 @@ public class HubView
 
 	private final PetDatabase db;
 	private final RosterManager roster;
+	private final QuestManager questManager;
 	private final Sprites sprites;
 	private final Portraits portraits;
 	private final BattleSession session;
@@ -176,6 +201,11 @@ public class HubView
 	// immediately re-pop). Cleared when the context changes and re-triggers.
 	private Pane lastContext;
 	private boolean dismissed;
+	// The chip's flashing prompt: the key of the alert last seen, and whether the player has opened
+	// its pane. Acknowledging stops the pulse (the chip stays put) until a different alert comes up,
+	// so standing next to a trainer you've already looked at isn't a permanent blinking light.
+	private String alertKey;
+	private boolean alertAcknowledged;
 	private int addOffset;
 	private int challengePage;
 	// Trainers pane: which difficulty filter is active (null = all) and the scroll offset. The
@@ -191,6 +221,21 @@ public class HubView
 	private volatile boolean searchFocused;
 	// Quests pane: the quest id whose detail box is expanded (null = none).
 	private String expandedQuest;
+	// The current chapter's intro-conversation cursor, plus which quest+step it belongs to (rebuilt
+	// when the open chapter changes). Mutated from dispatch, read on render (same as the other pane
+	// state); each hub surface has its own HubView instance so the two never share a cursor.
+	private String convoQuestId;
+	private int convoStep = -1;
+	private ConversationState convo;
+	// "questId#step" of a conversation the player has already started. Hans patrols Lumbridge, so the
+	// NPC can wander out of range mid-sentence; the latch keeps the open conversation on screen rather
+	// than snapping back to the objective and making the player chase him down. Cleared once the
+	// conversation is spent, so the Challenge that follows it still needs the NPC genuinely in reach.
+	private String convoLatchKey;
+	// A hunt suspect's accusation cursor, keyed "questId|trainerId". Kept separate from the chapter
+	// intro cursor above so confronting a suspect can't rewind the chapter's own conversation.
+	private String accuseKey;
+	private ConversationState accuseConvo;
 	// Store list scroll offset.
 	private int storeOffset;
 	// Dev pet-unlock list scroll offset.
@@ -202,12 +247,13 @@ public class HubView
 	// Dev pane: a pending destructive action awaiting a second "confirm" click, or null.
 	private String pendingConfirm;
 
-	public HubView(PetDatabase db, RosterManager roster, Sprites sprites, Portraits portraits,
-		BattleSession session, BooleanSupplier atBank, Supplier<Set<String>> nearTrainers,
-		TooltipManager tooltipManager, int width, boolean docked)
+	public HubView(PetDatabase db, RosterManager roster, QuestManager questManager, Sprites sprites,
+		Portraits portraits, BattleSession session, BooleanSupplier atBank,
+		Supplier<Set<String>> nearTrainers, TooltipManager tooltipManager, int width, boolean docked)
 	{
 		this.db = db;
 		this.roster = roster;
+		this.questManager = questManager;
 		this.sprites = sprites;
 		this.portraits = portraits;
 		this.session = session;
@@ -291,6 +337,13 @@ public class HubView
 	{
 		openPane(Pane.PET);
 		petSpecies = speciesId;
+	}
+
+	/** Open the Quests pane with one quest's story already expanded (where the chip's flash leads). */
+	public void openQuest(String questId)
+	{
+		openPane(Pane.QUESTS);
+		expandedQuest = questId;
 	}
 
 	/** Open the equip chooser for a held item (pick which team pet wears it). */
@@ -448,12 +501,20 @@ public class HubView
 		}
 
 		// The docked panel is a deliberate place the player looks at, so it never auto-opens a
-		// world-context pane; only the floating overlay does.
+		// world-context pane (nor flashes for one); only the floating overlay does.
 		Pane context = docked ? null : currentContext();
 		if (context != lastContext)
 		{
 			lastContext = context;
 			dismissed = false;
+		}
+
+		Alert alert = docked ? null : currentAlert();
+		String key = alert != null ? alert.key : null;
+		if (!Objects.equals(key, alertKey))
+		{
+			alertKey = key;
+			alertAcknowledged = false;
 		}
 
 		Pane pane;
@@ -469,6 +530,11 @@ public class HubView
 		{
 			pane = docked ? Pane.MENU : Pane.COLLAPSED;
 		}
+		// Looking at what's flashing counts as reading it.
+		if (alert != null && pane == alert.pane)
+		{
+			alertAcknowledged = true;
+		}
 
 		// The search box lives on the Trainers and dev pet-unlock panes; drop focus if we've left them.
 		if (pane != Pane.TRAINERS && pane != Pane.DEVPETS)
@@ -480,7 +546,9 @@ public class HubView
 		// Reset before drawing; menuBody sets it while hovering. It's added to the TooltipManager
 		// once here rather than inside menuBody, which the frame's measure pass runs a second time.
 		hoverTooltip = null;
-		Dimension size = pane == Pane.COLLAPSED ? drawChip(g, out) : drawPane(g, out, pane);
+		Dimension size = pane == Pane.COLLAPSED
+			? drawChip(g, out, alertAcknowledged ? null : alert)
+			: drawPane(g, out, pane);
 		// The floating overlay pushes hover text to the in-game TooltipManager; the docked panel
 		// exposes it via getHoverTooltip() for a native Swing tooltip instead.
 		if (hoverTooltip != null && !docked)
@@ -497,17 +565,12 @@ public class HubView
 	}
 
 	/**
-	 * The pane context wants open right now, or null. Challenge (a battleable trainer is
-	 * nearby) outranks Rest (at a bank with an injured pet). The challenge pane never
-	 * auto-opens while banking — it would cover the bank interface — but the manual
-	 * "Challenge nearby trainer" menu button stays available.
+	 * The pane context wants open right now, or null. Only Rest (at a bank with an injured pet) —
+	 * walking up to a trainer or quest NPC flashes the chip instead of taking the screen, see
+	 * {@link #currentAlert()}.
 	 */
 	private Pane currentContext()
 	{
-		if (!atBank.getAsBoolean() && !nearTrainers.get().isEmpty())
-		{
-			return Pane.CHALLENGE;
-		}
 		if (roster.isLoaded() && atBank.getAsBoolean() && roster.anyPetInjured())
 		{
 			return Pane.REST;
@@ -515,13 +578,103 @@ public class HubView
 		return null;
 	}
 
+	/**
+	 * What the collapsed chip should flash for right now, or null. A quest whose current chapter is
+	 * waiting on an NPC standing here outranks a plain trainer challenge, since the quest view is
+	 * where that scene plays out. Unlike Rest this never opens itself — it only pulses the chip, so
+	 * it is safe to raise while banking too (the Draynor guard stands at a bank).
+	 */
+	private Alert currentAlert()
+	{
+		if (!roster.isLoaded())
+		{
+			return null;
+		}
+		Set<String> near = nearTrainers.get();
+		if (near.isEmpty())
+		{
+			return null;
+		}
+		Alert quest = questAlert(near);
+		if (quest != null)
+		{
+			return quest;
+		}
+		List<TrainerDef> nearby = nearbyTrainers();
+		if (nearby.isEmpty())
+		{
+			return null;
+		}
+		StringBuilder key = new StringBuilder("trainer");
+		for (TrainerDef trainer : nearby)
+		{
+			key.append(':').append(trainer.getId());
+		}
+		String label = nearby.size() == 1
+			? "Challenge " + nearby.get(0).getName()
+			: nearby.size() + " trainers nearby";
+		return new Alert(Pane.CHALLENGE, "open:challenge", label, key.toString());
+	}
+
+	/**
+	 * The alert for a quest with something to do right where the player is standing: its current
+	 * chapter's gate NPC (whose conversation / Challenge is now live) or, for the hunt, an unbeaten
+	 * suspect. Chapters with no gate NPC are playable anywhere, so there is nothing here to point at.
+	 */
+	private Alert questAlert(Set<String> near)
+	{
+		for (QuestDef quest : db.allQuests())
+		{
+			if (!questManager.isAvailable(quest))
+			{
+				continue;
+			}
+			QuestDef.Chapter chapter = questManager.currentChapter(quest.getId());
+			if (chapter == null)
+			{
+				continue;
+			}
+			boolean hit = chapter.getGateTrainer() != null && near.contains(chapter.getGateTrainer());
+			if (!hit && chapter.isHunt())
+			{
+				for (String member : chapter.getBattlePool())
+				{
+					if (near.contains(member) && !questManager.isHuntMemberBeaten(quest, member))
+					{
+						hit = true;
+						break;
+					}
+				}
+			}
+			if (hit)
+			{
+				String title = chapter.getTitle() != null ? chapter.getTitle() : quest.getTitle();
+				return new Alert(Pane.QUESTS, "open:quest:" + quest.getId(), title,
+					"quest:" + quest.getId() + "#" + chapter.getStep());
+			}
+		}
+		return null;
+	}
+
 	// --- frame orchestration ---
 
-	private Dimension drawChip(Graphics2D g, List<Button> out)
+	/**
+	 * The collapsed launcher. With an {@code alert} it pulses — a gold wash and edge driven off the
+	 * wall clock — and its click opens what is flashing rather than the menu.
+	 */
+	private Dimension drawChip(Graphics2D g, List<Button> out, Alert alert)
 	{
 		g.setColor(PANEL_BG);
 		g.fillRoundRect(0, 0, CHIP, CHIP, 8, 8);
-		g.setColor(PANEL_EDGE);
+		// One sin per frame: the overlay redraws constantly, so the pulse costs nothing to animate.
+		float pulse = alert == null ? 0f
+			: (float) (0.5 + 0.5 * Math.sin(System.currentTimeMillis() / 260.0));
+		if (alert != null)
+		{
+			g.setColor(new Color(COIN.getRed(), COIN.getGreen(), COIN.getBlue(), (int) (25 + 55 * pulse)));
+			g.fillRoundRect(0, 0, CHIP, CHIP, 8, 8);
+		}
+		g.setColor(alert == null ? PANEL_EDGE : blend(PANEL_EDGE, COIN, pulse));
 		g.setStroke(new BasicStroke(2));
 		g.drawRoundRect(0, 0, CHIP, CHIP, 8, 8);
 		if (chipIcon != null)
@@ -529,8 +682,26 @@ public class HubView
 			int pad = 4;
 			g.drawImage(chipIcon, pad, pad, CHIP - 2 * pad, CHIP - 2 * pad, null);
 		}
-		out.add(new Button(new Rectangle(0, 0, CHIP, CHIP), "chip"));
+		Rectangle rect = new Rectangle(0, 0, CHIP, CHIP);
+		if (alert != null)
+		{
+			Point hp = hoverPoint;
+			if (hp != null && rect.contains(hp))
+			{
+				hoverTooltip = alert.label;
+			}
+		}
+		out.add(new Button(rect, alert != null ? alert.action : "chip"));
 		return new Dimension(CHIP, CHIP);
+	}
+
+	/** Linear mix of two colours, {@code t} = 0 gives {@code a} and 1 gives {@code b}. */
+	private static Color blend(Color a, Color b, float t)
+	{
+		return new Color(
+			(int) (a.getRed() + (b.getRed() - a.getRed()) * t),
+			(int) (a.getGreen() + (b.getGreen() - a.getGreen()) * t),
+			(int) (a.getBlue() + (b.getBlue() - a.getBlue()) * t));
 	}
 
 	/** Docked-only placeholder shown while a battle runs (the overlay just hides instead). */
@@ -1147,47 +1318,385 @@ public class HubView
 		{
 			return loginHint(g, y);
 		}
-		for (Quest quest : Quest.values())
+		// Data-described story quests: a row that expands to the current chapter's conversation.
+		for (QuestDef quest : db.allQuests())
 		{
-			boolean complete = roster.getQuestStep(quest.getId()) >= Quest.STEP_COMPLETE;
+			if (!questManager.isAvailable(quest))
+			{
+				continue;
+			}
+			boolean complete = questManager.isComplete(quest.getId());
 			boolean expanded = quest.getId().equals(expandedQuest);
-
-			// Row: title on the left, status tag on the right; the whole row toggles the detail box.
-			// Taller than a plain button with generous side padding and a clear title/status gap.
-			Rectangle row = new Rectangle(8, y, width - 16, 26);
-			drawButtonBg(g, row, true);
-			out.add(new Button(row, "quest:" + quest.getId()));
-			g.setFont(FontManager.getRunescapeFont());
-			String status = complete ? "Complete" : "In progress";
-			int statusW = g.getFontMetrics().stringWidth(status);
-			int textBaseline = y + 17;
-			g.setColor(Color.WHITE);
-			g.drawString(clip(g, quest.getTitle(), row.width - statusW - 30), row.x + 10, textBaseline);
-			g.setColor(complete ? new Color(120, 200, 110) : HP_YELLOW);
-			g.drawString(status, row.x + row.width - statusW - 10, textBaseline);
-			y += 30;
-
+			y = questRow(g, out, quest.getId(), quest.getTitle(), complete, y);
 			if (expanded)
 			{
-				// Rewards live in the Items panel now; a completed quest just reads as done here.
-				String detail = complete ? "Quest completed." : quest.getHint();
-				g.setFont(FontManager.getRunescapeFont());
-				List<String> lines = wrapText(g, detail, width - 32);
-				int lineH = 15;
-				int boxH = lines.size() * lineH + 12;
-				g.setColor(new Color(0, 0, 0, 90));
-				g.fillRoundRect(8, y, width - 16, boxH, 6, 6);
-				g.setColor(TEXT);
-				int ty = y + 17;
-				for (String line : lines)
-				{
-					g.drawString(line, 15, ty);
-					ty += lineH;
-				}
-				y += boxH + 8;
+				y = storyBody(g, out, quest, complete, y);
 			}
 		}
 		return y;
+	}
+
+	/**
+	 * One quest-log row: title on the left, status tag on the right; the whole row toggles its
+	 * detail/story box. Returns the y below the row.
+	 */
+	private int questRow(Graphics2D g, List<Button> out, String questId, String title, boolean complete, int y)
+	{
+		Rectangle row = new Rectangle(8, y, width - 16, 26);
+		drawButtonBg(g, row, true);
+		out.add(new Button(row, "quest:" + questId));
+		g.setFont(FontManager.getRunescapeFont());
+		String status = complete ? "Complete" : "In progress";
+		int statusW = g.getFontMetrics().stringWidth(status);
+		int textBaseline = y + 17;
+		g.setColor(Color.WHITE);
+		g.drawString(clip(g, title, row.width - statusW - 30), row.x + 10, textBaseline);
+		g.setColor(complete ? new Color(120, 200, 110) : HP_YELLOW);
+		g.drawString(status, row.x + row.width - statusW - 10, textBaseline);
+		return y + 30;
+	}
+
+	/** A plain wrapped-text detail box (used by the legacy quest hint). Returns the y below it. */
+	private int questDetailBox(Graphics2D g, String detail, int y)
+	{
+		g.setFont(FontManager.getRunescapeFont());
+		List<String> lines = wrapText(g, detail, width - 32);
+		int lineH = 15;
+		int boxH = lines.size() * lineH + 12;
+		g.setColor(new Color(0, 0, 0, 90));
+		g.fillRoundRect(8, y, width - 16, boxH, 6, 6);
+		g.setColor(TEXT);
+		int ty = y + 17;
+		for (String line : lines)
+		{
+			g.drawString(line, 15, ty);
+			ty += lineH;
+		}
+		return y + boxH + 8;
+	}
+
+	/**
+	 * The expanded story view for a data quest. While the chapter's NPC is out of reach it shows only
+	 * the indirect {@code objective} (point, don't name the place). Once reachable, it pages the
+	 * chapter's intro conversation (chathead + line + Continue, or reply buttons for a choice); when
+	 * that finishes, a talk chapter has already advanced, and a battle/hunt chapter reveals its
+	 * Challenge(s). A completed quest just reads as done.
+	 */
+	private int storyBody(Graphics2D g, List<Button> out, QuestDef quest, boolean complete, int y)
+	{
+		QuestDef.Chapter chapter = complete ? null : questManager.currentChapter(quest.getId());
+		if (chapter == null)
+		{
+			return questDetailBox(g, "Quest completed.", y);
+		}
+		String gate = chapter.getGateTrainer();
+		boolean reachable = gate == null || nearTrainers.get().contains(gate);
+		String latch = quest.getId() + "#" + chapter.getStep();
+		String objective = chapter.getObjective() != null ? chapter.getObjective()
+			: "Seek out your next lead.";
+		if (!reachable && !latch.equals(convoLatchKey))
+		{
+			return objectiveBox(g, chapter.getTitle(), objective, y);
+		}
+
+		ensureConvo(quest.getId(), chapter.getStep(), chapter.getIntro());
+		ConversationState.Frame frame = convo != null ? convo.current() : null;
+		if (frame != null)
+		{
+			convoLatchKey = latch;
+			return convoFrame(g, out, quest.getId(), chapter.getTitle(), frame, y);
+		}
+		// Conversation spent: the latch ends here, so what follows it (a Challenge, the hunt list)
+		// still requires the NPC actually in reach - a walked-away NPC can't be fought from afar.
+		convoLatchKey = null;
+		if (!reachable)
+		{
+			return objectiveBox(g, chapter.getTitle(), objective, y);
+		}
+		// Intro finished: resolve the chapter's objective.
+		if (chapter.isBattle())
+		{
+			return battleChallenge(g, out, chapter, y);
+		}
+		if (chapter.isHunt())
+		{
+			return huntChallenge(g, out, quest, chapter, y);
+		}
+		// A talk chapter whose conversation ran out but hasn't advanced yet (e.g. re-opened): a
+		// Continue that completes it.
+		return fullButton(g, out, y, "Continue", "quest.done:" + quest.getId(), true);
+	}
+
+	/** The indirect objective box: chapter title + a muted-yellow "where to look" hint, no chathead. */
+	private int objectiveBox(Graphics2D g, String title, String objective, int y)
+	{
+		g.setFont(FontManager.getRunescapeFont());
+		List<String> lines = wrapText(g, objective, width - 32);
+		int lineH = 15;
+		int boxH = 22 + lines.size() * lineH + 10;
+		g.setColor(new Color(0, 0, 0, 90));
+		g.fillRoundRect(8, y, width - 16, boxH, 6, 6);
+		g.setFont(FontManager.getRunescapeBoldFont());
+		g.setColor(Color.WHITE);
+		g.drawString(clip(g, title, width - 32), 15, y + 16);
+		g.setFont(FontManager.getRunescapeFont());
+		g.setColor(HP_YELLOW);
+		int ty = y + 34;
+		for (String line : lines)
+		{
+			g.drawString(line, 15, ty);
+			ty += lineH;
+		}
+		return y + boxH + 8;
+	}
+
+	/**
+	 * One frame of a conversation: a spoken line (speaker chathead — the player's own for a "player"
+	 * line — plus text and a Continue) or a choice (reply buttons the player picks). {@code actionKey}
+	 * routes the buttons back to the right cursor: a quest id for the chapter intro, or
+	 * "questId|trainerId" for a hunt suspect's accusation.
+	 */
+	private int convoFrame(Graphics2D g, List<Button> out, String actionKey, String title,
+		ConversationState.Frame frame, int y)
+	{
+		if (frame.getKind() == ConversationState.Kind.CHOICE)
+		{
+			g.setFont(FontManager.getRunescapeBoldFont());
+			g.setColor(new Color(200, 190, 160));
+			g.drawString(clip(g, title, width - 24), 12, y + 12);
+			y += 18;
+			List<String> options = frame.getOptions();
+			for (int i = 0; i < options.size(); i++)
+			{
+				y = fullButton(g, out, y, options.get(i), "convo.pick:" + actionKey + ":" + i, true);
+			}
+			return y;
+		}
+
+		g.setFont(FontManager.getRunescapeFont());
+		List<String> lines = wrapText(g, frame.getText(), width - 28);
+		// The player has no chathead — RuneLite exposes no clean way to render the local player's —
+		// so a "player" line, or any speaker whose portrait isn't bundled, drops the picture frame and
+		// keeps just its name row. An empty frame reads as a missing asset; no frame reads as narration.
+		String name = speakerName(frame.getSpeaker());
+		BufferedImage portrait = frame.getSpeaker() != null && !"player".equals(frame.getSpeaker())
+			? portraits.portrait(frame.getSpeaker()) : null;
+		int pw = 48;
+		int ph = 56;
+		int lineH = 15;
+		int headH = portrait != null ? ph : (name.isEmpty() ? 0 : 18);
+		int boxH = headH + 8 + lines.size() * lineH + 12;
+		g.setColor(new Color(0, 0, 0, 90));
+		g.fillRoundRect(8, y, width - 16, boxH, 6, 6);
+
+		int nameX = 15;
+		if (portrait != null)
+		{
+			Rectangle pr = new Rectangle(14, y + 6, pw, ph);
+			g.setColor(new Color(255, 255, 255, 18));
+			g.fillRoundRect(pr.x, pr.y, pw, ph, 6, 6);
+			drawFit(g, portrait, pr.x + 2, pr.y + 2, pw - 4, ph - 4);
+			nameX = pr.x + pw + 8;
+		}
+		if (!name.isEmpty())
+		{
+			g.setFont(FontManager.getRunescapeBoldFont());
+			g.setColor(Color.WHITE);
+			g.drawString(clip(g, name, width - nameX - 16), nameX, y + (portrait != null ? 22 : 15));
+		}
+		g.setFont(FontManager.getRunescapeFont());
+		g.setColor(TEXT);
+		int ty = y + headH + 8 + 12;
+		for (String line : lines)
+		{
+			g.drawString(line, 15, ty);
+			ty += lineH;
+		}
+		y += boxH + 8;
+		return fullButton(g, out, y, "Continue", "convo.next:" + actionKey, true);
+	}
+
+	/** The battle chapter's Challenge, once its intro conversation is done (proximity already met). */
+	private int battleChallenge(Graphics2D g, List<Button> out, QuestDef.Chapter chapter, int y)
+	{
+		TrainerDef bt = db.trainer(chapter.getBattleTrainer());
+		String name = bt != null ? bt.getName() : chapter.getBattleTrainer();
+		boolean canFight = !roster.getTeam().isEmpty() && roster.teamCanFight();
+		if (!canFight)
+		{
+			hint(g, roster.getTeam().isEmpty() ? "Add a pet to your team first"
+				: "Team knocked out - rest at a bank", y);
+			y += 16;
+		}
+		return fullButton(g, out, y, "Challenge " + name, "fight:" + chapter.getBattleTrainer(), canFight);
+	}
+
+	/**
+	 * The white-beard hunt: an N/M counter plus, per suspect still standing, either a Challenge (when
+	 * you're near them — a first fight is in person) or a "seek them out" prompt.
+	 */
+	private int huntChallenge(Graphics2D g, List<Button> out, QuestDef quest, QuestDef.Chapter chapter, int y)
+	{
+		// An accusation already under way keeps playing even if the suspect wanders off, for the same
+		// reason storyBody latches its intro: finishing a scene shouldn't mean chasing someone.
+		if (accuseConvo != null && accuseKey != null && accuseKey.startsWith(quest.getId() + "|"))
+		{
+			ConversationState.Frame open = accuseConvo.current();
+			String started = accuseKey.substring(quest.getId().length() + 1);
+			if (open != null && chapter.getBattlePool().contains(started)
+				&& !questManager.isHuntMemberBeaten(quest, started))
+			{
+				return convoFrame(g, out, accuseKey, chapter.getTitle(), open, y);
+			}
+		}
+		// Standing in front of an unbeaten suspect is a scene: their accusation plays out first, and
+		// only when it is spent does the suspect list (and their Challenge) come back.
+		for (String memberId : chapter.getBattlePool())
+		{
+			if (questManager.isHuntMemberBeaten(quest, memberId)
+				|| !nearTrainers.get().contains(memberId))
+			{
+				continue;
+			}
+			QuestDef.Suspect suspect = chapter.getSuspect(memberId);
+			if (suspect == null || suspect.getAccuse().isEmpty())
+			{
+				continue;
+			}
+			String key = quest.getId() + "|" + memberId;
+			if (!key.equals(accuseKey))
+			{
+				accuseKey = key;
+				accuseConvo = new ConversationState(suspect.getAccuse());
+			}
+			ConversationState.Frame frame = accuseConvo.current();
+			if (frame != null)
+			{
+				return convoFrame(g, out, key, chapter.getTitle(), frame, y);
+			}
+			break;
+		}
+		int required = chapter.getBattlesRequired();
+		int beaten = questManager.countHuntBeaten(quest, chapter);
+		g.setFont(FontManager.getRunescapeFont());
+		g.setColor(HP_YELLOW);
+		g.drawString("Suspects defeated: " + beaten + "/" + required, 12, y + 12);
+		y += 18;
+		boolean teamReady = !roster.getTeam().isEmpty() && roster.teamCanFight();
+		if (!teamReady)
+		{
+			hint(g, roster.getTeam().isEmpty() ? "Add a pet to your team first"
+				: "Team knocked out - rest at a bank", y);
+			y += 16;
+		}
+		for (String memberId : chapter.getBattlePool())
+		{
+			if (questManager.isHuntMemberBeaten(quest, memberId))
+			{
+				continue;
+			}
+			TrainerDef bt = db.trainer(memberId);
+			String name = bt != null ? bt.getName() : memberId;
+			boolean near = nearTrainers.get().contains(memberId) || roster.canRemoteFight(memberId);
+			if (near)
+			{
+				y = fullButton(g, out, y, "Challenge " + name, "fight:" + memberId, teamReady);
+			}
+			else
+			{
+				g.setFont(FontManager.getRunescapeFont());
+				g.setColor(MUTED);
+				g.drawString(clip(g, "Seek out " + name, width - 24), 12, y + 12);
+				y += 16;
+			}
+		}
+		return y;
+	}
+
+	/** Display name for a conversation speaker id: "You" for the player, else the trainer's name. */
+	private String speakerName(String speaker)
+	{
+		if (speaker == null)
+		{
+			return "";
+		}
+		if ("player".equals(speaker))
+		{
+			return "You";
+		}
+		return db.trainer(speaker) != null ? db.trainer(speaker).getName() : "";
+	}
+
+	/** (Re)build the intro conversation cursor when the open chapter changes. */
+	private void ensureConvo(String questId, int step, List<Conversation.Node> intro)
+	{
+		if (convo == null || !questId.equals(convoQuestId) || step != convoStep)
+		{
+			convo = new ConversationState(intro);
+			convoQuestId = questId;
+			convoStep = step;
+		}
+	}
+
+	/**
+	 * Click-to-continue on the open conversation; completes a talk chapter when it runs out. A key
+	 * containing '|' is a hunt suspect's accusation (see {@link #convoFrame}), which clears no chapter
+	 * — beating the suspect does that.
+	 */
+	public void convoNext(String key)
+	{
+		if (key.indexOf('|') >= 0)
+		{
+			if (accuseConvo != null && key.equals(accuseKey))
+			{
+				accuseConvo.advance();
+			}
+			return;
+		}
+		if (convo == null || !key.equals(convoQuestId))
+		{
+			return;
+		}
+		convo.advance();
+		completeTalkIfDone(key);
+	}
+
+	/** Pick a reply in the open conversation; completes a talk chapter if that ends it. */
+	public void convoPick(String key, int option)
+	{
+		if (key.indexOf('|') >= 0)
+		{
+			if (accuseConvo != null && key.equals(accuseKey))
+			{
+				accuseConvo.pick(option);
+			}
+			return;
+		}
+		if (convo == null || !key.equals(convoQuestId))
+		{
+			return;
+		}
+		convo.pick(option);
+		completeTalkIfDone(key);
+	}
+
+	/** Finish + advance a talk chapter (non-battle, non-hunt) once its conversation is spent. */
+	public void completeTalk(String questId)
+	{
+		questManager.completeTalk(questId);
+	}
+
+	private void completeTalkIfDone(String questId)
+	{
+		if (convo == null || !convo.isDone())
+		{
+			return;
+		}
+		QuestDef.Chapter chapter = questManager.currentChapter(questId);
+		if (chapter != null && !chapter.isBattle() && !chapter.isHunt())
+		{
+			questManager.completeTalk(questId);
+		}
 	}
 
 	/**
@@ -1562,9 +2071,10 @@ public class HubView
 		int gap = 6;
 		int bw = (innerW - gap) / 2;
 		int btnY = y + cardH - 22;
-		boolean unlocked = roster.isTrainerDefeated(trainer.getId())
-			|| roster.isRemoteBattlesUnlocked()
-			|| nearTrainers.get().contains(trainer.getId());
+		// In person when near; remotely only once the device has calibrated against them (beaten
+		// in person). So a first fight always needs proximity.
+		boolean unlocked = nearTrainers.get().contains(trainer.getId())
+			|| roster.canRemoteFight(trainer.getId());
 		boolean canFight = unlocked && !roster.getTeam().isEmpty() && roster.teamCanFight();
 		Rectangle battle = new Rectangle(innerLeft, btnY, bw, 18);
 		drawButton(g, battle, "Battle", canFight, false);

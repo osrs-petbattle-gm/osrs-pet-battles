@@ -22,6 +22,196 @@
     ]
   },
   {
+    "id": "hans",
+    "name": "Hans",
+    "theme": "Lumbridge Castle's ancient wandering servant",
+    "difficulty": "EASY",
+    "npcIds": [
+      3105
+    ],
+    "locations": [
+      { "x": 3221, "y": 3218, "plane": 0 }
+    ],
+    "party": [
+      {
+        "species": "beaver",
+        "level": 4
+      },
+      {
+        "species": "gull",
+        "level": 5
+      }
+    ]
+  },
+  {
+    "id": "king_of_ardougne",
+    "name": "King of Ardougne",
+    "theme": "East Ardougne's baffled monarch",
+    "difficulty": "MEDIUM",
+    "npcIds": [
+      8046,
+      9005,
+      11022,
+      8842,
+      8843,
+      9006,
+      9011,
+      11023
+    ],
+    "locations": [
+      {
+        "x": 2579,
+        "y": 3294,
+        "plane": 1
+      }
+    ],
+    "party": [
+      {
+        "species": "baron",
+        "level": 28
+      },
+      {
+        "species": "prince_black_dragon",
+        "level": 30
+      }
+    ]
+  },
+  {
+    "id": "draynor_guard",
+    "theme": "Draynor bank's twitchy watchman",
+    "name": "Draynor Guard",
+    "difficulty": "EASY",
+    "npcIds": [
+      2123
+    ],
+    "locations": [
+      { "x": 3092, "y": 3245, "plane": 0 }
+    ],
+    "party": [
+      {
+        "species": "rocky",
+        "level": 6
+      },
+      {
+        "species": "gull",
+        "level": 7
+      }
+    ]
+  },
+  {
+    "id": "probita",
+    "name": "Probita",
+    "theme": "East Ardougne's pet-insurance clerk",
+    "difficulty": "EASY",
+    "npcIds": [
+      5906
+    ],
+    "locations": [
+      { "x": 2635, "y": 3324, "plane": 0 }
+    ],
+    "party": [
+      {
+        "species": "cat",
+        "level": 10
+      },
+      {
+        "species": "herbi",
+        "level": 12
+      }
+    ]
+  },
+  {
+    "id": "ambassador_gimblewap",
+    "name": "Ambassador Gimblewap",
+    "theme": "Gnome bookkeeper cooking Ardougne's taxes",
+    "difficulty": "MEDIUM",
+    "npcIds": [
+      2555
+    ],
+    "party": [
+      {
+        "species": "baby_chinchompa",
+        "level": 26
+      },
+      {
+        "species": "sraracha",
+        "level": 28
+      }
+    ]
+  },
+  {
+    "id": "sir_tiffy",
+    "name": "Sir Tiffy Cashien",
+    "theme": "White-beard suspect: a retired knight of Falador",
+    "difficulty": "MEDIUM",
+    "npcIds": [
+      4687,
+      8045,
+      8157
+    ],
+    "locations": [
+      { "x": 2997, "y": 3373, "plane": 0 }
+    ],
+    "party": [
+      {
+        "species": "rocky",
+        "level": 24
+      },
+      {
+        "species": "phoenix",
+        "level": 26
+      }
+    ]
+  },
+  {
+    "id": "lumbridge_guide",
+    "name": "Lumbridge Guide",
+    "theme": "White-beard suspect: Lumbridge's kindly old advisor",
+    "difficulty": "MEDIUM",
+    "npcIds": [
+      306,
+      1179,
+      1181,
+      3393
+    ],
+    "locations": [
+      { "x": 3238, "y": 3220, "plane": 0 }
+    ],
+    "party": [
+      {
+        "species": "beaver",
+        "level": 29
+      },
+      {
+        "species": "heron",
+        "level": 31
+      }
+    ]
+  },
+  {
+    "id": "swensen",
+    "name": "Swensen the Navigator",
+    "theme": "White-beard suspect: a weathered Fremennik pathfinder",
+    "difficulty": "HARD",
+    "npcIds": [
+      3925,
+      8148
+    ],
+    "locations": [
+      { "x": 2726, "y": 3733, "plane": 0 }
+    ],
+    "party": [
+      {
+        "species": "pet_kraken",
+        "level": 34
+      },
+      {
+        "species": "lilviathan",
+        "level": 36
+      }
+    ]
+  },
+  {
     "id": "party_pete",
     "name": "Party Pete",
     "theme": "Falador Party Room host",

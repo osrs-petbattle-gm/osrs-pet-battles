@@ -39,6 +39,8 @@ public class RosterStore
 		public Set<String> defeatedTrainers = new LinkedHashSet<>();
 		// Step reached per quest id (see com.petbattles.quest.Quest); absent = step 0 (not started).
 		public Map<String, Integer> questProgress = new LinkedHashMap<>();
+		// One-off / branch quest flags (e.g. a data-quest chapter's marker); see QuestManager.
+		public Set<String> questFlags = new LinkedHashSet<>();
 		// Highest RosterManager.PROGRESSION_RESET_VERSION already applied to this roster.
 		// When the code constant exceeds this, load() wipes progression once and bumps it.
 		public int progressionResetVersion = 0;

@@ -123,7 +123,11 @@ public class BattleInputHandler extends MouseAdapter
 		}
 		else if ("questdialog.continue".equals(action))
 		{
-			session.dismissQuestDialog();
+			session.advanceQuestConversation();
+		}
+		else if (action.startsWith("questdialog.pick:"))
+		{
+			session.pickQuestConversation(Integer.parseInt(action.substring("questdialog.pick:".length())));
 		}
 		else if ("close".equals(action))
 		{

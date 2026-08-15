@@ -3,6 +3,7 @@ package com.petbattles.ui;
 import com.petbattles.battle.BattleSession;
 import com.petbattles.data.PetDatabase;
 import com.petbattles.persist.RosterManager;
+import com.petbattles.quest.QuestManager;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.util.Set;
@@ -15,7 +16,8 @@ import net.runelite.client.ui.overlay.tooltip.TooltipManager;
 
 /**
  * Floating adapter around a {@link HubView}: a movable RuneLite overlay pinned bottom-left that
- * collapses to a launcher chip and auto-opens world-context panes. All state and drawing live in the
+ * collapses to a launcher chip, flashing it when a trainer or quest NPC is in reach and auto-opening
+ * only the Rest pane at a bank. All state and drawing live in the
  * shared {@link HubView}; this class only supplies the overlay chrome (position, layer, movability)
  * and hands its {@code Graphics2D} to the view each frame. Input is routed by {@link HubInputHandler}
  * against {@link #getView()} and the overlay's {@link #getBounds() rendered bounds}.
@@ -27,11 +29,11 @@ public class HubOverlay extends Overlay
 
 	private final HubView view;
 
-	public HubOverlay(PetDatabase db, RosterManager roster, Sprites sprites, Portraits portraits,
-		BattleSession session, BooleanSupplier atBank, Supplier<Set<String>> nearTrainers,
-		TooltipManager tooltipManager)
+	public HubOverlay(PetDatabase db, RosterManager roster, QuestManager questManager, Sprites sprites,
+		Portraits portraits, BattleSession session, BooleanSupplier atBank,
+		Supplier<Set<String>> nearTrainers, TooltipManager tooltipManager)
 	{
-		this.view = new HubView(db, roster, sprites, portraits, session, atBank, nearTrainers,
+		this.view = new HubView(db, roster, questManager, sprites, portraits, session, atBank, nearTrainers,
 			tooltipManager, WIDTH, false);
 		setPosition(OverlayPosition.BOTTOM_LEFT);
 		setLayer(OverlayLayer.ABOVE_WIDGETS);

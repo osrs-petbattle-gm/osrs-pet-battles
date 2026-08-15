@@ -1,12 +1,14 @@
 package com.petbattles.ui;
 
 import com.petbattles.battle.BattleSession;
+import com.petbattles.data.PetDatabase;
 import com.petbattles.engine.BattleEvent;
 import com.petbattles.engine.BattlePet;
 import com.petbattles.engine.BattleState;
 import com.petbattles.engine.MoveDef;
 import com.petbattles.engine.PetType;
 import com.petbattles.engine.SpeciesDef;
+import com.petbattles.quest.ConversationState;
 import java.awt.AlphaComposite;
 import java.awt.BasicStroke;
 import java.awt.Color;
@@ -71,6 +73,7 @@ public class BattleOverlay extends Overlay
 	}
 
 	private final BattleSession session;
+	private final PetDatabase db;
 	private final Sprites sprites;
 	private final PetChatheads chatheads;
 	private final Portraits portraits;
@@ -78,9 +81,11 @@ public class BattleOverlay extends Overlay
 	private Point hoverPoint;
 	private volatile boolean swapMenuOpen;
 
-	public BattleOverlay(BattleSession session, Sprites sprites, PetChatheads chatheads, Portraits portraits)
+	public BattleOverlay(BattleSession session, PetDatabase db, Sprites sprites, PetChatheads chatheads,
+		Portraits portraits)
 	{
 		this.session = session;
+		this.db = db;
 		this.sprites = sprites;
 		this.chatheads = chatheads;
 		this.portraits = portraits;
@@ -143,15 +148,15 @@ public class BattleOverlay extends Overlay
 		String title = session.getTrainer() != null ? "vs " + session.getTrainer().getName() : "Battle";
 		g.drawString(title, 10, 14);
 
-		// The end-of-battle summary replaces the battle scene entirely. A pending quest dialog
-		// (e.g. Professor Oddenstein's reward) shows first, gating the summary until dismissed.
+		// The end-of-battle summary replaces the battle scene entirely. A pending quest reward
+		// conversation pages through first, gating the summary until it finishes.
 		if (session.getPhase() == BattleSession.Phase.ENDED)
 		{
 			List<Button> endButtons = new ArrayList<>();
-			String questDialog = session.getQuestDialogText();
-			if (questDialog != null)
+			ConversationState convo = session.getQuestConversation();
+			if (convo != null && convo.current() != null)
 			{
-				drawQuestDialog(g, endButtons, session.getQuestDialogTrainerId(), questDialog);
+				drawQuestDialog(g, endButtons, convo.current());
 			}
 			else
 			{
@@ -301,39 +306,60 @@ public class BattleOverlay extends Overlay
 	 * always lands on the pet that actually grew rather than whoever was last on the field.
 	 */
 	/**
-	 * A one-off NPC dialog on the end screen: the speaker's chathead on the left, their speech
-	 * wrapped on the right, and a Continue button that dismisses it and reveals the battle summary.
-	 * The chathead is the speaker's trainer portrait; if that asset isn't bundled the framed box is
-	 * left empty (the name header still identifies the speaker).
+	 * One frame of the end-screen quest conversation: the speaker's chathead on the left (the player's
+	 * own portrait for a "player" line), their speech wrapped on the right, and either a Continue
+	 * button (a line) or one button per option (a choice). Missing chatheads leave the framed box
+	 * empty; the name header still identifies the speaker.
 	 */
-	private void drawQuestDialog(Graphics2D g, List<Button> newButtons, String trainerId, String text)
+	private void drawQuestDialog(Graphics2D g, List<Button> newButtons, ConversationState.Frame frame)
 	{
-		String name = session.getTrainer() != null ? session.getTrainer().getName() : "";
+		boolean choice = frame.getKind() == ConversationState.Kind.CHOICE;
+		String speaker = frame.getSpeaker();
 		g.setFont(FontManager.getRunescapeBoldFont());
 		g.setColor(new Color(240, 210, 120));
-		g.drawString(clip(g, name, WIDTH - 24), 12, 24);
+		g.drawString(clip(g, choice ? "" : speakerName(speaker), WIDTH - 24), 12, 24);
 
 		int px = 12;
 		int py = 36;
 		int pw = 74;
 		int ph = 84;
-		g.setColor(new Color(255, 255, 255, 18));
-		g.fillRoundRect(px, py, pw, ph, 6, 6);
-		g.setColor(PANEL_EDGE);
-		g.setStroke(new BasicStroke(1));
-		g.drawRoundRect(px, py, pw, ph, 6, 6);
-		BufferedImage chathead = portraits.portrait(trainerId);
+		// No frame unless there's actually a chathead to put in it: the player has none (see
+		// HubView.convoFrame), and a choice menu takes the full width for its option buttons.
+		BufferedImage chathead = choice || speaker == null || "player".equals(speaker)
+			? null : portraits.portrait(speaker);
 		if (chathead != null)
 		{
+			g.setColor(new Color(255, 255, 255, 18));
+			g.fillRoundRect(px, py, pw, ph, 6, 6);
+			g.setColor(PANEL_EDGE);
+			g.setStroke(new BasicStroke(1));
+			g.drawRoundRect(px, py, pw, ph, 6, 6);
 			drawFit(g, chathead, px + 2, py + 2, pw - 4, ph - 4);
 		}
 
-		int textX = px + pw + 12;
+		int textX = chathead != null ? px + pw + 12 : px;
 		int textW = WIDTH - textX - 12;
 		g.setFont(FontManager.getRunescapeFont());
+		if (choice)
+		{
+			// Stack the option buttons on the right; each dispatches its index.
+			g.setColor(LOG_TEXT);
+			g.drawString("Choose:", textX, py + 12);
+			int by = py + 20;
+			List<String> options = frame.getOptions();
+			for (int i = 0; i < options.size(); i++)
+			{
+				Rectangle r = new Rectangle(textX, by, textW, 22);
+				drawButton(g, r, clip(g, options.get(i), textW - 12), true, null);
+				newButtons.add(new Button(r, "questdialog.pick:" + i));
+				by += 26;
+			}
+			return;
+		}
+
 		g.setColor(LOG_TEXT);
 		int ty = py + 14;
-		for (String line : wrap(g, text, textW))
+		for (String line : wrap(g, frame.getText(), textW))
 		{
 			g.drawString(line, textX, ty);
 			ty += 16;
@@ -342,6 +368,20 @@ public class BattleOverlay extends Overlay
 		Rectangle cont = new Rectangle(WIDTH / 2 - 50, HEIGHT - 32, 100, 24);
 		drawButton(g, cont, "Continue", true, null);
 		newButtons.add(new Button(cont, "questdialog.continue"));
+	}
+
+	/** Display name for a conversation speaker id: "You" for the player, else the trainer's name. */
+	private String speakerName(String speaker)
+	{
+		if (speaker == null)
+		{
+			return "";
+		}
+		if ("player".equals(speaker))
+		{
+			return "You";
+		}
+		return db.trainer(speaker) != null ? db.trainer(speaker).getName() : "";
 	}
 
 	/** Draw an image scaled to fit the box while preserving aspect ratio, centred. */

@@ -24,8 +24,9 @@ public class HubActions
 	private final Consumer<String> examineAction;
 	private final Runnable onRest;
 
-	public HubActions(HubView view, PetDatabase db, RosterManager roster, Consumer<String> fightAction,
-		Consumer<String> locateAction, Consumer<String> examineAction, Runnable onRest)
+	public HubActions(HubView view, PetDatabase db, RosterManager roster,
+		Consumer<String> fightAction, Consumer<String> locateAction, Consumer<String> examineAction,
+		Runnable onRest)
 	{
 		this.view = view;
 		this.db = db;
@@ -66,6 +67,10 @@ public class HubActions
 		else if ("open:quests".equals(action))
 		{
 			view.openPane(HubView.Pane.QUESTS);
+		}
+		else if (action.startsWith("open:quest:"))
+		{
+			view.openQuest(action.substring("open:quest:".length()));
 		}
 		else if ("open:items".equals(action))
 		{
@@ -159,6 +164,22 @@ public class HubActions
 				roster.resetQuests();
 			}
 			view.clearConfirm();
+		}
+		else if (action.startsWith("convo.next:"))
+		{
+			view.convoNext(action.substring("convo.next:".length()));
+		}
+		else if (action.startsWith("convo.pick:"))
+		{
+			String[] parts = action.substring("convo.pick:".length()).split(":", 2);
+			if (parts.length == 2)
+			{
+				view.convoPick(parts[0], Integer.parseInt(parts[1]));
+			}
+		}
+		else if (action.startsWith("quest.done:"))
+		{
+			view.completeTalk(action.substring("quest.done:".length()));
 		}
 		else if (action.startsWith("quest:"))
 		{

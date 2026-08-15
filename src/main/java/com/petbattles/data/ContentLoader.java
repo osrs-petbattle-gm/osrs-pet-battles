@@ -7,6 +7,7 @@ import com.petbattles.engine.SpeciesDef;
 import com.petbattles.engine.TrainerDef;
 import com.petbattles.engine.TypeChart;
 import com.petbattles.item.EquipItemDef;
+import com.petbattles.quest.QuestDef;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -55,6 +56,13 @@ public class ContentLoader
 	public List<EquipItemDef> loadEquipItems()
 	{
 		return load("items.json", new TypeToken<List<EquipItemDef>>()
+		{
+		});
+	}
+
+	public List<QuestDef> loadQuests()
+	{
+		return load("quests.json", new TypeToken<List<QuestDef>>()
 		{
 		});
 	}

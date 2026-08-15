@@ -47,6 +47,7 @@ import com.petbattles.follower.HeldItemTracker;
 import com.petbattles.npc.NearTrainerTracker;
 import com.petbattles.persist.RosterManager;
 import com.petbattles.persist.RosterStore;
+import com.petbattles.quest.QuestManager;
 import com.petbattles.ui.BattleOverlay;
 import com.petbattles.ui.HubActions;
 import com.petbattles.ui.HubInputHandler;
@@ -128,6 +129,7 @@ public class PetBattlesPlugin extends Plugin
 	private BattleKeyListener keyListener;
 	private AtBankTracker atBankTracker;
 	private NearTrainerTracker nearTrainerTracker;
+	private QuestManager questManager;
 	private CollectionLogSync collectionLogSync;
 	private FollowerTracker followerTracker;
 	private HeldItemTracker heldItemTracker;
@@ -148,27 +150,22 @@ public class PetBattlesPlugin extends Plugin
 			}
 		});
 		roster.setTeamEditGate(atBankTracker::isAtBank);
-		nearTrainerTracker = new NearTrainerTracker(client, db, () ->
-		{
-			if (panel != null)
-			{
-				panel.refresh();
-			}
-		});
+		questManager = new QuestManager(db, roster);
+		nearTrainerTracker = new NearTrainerTracker(client, db, this::onNearTrainersChanged);
 		restOverlay = new RestOverlay();
-		session = new BattleSession(client, db, roster, config, () ->
+		session = new BattleSession(client, db, roster, questManager, config, () ->
 		{
 			if (panel != null)
 			{
 				panel.refresh();
 			}
 		});
-		overlay = new BattleOverlay(session, sprites, new PetChatheads(), new Portraits());
+		overlay = new BattleOverlay(session, db, sprites, new PetChatheads(), new Portraits());
 		inputHandler = new BattleInputHandler(session, overlay, clientThread);
 		keyListener = new BattleKeyListener(client, session, clientThread);
 
 		// Floating hub: the HubView drawn by a movable RuneLite overlay.
-		hubOverlay = new HubOverlay(db, roster, sprites, new Portraits(), session,
+		hubOverlay = new HubOverlay(db, roster, questManager, sprites, new Portraits(), session,
 			atBankTracker::isAtBank, nearTrainerTracker::getNearTrainerIds, tooltipManager);
 		HubActions hubActions = new HubActions(hubOverlay.getView(), db, roster,
 			this::startTrainerBattle, this::locateTrainer, this::examineItem, restOverlay::play);
@@ -179,7 +176,7 @@ public class PetBattlesPlugin extends Plugin
 		// Docked hub: the same HubView, embedded in the side panel as a Swing component. Its dispatch
 		// runs on the EDT, so the client-touching Locate/Examine callbacks are marshalled to the
 		// client thread here (Fight already marshals internally).
-		HubView panelView = new HubView(db, roster, sprites, new Portraits(), session,
+		HubView panelView = new HubView(db, roster, questManager, sprites, new Portraits(), session,
 			atBankTracker::isAtBank, nearTrainerTracker::getNearTrainerIds, tooltipManager,
 			PluginPanel.PANEL_WIDTH, true);
 		HubActions panelActions = new HubActions(panelView, db, roster, this::startTrainerBattle,
@@ -338,6 +335,18 @@ public class PetBattlesPlugin extends Plugin
 		if (PetBattlesConfig.GROUP.equals(e.getGroup()))
 		{
 			Leveling.setFullCurve(PetBattlesConfig.devFullXpCurve());
+			panel.refresh();
+		}
+	}
+
+	/**
+	 * The set of nearby trainers changed: refresh the panel so a quest chapter's conversation appears
+	 * (or its Challenge unlocks) once the player reaches the relevant NPC. Runs on the client thread.
+	 */
+	private void onNearTrainersChanged()
+	{
+		if (panel != null)
+		{
 			panel.refresh();
 		}
 	}

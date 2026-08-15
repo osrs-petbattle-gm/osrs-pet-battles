@@ -6,13 +6,15 @@ import com.petbattles.engine.PetInstance;
 import com.petbattles.engine.SpeciesDef;
 import com.petbattles.item.EquipItemDef;
 import com.petbattles.item.Item;
-import com.petbattles.quest.Quest;
+import com.petbattles.quest.QuestDef;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.BooleanSupplier;
 import lombok.extern.slf4j.Slf4j;
 
@@ -36,6 +38,18 @@ public class RosterManager
 	 *   (none yet -- bump to 1 and add a line here to trigger the first reset)
 	 */
 	public static final int PROGRESSION_RESET_VERSION = 0;
+
+	// The capstone story quest id and the step thresholds its key-item trophies (Sealed Envelope,
+	// Blue party hat) derive their ownership from -- see ownsItem. Kept here (not in QuestManager)
+	// because ownership is read straight off questProgress, mirroring the REMOTE_BATTLE_DEVICE case.
+	private static final String CAPSTONE_QUEST_ID = "series_of_fortunate_events";
+	private static final int CAPSTONE_ENVELOPE_STEP = 6;
+	private static final int CAPSTONE_COMPLETE_STEP = 8;
+
+	// The intro quest that hands over the Remote Battle Device. Completing it lets the player battle
+	// already-defeated trainers remotely (see canRemoteFight). The complete step is read from the
+	// quest content, so adding chapters can't desync this.
+	private static final String REMOTE_QUEST_ID = "wheres_the_remote";
 
 	private final PetDatabase db;
 	private final RosterStore store;
@@ -65,6 +79,10 @@ public class RosterManager
 		if (data.questProgress == null)
 		{
 			data.questProgress = new java.util.LinkedHashMap<>();
+		}
+		if (data.questFlags == null)
+		{
+			data.questFlags = new java.util.LinkedHashSet<>();
 		}
 		if (data.itemInventory == null)
 		{
@@ -388,7 +406,7 @@ public class RosterManager
 	public synchronized int getQuestStep(String questId)
 	{
 		Integer step = data.questProgress.get(questId);
-		return step == null ? Quest.STEP_START : step;
+		return step == null ? 0 : step;
 	}
 
 	/**
@@ -407,17 +425,48 @@ public class RosterManager
 	}
 
 	/**
-	 * Testing aid: wipe all quest progress back to not-started. This relocks anything a quest
-	 * granted (e.g. remote battles / the Remote Battle Device item), so a developer can re-run the
-	 * quest flow without clearing their whole roster. Returns the number of quest records cleared.
+	 * Whether a one-off / branch quest flag is set. Persistent.
+	 */
+	public synchronized boolean hasFlag(String flag)
+	{
+		return data.questFlags.contains(flag);
+	}
+
+	/**
+	 * Set a one-off / branch quest flag, persisting. Returns true if it wasn't already set.
+	 */
+	public synchronized boolean setFlag(String flag)
+	{
+		if (flag == null || !data.questFlags.add(flag))
+		{
+			return false;
+		}
+		save();
+		return true;
+	}
+
+	/**
+	 * A copy of the currently-set quest flags. Callers iterate outside the lock.
+	 */
+	public synchronized Set<String> getFlags()
+	{
+		return new LinkedHashSet<>(data.questFlags);
+	}
+
+	/**
+	 * Testing aid: wipe all quest progress and flags back to not-started. This relocks anything a
+	 * quest granted (e.g. remote battles / the Remote Battle Device item), so a developer can re-run
+	 * the quest flow without clearing their whole roster. Returns the number of quest records cleared.
 	 */
 	public synchronized int resetQuests()
 	{
 		int cleared = data.questProgress.size();
-		log.debug("resetQuests invoked; clearing {} quest record(s)", cleared);
-		if (cleared > 0)
+		log.debug("resetQuests invoked; clearing {} quest record(s) and {} flag(s)",
+			cleared, data.questFlags.size());
+		if (cleared > 0 || !data.questFlags.isEmpty())
 		{
 			data.questProgress.clear();
+			data.questFlags.clear();
 			save();
 		}
 		return cleared;
@@ -606,20 +655,41 @@ public class RosterManager
 		{
 			case REMOTE_BATTLE_DEVICE:
 				return isRemoteBattlesUnlocked();
+			case SEALED_ENVELOPE:
+				// Wrung from Ambassador Gimblewap in chapter 6 of the capstone.
+				return getQuestStep(CAPSTONE_QUEST_ID) >= CAPSTONE_ENVELOPE_STEP;
+			case BLUE_PARTY_HAT:
+				// The Wise Old Man's parting gift for finishing the capstone.
+				return getQuestStep(CAPSTONE_QUEST_ID) >= CAPSTONE_COMPLETE_STEP;
 			default:
 				return false;
 		}
 	}
 
 	/**
-	 * Whether remote battles are unlocked: either the dev "remote battles" toggle, or the player
-	 * has completed "Where's the remote?" (the Remote Battle Device from Professor Oddenstein). When unlocked,
-	 * any trainer can be fought from the panel without standing next to them in the world.
+	 * Whether the player owns the Remote Battle Device: either the dev "remote battles" toggle, or
+	 * they have finished "Where's the remote?" (Professor Oddenstein's device). Owning the device does
+	 * not by itself let you fight everyone remotely -- it must be calibrated against a trainer by
+	 * beating them in person first (see {@link #canRemoteFight(String)}).
 	 */
 	public synchronized boolean isRemoteBattlesUnlocked()
 	{
-		return PetBattlesConfig.devRemoteBattles()
-			|| getQuestStep(Quest.WHERES_THE_REMOTE.getId()) >= Quest.STEP_COMPLETE;
+		if (PetBattlesConfig.devRemoteBattles())
+		{
+			return true;
+		}
+		QuestDef q = db.quest(REMOTE_QUEST_ID);
+		return q != null && getQuestStep(REMOTE_QUEST_ID) >= q.completeStep();
+	}
+
+	/**
+	 * Whether this trainer can be re-fought remotely: the device is owned and the trainer has already
+	 * been beaten in person (the device only reaches trainers it has "calibrated" against). A first
+	 * fight always has to happen in the world, next to the trainer.
+	 */
+	public synchronized boolean canRemoteFight(String trainerId)
+	{
+		return isRemoteBattlesUnlocked() && isTrainerDefeated(trainerId);
 	}
 
 	/**

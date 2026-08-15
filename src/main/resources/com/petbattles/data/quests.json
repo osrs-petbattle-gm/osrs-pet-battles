@@ -1,0 +1,588 @@
+[
+  {
+    "id": "wheres_the_remote",
+    "title": "Where's the Remote?",
+    "chapters": [
+      {
+        "step": 0,
+        "title": "Start from Scratch",
+        "objective": "Ask around Lumbridge, see if anyone has heard of battling their pets.",
+        "nearTrainer": "hans",
+        "intro": [
+          {
+            "speaker": "hans",
+            "text": "Hello. Lovely day for it. Don't mind me - I'm only doing my rounds. Been doing them a while now."
+          },
+          {
+            "speaker": "player",
+            "text": "Have you seen anyone battling their pets?"
+          },
+          {
+            "speaker": "hans",
+            "text": "It's quite new from what I've heard. Lots of talk about it lately, though I don't partake myself."
+          },
+          {
+            "speaker": "player",
+            "text": "Know anyone willing to battle?"
+          },
+          {
+            "speaker": "hans",
+            "text": "I've heard there's a tinkerer out west. They say he battles trainers clear across the realm without ever leaving his chair."
+          },
+          {
+            "speaker": "player",
+            "text": "I'll go check it out, thanks!"
+          }
+        ]
+      },
+      {
+        "step": 1,
+        "title": "The Absent-Minded Inventor",
+        "objective": "Seek out the reclusive inventor west of Lumbridge.",
+        "battleTrainer": "professor_oddenstein",
+        "intro": [
+          {
+            "speaker": "professor_oddenstein",
+            "text": "Careful in here, there's a lot of dangerous equipment about. And don't touch the big lever. Or do, I suppose. It's your afternoon."
+          },
+          {
+            "speaker": "player",
+            "text": "I'm looking for whoever's been battling trainers from inside a tower."
+          },
+          {
+            "speaker": "professor_oddenstein",
+            "text": "Ah! That'll be me. And that'll be this - my Remote Battle Device. Finest work I've ever done."
+          },
+          {
+            "choice": [
+              {
+                "label": "So why do you look so glum?",
+                "lines": [
+                  {
+                    "speaker": "professor_oddenstein",
+                    "text": "Because I keep losing, that's why. Marvellous machine. Hopeless operator."
+                  },
+                  {
+                    "speaker": "professor_oddenstein",
+                    "text": "Fifty-one bouts. I've won two, and one of those was because the other fellow's cat fell asleep."
+                  }
+                ],
+                "exit": false
+              },
+              {
+                "label": "Has it ever gone wrong?",
+                "lines": [
+                  {
+                    "speaker": "professor_oddenstein",
+                    "text": "Umm... define wrong."
+                  },
+                  {
+                    "speaker": "professor_oddenstein",
+                    "text": "It has never once misfired. Try telling the village that. They've decided anything they can't explain must be the man in the tower with the machine."
+                  }
+                ],
+                "exit": false
+              },
+              {
+                "label": "Could I have a go with it?",
+                "lines": [
+                  {
+                    "speaker": "professor_oddenstein",
+                    "text": "Perhaps. Perhaps! If you can prove you know one end of a pet battle from the other."
+                  }
+                ],
+                "exit": true
+              }
+            ]
+          },
+          {
+            "speaker": "professor_oddenstein",
+            "text": "Humour an old man - a quick bout, right here, you and me. Do try not to knock the pressure gauge."
+          }
+        ],
+        "rewardConversation": [
+          {
+            "speaker": "professor_oddenstein",
+            "text": "Splendid! Far better than I ever manage. Here, you have it. The Device, I mean. I'm retiring from the field."
+          },
+          {
+            "speaker": "player",
+            "text": "I couldn't possibly-"
+          },
+          {
+            "speaker": "professor_oddenstein",
+            "text": "Nonsense, you'd be doing me a kindness. I'd only keep losing with it. Oh - one thing. Small thing."
+          },
+          {
+            "speaker": "player",
+            "text": "There's always a small thing."
+          },
+          {
+            "speaker": "professor_oddenstein",
+            "text": "It can only reach a trainer it's already met. You beat them in person the once, it learns them, and after that you can call on them from anywhere. A calibration, if you like."
+          },
+          {
+            "speaker": "professor_oddenstein",
+            "text": "Oh. And since you'll hear it in the village anyway: pets have been going missing."
+          },
+          {
+            "speaker": "player",
+            "text": "And they think it's the Device."
+          },
+          {
+            "speaker": "professor_oddenstein",
+            "text": "A machine that reaches clear across the realm? Of course they do. I'd think it myself, if it weren't mine."
+          },
+          {
+            "speaker": "professor_oddenstein",
+            "text": "I'm not asking you to do anything about it, mind. I'm only saying you'll be carrying my machine about now, and people do draw their own conclusions."
+          }
+        ],
+        "reward": {
+          "keyItem": "remote_battle_device",
+          "coins": 20
+        }
+      }
+    ]
+  },
+  {
+    "id": "series_of_fortunate_events",
+    "title": "A Series of Fortunate Events",
+    "requires": "wheres_the_remote",
+    "chapters": [
+      {
+        "step": 0,
+        "title": "Missing Companions",
+        "intro": [
+          {
+            "text": "Pets are vanishing across Gielinor - and whatever is behind it, it isn't the professor."
+          }
+        ]
+      },
+      {
+        "step": 1,
+        "title": "Draynor Village",
+        "objective": "I should ask the people Draynor if they've seen anything unusual.",
+        "battleTrainer": "draynor_guard",
+        "intro": [
+          {
+            "speaker": "draynor_guard",
+            "text": "Watch yourself! Fresh paint over here!!"
+          },
+          {
+            "choice": [
+              {
+                "label": "That mortar looks new, recently rebuilt?",
+                "lines": [
+                  {
+                    "speaker": "draynor_guard",
+                    "text": "What's it to you, adventurer?"
+                  }
+                ],
+                "exit": false
+              },
+              {
+                "label": "Has anyone lost any pets around here?",
+                "lines": [
+                  {
+                    "speaker": "draynor_guard",
+                    "text": "Nothing was taken out of that vault. Not one pet. Not on my watch!"
+                  }
+                ],
+                "exit": false
+              },
+              {
+                "label": "Who takes over when you're not here?",
+                "exit": true
+              }
+            ]
+          },
+          {
+            "speaker": "draynor_guard",
+            "text": "Right, that's enough questions from you. If you won't shove off, we'll settle it the hard way!"
+          }
+        ],
+        "rewardConversation": [
+          {
+            "speaker": "draynor_guard",
+            "text": "Beat me fair, I'll give you that."
+          },
+          {
+            "speaker": "player",
+            "text": "What's really happening around here?"
+          },
+          {
+            "speaker": "draynor_guard",
+            "text": "Every night something strange happens, I wake in my own bed with no memory of how I got there."
+          },
+          {
+            "speaker": "player",
+            "text": "Pets are vanishing all over Gielinor, and the rumors are it's Oddenstein."
+          },
+          {
+            "speaker": "draynor_guard",
+            "text": "Listen, all I know is that every one of them comes home! Probita insures the lot, free of charge. No harm done, so there's nothing to report."
+          }
+        ]
+      },
+      {
+        "step": 2,
+        "title": "Insurance Lead",
+        "objective": "The guard mentioned Probita insures every pet, somewhere in East Ardougne.",
+        "nearTrainer": "probita",
+        "intro": [
+          {
+            "speaker": "probita",
+            "text": "Welcome to the pet insurance bureau. How can I help you?"
+          },
+          {
+            "speaker": "player",
+            "text": "I'm asking about stolen pets."
+          },
+          {
+            "speaker": "probita",
+            "text": "A stolen companion? That's rediculous, you can't theive pets! Anyway, every pet is insured the moment you find it, automatically, and reclaiming one costs you nothing at all. Free!"
+          },
+          {
+            "choice": [
+              {
+                "label": "Free? Who pays for it, then?",
+                "lines": [
+                  {
+                    "speaker": "probita",
+                    "text": "The service is subsidised by the Crown, through Ardougne's taxes."
+                  }
+                ],
+                "exit": false
+              },
+              {
+                "label": "Doesn't anyone abuse that?",
+                "lines": [
+                  {
+                    "speaker": "probita",
+                    "text": "Abuse it? Goodness. I don't think anyone's ever tried."
+                  }
+                ],
+                "exit": false
+              },
+              {
+                "label": "How many have you handed back?",
+                "lines": [
+                  {
+                    "speaker": "probita",
+                    "text": "This month? Let's have a look... ooh. More than last month!"
+                  },
+                  {
+                    "speaker": "probita",
+                    "text": "Looking at the records, it's the same few names bringing them in. Very civic-minded of them, don't you think?"
+                  }
+                ],
+                "exit": false
+              },
+              {
+                "label": "Thanks. I need to think.",
+                "lines": [
+                  {
+                    "speaker": "probita",
+                    "text": "Of course! Do come back if you lose anything. Or find anything!"
+                  }
+                ],
+                "exit": true
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "step": 3,
+        "title": "Rogues' Errand",
+        "objective": "A scheme like this needs a master thief. The Rogues' Den would know their own.",
+        "battleTrainer": "martin_thwait",
+        "intro": [
+          {
+            "speaker": "martin_thwait",
+            "text": "What do you want?"
+          },
+          {
+            "speaker": "player",
+            "text": "I'm looking for whoever's stealing people's pets!"
+          },
+          {
+            "speaker": "martin_thwait",
+            "text": "And you're looking for a snitch? Go pound sand."
+          },
+          {
+            "choice": [
+              {
+                "label": "I want to understand how it works",
+                "lines": [
+                  {
+                    "speaker": "martin_thwait",
+                    "text": "It's obvious isn't it? Nothing's stolen if it all comes home."
+                  }
+                ],
+                "exit": false
+              },
+              {
+                "label": "Who taught you the trade?",
+                "lines": [
+                  {
+                    "speaker": "martin_thwait",
+                    "text": "You're not accusing me, are you? You're further from finding this out than I thought!"
+                  }
+                ],
+                "exit": false
+              },
+              {
+                "label": "Fine. Let's do this your way.",
+                "lines": [
+                  {
+                    "speaker": "martin_thwait",
+                    "text": "That's the spirit. Nothing personal, mate."
+                  }
+                ],
+                "exit": true
+              }
+            ]
+          }
+        ],
+        "rewardConversation": [
+          {
+            "speaker": "martin_thwait",
+            "text": "...Not bad. Not bad at all. Alright, you've earned a straight answer, and I don't hand many of those out."
+          },
+          {
+            "speaker": "martin_thwait",
+            "text": "They're stealing the pets out of the banks and using the recovery system for the finders fee. A fee subsidised by the Crown. Ledger balances. No \"crime\"."
+          },
+          {
+            "speaker": "player",
+            "text": "So you think someone is cooking the Crown's books?"
+          },
+          {
+            "speaker": "martin_thwait",
+            "text": "Now you're thinking. That coin doesn't come out of a purse under a counter, mate - it comes off the Crown's subsidy ledger. Someone inside Ardougne has to be signing that line."
+          },
+          {
+            "speaker": "martin_thwait",
+            "text": "Here, take this - it might help you with what lies ahead."
+          }
+        ],
+        "reward": {
+          "item": "amulet_of_the_rogue",
+          "coins": 60
+        }
+      },
+      {
+        "step": 4,
+        "title": "Audience with the King",
+        "intro": [
+          {
+            "speaker": "player",
+            "text": "I regret to inform you that you've been found out! Only someone with access to the banks AND the ledger would be able to steal pets right from under people's noses!"
+          },
+          {
+            "speaker": "king_of_ardougne",
+            "text": "I'm sorry, what are you talking about?"
+          },
+          {
+            "speaker": "player",
+            "text": "The jig is up old man! You've been caught!"
+          },
+          {
+            "speaker": "king_of_ardougne",
+            "text": "I think you must be confused. I'm only the face of the kingdom, I do not bother myself with the financial matters."
+          },
+          {
+            "choice": [
+              {
+                "label": "Then who keeps the books?",
+                "lines": [
+                  {
+                    "speaker": "king_of_ardougne",
+                    "text": "My accountant. Ambassador Gimblewap - a gnome with a monocle and a talent for small print. If coin went astray, it went astray through him."
+                  }
+                ],
+                "exit": false
+              },
+              {
+                "label": "I'm sorry, I better get going...",
+                "exit": true
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "step": 5,
+        "title": "The Ambassador's Ledger",
+        "objective": "The King's books belong to Ambassador Gimblewap. Find the gnome bookkeeper.",
+        "battleTrainer": "ambassador_gimblewap",
+        "intro": [
+          {
+            "speaker": "ambassador_gimblewap",
+            "text": "Looking for something?"
+          },
+          {
+            "speaker": "player",
+            "text": "You. The mastermind behind it all!"
+          },
+          {
+            "speaker": "ambassador_gimblewap",
+            "text": "Oh you must be the adventurer that accused the king of pet theft. Not the brightest one I presume."
+          },
+          {
+            "speaker": "player",
+            "text": "Those sound like fighting words..."
+          },
+          {
+            "speaker": "ambassador_gimblewap",
+            "text": "HA! Very well. Let it never be said a gnome refused a challenge."
+          }
+        ],
+        "rewardConversation": [
+          {
+            "speaker": "ambassador_gimblewap",
+            "text": "Fine. FINE. I adjusted a subsidy line. One line. It was beautifully done and nobody was ever going to notice."
+          },
+          {
+            "speaker": "player",
+            "text": "You cooked a kingdom's books."
+          },
+          {
+            "speaker": "ambassador_gimblewap",
+            "text": "I balanced a kingdom's books. There is a difference and it is precisely one column wide."
+          },
+          {
+            "speaker": "player",
+            "text": "Who told you to do it?"
+          },
+          {
+            "speaker": "ambassador_gimblewap",
+            "text": "I have no idea! Do you imagine I asked? The instructions arrived sealed, the payment arrived sealed, and I am not paid to be curious."
+          },
+          {
+            "speaker": "ambassador_gimblewap",
+            "text": "Take the wretched thing if you don't believe me. Every letter he ever sent. Same elegant old hand, same ridiculous signature."
+          },
+          {
+            "speaker": "ambassador_gimblewap",
+            "text": "Now go away. I have a column to re-balance."
+          }
+        ],
+        "reward": {
+          "keyItem": "sealed_envelope",
+          "coins": 100
+        }
+      },
+      {
+        "step": 6,
+        "title": "Full Circle",
+        "objective": "The envelope reveals a signature: 'White Beard.' That isn't a name, it's a description - and only one person links back to Draynor.",
+        "battleTrainer": "wise_old_man",
+        "intro": [
+          {
+            "speaker": "wise_old_man",
+            "text": "Ah. There you are. Do come in and sit down, you've had a long walk of it. ...No? Standing, then. As you like."
+          },
+          {
+            "choice": [
+              {
+                "label": "It was you the whole time.",
+                "lines": [
+                  {
+                    "speaker": "wise_old_man",
+                    "text": "Guilty, and rather proud, if I'm honest. Who else knows this bank's every brick? I took the place apart once before, you know, back when I was young enough to enjoy it."
+                  }
+                ],
+                "exit": false
+              },
+              {
+                "label": "Why do it?",
+                "lines": [
+                  {
+                    "speaker": "wise_old_man",
+                    "text": "A pension, dear friend. They don't stretch the way they used to."
+                  },
+                  {
+                    "speaker": "wise_old_man",
+                    "text": "I only wanted a better kettle. Then the kettle wanted a new stove, and the stove wanted a new hearth, and by then I had rather a good system running and it seemed a waste to stop."
+                  }
+                ],
+                "exit": false
+              },
+              {
+                "label": "Why sign yourself 'White Beard'?",
+                "lines": [
+                  {
+                    "speaker": "wise_old_man",
+                    "text": "Because a thing done well ought to be signed. And because I was curious how long it would take somebody clever to come and ask me that."
+                  },
+                  {
+                    "speaker": "wise_old_man",
+                    "text": "I have been retired a very long time. Nobody has asked me anything interesting in most of it."
+                  }
+                ],
+                "exit": false
+              },
+              {
+                "label": "One last game, then.",
+                "exit": true
+              }
+            ]
+          },
+          {
+            "speaker": "wise_old_man",
+            "text": "One last game. For old times' sake. Do try to make it interesting."
+          }
+        ],
+        "rewardConversation": [
+          {
+            "speaker": "wise_old_man",
+            "text": "Ha! Beaten fair and square - marvellous. It has been a very long time since anybody managed that."
+          },
+          {
+            "speaker": "player",
+            "text": "You stole them to sell them back to their own insurance."
+          },
+          {
+            "speaker": "wise_old_man",
+            "text": "Stole is a strong word, dear friend. Every pet came home. Nobody ended up a copper poorer, and the Crown has more coin than it knows what to do with."
+          },
+          {
+            "speaker": "player",
+            "text": "Except the professor. A harmless old man, and you let the whole village turn on him."
+          },
+          {
+            "speaker": "wise_old_man",
+            "text": "Ah."
+          },
+          {
+            "speaker": "wise_old_man",
+            "text": "Yes. That was the clever part, and I shan't pretend it was an accident. A machine that reaches clear across the realm, appearing the very season pets began to wander off? I never had to say a word. I only had to let people finish the thought themselves."
+          },
+          {
+            "speaker": "wise_old_man",
+            "text": "...When you put it quite so plainly it does sound rather bad, doesn't it."
+          },
+          {
+            "speaker": "wise_old_man",
+            "text": "Oh, very well. I shall repay the Crown, write to the village about the professor, and hang up the lockpicks. Again."
+          },
+          {
+            "speaker": "wise_old_man",
+            "text": "Here. Take this - I lifted it from a party in Falador a very long time ago, when I was quicker and a good deal worse at it. It's the only thing I ever took that I couldn't bring myself to give back."
+          },
+          {
+            "speaker": "wise_old_man",
+            "text": "Wear it better than I did."
+          }
+        ],
+        "reward": {
+          "keyItem": "blue_party_hat",
+          "coins": 500
+        }
+      }
+    ]
+  }
+]

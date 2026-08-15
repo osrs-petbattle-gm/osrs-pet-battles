@@ -17,7 +17,21 @@ public enum Item
 	 */
 	REMOTE_BATTLE_DEVICE("remote_battle_device", "Remote Battle Device",
 		"Professor Oddenstein's contraption. Challenge any trainer straight from the panel, "
-			+ "without standing next to them in the world.");
+			+ "without standing next to them in the world."),
+
+	/**
+	 * The clue wrung from Ambassador Gimblewap in "A Series of Fortunate Events" — instructions to
+	 * cook Ardougne's books, signed in an elegant hand: "White Beard." Owned once that chapter is done.
+	 */
+	SEALED_ENVELOPE("sealed_envelope", "Sealed Envelope",
+		"A letter cooking Ardougne's tax books, signed in an elegant hand: \"White Beard.\""),
+
+	/**
+	 * The reformed Wise Old Man's parting gift for finishing "A Series of Fortunate Events" — the one
+	 * cosmetic no coin can buy. Owned once the capstone is complete.
+	 */
+	BLUE_PARTY_HAT("blue_party_hat", "Blue party hat",
+		"An old thief's treasure, pressed into your hands. Prestige you fought for, not bought.");
 
 	private final String id;
 	private final String name;
