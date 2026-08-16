@@ -4,7 +4,7 @@ A RuneLite plugin that turns your Old School RuneScape collection log pets into 
 turn-based battle team. Collect pets in-game to unlock them, level them up by
 playing the game with them out, and pit them against themed AI trainers.
 
-![A Pet Battles fight drawn over the OSRS client — an Olmlet faces the Wise Old Man's Heron.](docs/plans/battle-example.png)
+![A Pet Battles fight drawn over the OSRS client — Beef, a Melee/Demon pet, takes on the Wise Old Man's Rocky.](docs/plans/battle-example.png)
 
 > **[Browse all trainers and the full type chart →](https://osrs-petbattle-gm.github.io/osrs-pet-battles/)**
 > A standalone reference page listing every trainer, their party, and the type-effectiveness
