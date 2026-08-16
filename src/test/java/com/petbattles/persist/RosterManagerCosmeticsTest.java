@@ -18,7 +18,8 @@ import static org.junit.Assert.assertTrue;
  * Cosmetic (HEAD/FACE) equipping on {@link RosterManager}. The behaviour that matters here and
  * differs from held items: cosmetics are a wardrobe, not stock — equipping never consumes one, so
  * the whole team can wear the same hat. Uses the real bundled {@code items.json}: {@code wizard_hat}
- * and {@code blue_party_hat} (HEAD), {@code black_sunglasses} (FACE), {@code stick} (HELD).
+ * and {@code blue_party_hat} (HEAD), {@code stick} (HELD). Content defines no FACE item at present,
+ * so the tests that need one supply their own — see {@link #loadedManagerWithFaceCosmetic()}.
  */
 public class RosterManagerCosmeticsTest
 {
@@ -70,8 +71,9 @@ public class RosterManagerCosmeticsTest
 		Gson gson = new Gson();
 		ContentLoader loader = new ContentLoader(gson);
 		List<EquipItemDef> items = new ArrayList<>(loader.loadEquipItems());
+		// No sprite: nothing here renders, and naming a real PNG would imply otherwise.
 		items.add(gson.fromJson("{\"id\":\"" + FACE_ITEM + "\",\"name\":\"Test goggles\","
-			+ "\"slot\":\"FACE\",\"sprite\":\"black_sunglasses\",\"price\":10}", EquipItemDef.class));
+			+ "\"slot\":\"FACE\",\"price\":10}", EquipItemDef.class));
 		return loadedManager(new PetDatabase(loader.loadSpecies(), loader.loadMoves(),
 			loader.loadTrainers(), items, loader.loadQuests(), loader.loadTypeChart()));
 	}
