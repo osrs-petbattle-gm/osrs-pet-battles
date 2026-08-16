@@ -110,8 +110,54 @@
   .swatch { width: 16px; height: 16px; border-radius: 3px; border: 1px solid var(--border); display: inline-block; }
 
   /* Trainers */
-  .group-title { font-size: 1.15rem; color: var(--gold-dim); margin: 34px 0 14px; display: flex; align-items: baseline; gap: 10px; }
-  .group-title .count { font-size: 0.8rem; color: var(--ink-dim); font-weight: 400; }
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
+
+  /* Filter bar. Sticks to the top so the controls stay reachable while scrolling 46 cards. */
+  .toolbar {
+    position: sticky; top: 0; z-index: 5;
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+    margin: 0 0 6px; padding: 12px 0;
+    background: linear-gradient(var(--bg) 82%, rgba(15,13,10,0));
+  }
+  .toolbar .search { position: relative; flex: 1 1 240px; min-width: 200px; }
+  .toolbar input[type="search"] {
+    width: 100%; padding: 9px 12px 9px 34px;
+    background: var(--panel); color: var(--ink);
+    border: 1px solid var(--border); border-radius: 8px;
+    font: inherit; font-size: 0.92rem;
+  }
+  .toolbar input[type="search"]::placeholder { color: var(--ink-dim); }
+  .toolbar input[type="search"]:focus-visible {
+    outline: none; border-color: var(--gold-dim); box-shadow: 0 0 0 2px rgba(229,181,103,0.18);
+  }
+  .toolbar .search::before {
+    content: "⌕"; position: absolute; left: 12px; top: 50%; transform: translateY(-52%);
+    color: var(--ink-dim); font-size: 1.15rem; pointer-events: none;
+  }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip {
+    background: var(--panel); color: var(--ink-dim);
+    border: 1px solid var(--border); border-radius: 999px;
+    padding: 7px 13px; font: inherit; font-size: 0.8rem; cursor: pointer;
+  }
+  .chip:hover { color: var(--ink); border-color: var(--gold-dim); }
+  .chip[aria-pressed="true"] { background: var(--panel-2); color: var(--gold); border-color: var(--gold-dim); }
+  .chip[aria-pressed="true"].easy   { color: #7ac77a; border-color: var(--easy); }
+  .chip[aria-pressed="true"].medium { color: #e0b25a; border-color: var(--medium); }
+  .chip[aria-pressed="true"].hard   { color: #de8478; border-color: var(--hard); }
+  .sortby { display: inline-flex; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--ink-dim); }
+  .sortby select {
+    background: var(--panel); color: var(--ink);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 10px; font: inherit; font-size: 0.82rem; cursor: pointer;
+  }
+  .sortby select:focus-visible { outline: none; border-color: var(--gold-dim); }
+  .tally { color: var(--ink-dim); font-size: 0.82rem; margin: 0 0 10px; min-height: 1.2em; }
+  .tally b { color: var(--gold-dim); font-weight: 600; }
+
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
   .card {
     background: linear-gradient(180deg, var(--panel-2), var(--panel));
@@ -123,12 +169,17 @@
   .card.easy   { border-top-color: var(--easy); }
   .card.medium { border-top-color: var(--medium); }
   .card.hard   { border-top-color: var(--hard); }
+  .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
   .card h4 { margin: 0; font-size: 1.05rem; color: var(--ink); }
+  .card h4 mark { background: rgba(229,181,103,0.28); color: var(--gold); border-radius: 3px; }
   .card .theme { color: var(--ink-dim); font-size: 0.82rem; margin: 3px 0 10px; font-style: italic; }
   .diff {
     font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.5px;
-    padding: 2px 8px; border-radius: 999px; font-weight: 700; float: right;
+    padding: 2px 8px; border-radius: 999px; font-weight: 700; flex: none;
   }
+  .no-results { color: var(--ink-dim); background: var(--panel); border: 1px dashed var(--border);
+    border-radius: 10px; padding: 26px; text-align: center; margin-top: 24px; }
+  .no-results b { color: var(--ink); }
   .diff.easy { background: rgba(76,154,76,0.18); color: #7ac77a; }
   .diff.medium { background: rgba(200,145,47,0.18); color: #e0b25a; }
   .diff.hard { background: rgba(176,74,63,0.2); color: #de8478; }
@@ -182,7 +233,30 @@
     <p class="lead">Every trainer runs a themed party of real OSRS pets. Beat the story ladder from
     Party Pete to the Wise Old Man, catch random-event challengers when they appear, or hunt down
     all 23 skillcape masters for the toughest matchups.</p>
-    <div id="trainer-groups"></div>
+
+    <div class="toolbar">
+      <div class="search" role="search">
+        <label class="sr-only" for="t-search">Search trainers</label>
+        <input id="t-search" type="search" autocomplete="off" spellcheck="false"
+               placeholder="Search a trainer, theme or pet…">
+      </div>
+      <div class="chips" role="group" aria-label="Filter by difficulty">
+        <button type="button" class="chip" data-diff="ALL" aria-pressed="true">All</button>
+        <button type="button" class="chip easy" data-diff="EASY" aria-pressed="false">Easy</button>
+        <button type="button" class="chip medium" data-diff="MEDIUM" aria-pressed="false">Medium</button>
+        <button type="button" class="chip hard" data-diff="HARD" aria-pressed="false">Hard</button>
+      </div>
+      <label class="sortby">Sort
+        <select id="t-sort">
+          <option value="easiest" selected>Difficulty (easy first)</option>
+          <option value="hardest">Difficulty (hard first)</option>
+          <option value="name">Name (A–Z)</option>
+        </select>
+      </label>
+    </div>
+    <p class="tally" id="t-tally" aria-live="polite"></p>
+
+    <div id="trainer-list"></div>
   </section>
 
   <footer>
@@ -239,54 +313,101 @@ const titleCase = s => s.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase(
 // ---- Trainers ----
 (function buildTrainers() {
   document.getElementById("b-trainers").textContent = TRAINERS.length;
-  const groupsEl = document.getElementById("trainer-groups");
+  const listEl = document.getElementById("trainer-list");
+  const searchEl = document.getElementById("t-search");
+  const sortEl = document.getElementById("t-sort");
+  const tallyEl = document.getElementById("t-tally");
+  const chips = Array.from(document.querySelectorAll(".chip"));
 
-  const groupOf = tr => {
-    if (/cape master/i.test(tr.theme)) return "Skillcape masters";
-    if (tr.randomEvent) return "Random-event challengers";
-    if (tr.id === "man" || tr.id === "guard") return "World trainers";
-    return "Story ladder";
+  const DIFF_RANK = { EASY: 0, MEDIUM: 1, HARD: 2 };
+  // The difficulty sorts compare difficulty and nothing else. Array.sort is stable, so trainers of
+  // equal difficulty keep the order the content declares them in — which inside the easy band means
+  // the ladder still opens on Party Pete rather than on whoever happens to be alphabetically first.
+  const SORTS = {
+    easiest: (a, b) => DIFF_RANK[a.difficulty] - DIFF_RANK[b.difficulty],
+    hardest: (a, b) => DIFF_RANK[b.difficulty] - DIFF_RANK[a.difficulty],
+    name: (a, b) => a.name.localeCompare(b.name)
   };
-  const ORDER = ["Story ladder", "Random-event challengers", "World trainers", "Skillcape masters"];
-  const BLURB = {
-    "Story ladder": "The core difficulty ladder — start at Party Pete and climb to the Wise Old Man.",
-    "Random-event challengers": "Appear on the Random Battle cadence, echoing OSRS's random-event rhythm.",
-    "World trainers": "Everyday NPCs you'll pass in any city.",
-    "Skillcape masters": "One master per skill — the deepest bench of matchups in the game."
+
+  const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  // Highlight the matched run so it's obvious why a card survived the filter.
+  const mark = (text, query) => {
+    if (!query) return esc(text);
+    const at = text.toLowerCase().indexOf(query);
+    if (at < 0) return esc(text);
+    return esc(text.slice(0, at)) + "<mark>" + esc(text.slice(at, at + query.length))
+      + "</mark>" + esc(text.slice(at + query.length));
   };
-  const diffRank = { EASY: 0, MEDIUM: 1, HARD: 2 };
 
-  const groups = {};
-  TRAINERS.forEach(tr => { (groups[groupOf(tr)] ||= []).push(tr); });
+  // Searchable text per trainer: the name, the theme line, and the pets they field — so "rocky"
+  // finds everyone who brings one, not just a trainer called Rocky.
+  const haystack = new Map(TRAINERS.map(tr => [
+    tr.id,
+    [tr.name, tr.theme, ...tr.party.map(p => titleCase(p.species))].join(" ").toLowerCase()
+  ]));
 
-  ORDER.forEach(name => {
-    const list = groups[name];
-    if (!list) return;
-    list.sort((a, b) => diffRank[a.difficulty] - diffRank[b.difficulty]);
+  let difficulty = "ALL";
 
-    const h = document.createElement("h3");
-    h.className = "group-title";
-    h.innerHTML = name + ' <span class="count">' + list.length + ' · ' + BLURB[name] + '</span>';
-    groupsEl.appendChild(h);
+  function render() {
+    const query = searchEl.value.trim().toLowerCase();
+    const sort = SORTS[sortEl.value];
+    const matches = TRAINERS.filter(tr =>
+      (difficulty === "ALL" || tr.difficulty === difficulty)
+      && (!query || haystack.get(tr.id).includes(query)));
+
+    listEl.textContent = "";
+    if (!matches.length) {
+      const none = document.createElement("p");
+      none.className = "no-results";
+      none.innerHTML = query
+        ? "No trainer matches <b>" + esc(searchEl.value.trim()) + "</b>" +
+          (difficulty === "ALL" ? "." : " at this difficulty.")
+        : "No trainer at this difficulty.";
+      listEl.appendChild(none);
+      tallyEl.textContent = "No matches.";
+      return;
+    }
+
+    matches.sort(sort);
 
     const grid = document.createElement("div");
     grid.className = "grid";
-    list.forEach(tr => {
+    matches.forEach(tr => {
       const d = tr.difficulty.toLowerCase();
       const card = document.createElement("div");
       card.className = "card " + d;
       const party = tr.party.map(p =>
-        '<li><span>' + titleCase(p.species) + '</span><span class="lvl">Lv ' + p.level + '</span></li>'
+        '<li><span>' + mark(titleCase(p.species), query) + '</span>' +
+        '<span class="lvl">Lv ' + p.level + "</span></li>"
       ).join("");
       card.innerHTML =
-        '<span class="diff ' + d + '">' + tr.difficulty + '</span>' +
-        '<h4>' + tr.name + '</h4>' +
-        '<p class="theme">' + tr.theme + '</p>' +
-        '<ul class="party">' + party + '</ul>';
+        '<div class="card-head"><h4>' + mark(tr.name, query) + "</h4>" +
+        '<span class="diff ' + d + '">' + tr.difficulty + "</span></div>" +
+        '<p class="theme">' + mark(tr.theme, query) + "</p>" +
+        '<ul class="party">' + party + "</ul>";
       grid.appendChild(card);
     });
-    groupsEl.appendChild(grid);
+    listEl.appendChild(grid);
+
+    const filtered = query || difficulty !== "ALL";
+    tallyEl.innerHTML = filtered
+      ? "Showing <b>" + matches.length + "</b> of " + TRAINERS.length + " trainers."
+      : "<b>" + TRAINERS.length + "</b> trainers.";
+  }
+
+  searchEl.addEventListener("input", render);
+  sortEl.addEventListener("change", render);
+  chips.forEach(chip => chip.addEventListener("click", () => {
+    difficulty = chip.dataset.diff;
+    chips.forEach(c => c.setAttribute("aria-pressed", String(c === chip)));
+    render();
+  }));
+  // Escape clears the box from anywhere in it, like the in-game search.
+  searchEl.addEventListener("keydown", e => {
+    if (e.key === "Escape" && searchEl.value) { searchEl.value = ""; render(); }
   });
+
+  render();
 })();
 </script>
 </body>
