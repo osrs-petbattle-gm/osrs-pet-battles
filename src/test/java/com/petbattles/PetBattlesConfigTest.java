@@ -38,5 +38,7 @@ public class PetBattlesConfigTest
 		assertFalse(config.autoAdvanceBattleText());
 		// XP chat messages default on
 		org.junit.Assert.assertTrue(config.showXpMessages());
+		// The hub overlay is opt-out, not opt-in: existing players must see no change.
+		org.junit.Assert.assertTrue(config.showHubOverlay());
 	}
 }

@@ -78,6 +78,18 @@ public interface PetBattlesConfig extends Config
 		return 100;
 	}
 
+	@ConfigItem(
+		keyName = "showHubOverlay",
+		name = "Show hub overlay",
+		description = "Draw the pet hub over the game screen. With this off the side panel is the way in,"
+			+ " and its tabs light up when a trainer or quest NPC is nearby",
+		position = 6
+	)
+	default boolean showHubOverlay()
+	{
+		return true;
+	}
+
 	// --- Developer-only affordances (gated on DEV; NOT config items) ---
 	// These are STATIC on purpose: RuneLite proxies the Config interface and returns null for any
 	// instance method that lacks @ConfigItem, so an instance `default` here would NPE at runtime.

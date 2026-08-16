@@ -3,6 +3,8 @@ package com.petbattles.persist;
 import com.google.gson.Gson;
 import com.petbattles.data.ContentLoader;
 import com.petbattles.data.PetDatabase;
+import java.util.Arrays;
+import java.util.Collections;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -13,6 +15,10 @@ import static org.junit.Assert.assertTrue;
  * The equip-item inventory and held-item equipping on {@link RosterManager}. Uses the real bundled
  * {@code items.json} plus an in-memory {@link RosterStore}. Ids: {@code stick} (HELD),
  * {@code wizard_hat} (HEAD cosmetic).
+ *
+ * <p>The rule under test: the inventory counts every copy owned, worn or not, and an item may be
+ * held by at most that many pets. Equipping consumes nothing — see
+ * {@link RosterManagerEquipRepairTest} for what happens to a save that breaks the rule.
  */
 public class RosterManagerItemsTest
 {
@@ -129,54 +135,97 @@ public class RosterManagerItemsTest
 	}
 
 	@Test
-	public void equipConsumesOneUnitFromStock()
+	public void equippingConsumesNothingAndTheCountStaysTheTotalOwned()
 	{
 		RosterManager roster = loadedManager();
 		roster.unlock(SPECIES);
 		roster.grantItem("stick", 2);
 		assertTrue(roster.setHeldItem(SPECIES, "stick"));
-		assertEquals("equipping consumes one unit", 1, roster.itemCount("stick"));
+		// The inventory is the total owned, worn copies included — nothing is decremented.
+		assertEquals(2, roster.itemCount("stick"));
+		assertEquals(2, roster.itemCapacity("stick"));
+		assertEquals(Collections.singletonList(SPECIES), roster.itemWearers("stick"));
 	}
 
 	@Test
-	public void cannotEquipTheSameUnitOnTwoPets()
+	public void oneCopyIsHeldByOnePetAndEquippingItAgainMovesIt()
 	{
 		RosterManager roster = loadedManager();
 		roster.unlock(SPECIES);
 		roster.unlock(SPECIES2);
 		roster.grantItem("stick", 1);
 		assertTrue(roster.setHeldItem(SPECIES, "stick"));
-		assertEquals(0, roster.itemCount("stick"));
-		// The single unit is now worn; there is no stock left for the second pet.
-		assertFalse(roster.setHeldItem(SPECIES2, "stick"));
-		assertNull(roster.getPet(SPECIES2));
+
+		// One stick, so arming the second pet takes it off the first rather than cloning the bonus.
+		assertTrue(roster.setHeldItem(SPECIES2, "stick"));
+		assertNull(roster.getPet(SPECIES).getHeldItemId());
+		assertEquals("stick", roster.getPet(SPECIES2).getHeldItemId());
+		assertEquals(Collections.singletonList(SPECIES2), roster.itemWearers("stick"));
+		assertEquals(1, roster.itemCount("stick"));
 	}
 
 	@Test
-	public void unequipReturnsTheUnitToStock()
+	public void ownedQuantityIsHowManyPetsCanHoldIt()
 	{
 		RosterManager roster = loadedManager();
 		roster.unlock(SPECIES);
+		roster.unlock(SPECIES2);
+		roster.grantItem("stick", 2);
+
+		assertTrue(roster.setHeldItem(SPECIES, "stick"));
+		assertTrue(roster.setHeldItem(SPECIES2, "stick"));
+		// Two bought, two armed, neither displaced.
+		assertEquals(Arrays.asList(SPECIES, SPECIES2), roster.itemWearers("stick"));
+		assertEquals("stick", roster.getPet(SPECIES).getHeldItemId());
+	}
+
+	@Test
+	public void unequippingFreesTheCopyWithoutChangingTheCount()
+	{
+		RosterManager roster = loadedManager();
+		roster.unlock(SPECIES);
+		roster.unlock(SPECIES2);
 		roster.grantItem("stick", 1);
 		roster.setHeldItem(SPECIES, "stick");
-		assertEquals(0, roster.itemCount("stick"));
+		assertEquals(1, roster.itemCount("stick"));
+
 		assertTrue(roster.clearHeldItem(SPECIES));
-		assertEquals("unequipping returns the unit", 1, roster.itemCount("stick"));
+		assertEquals("the count never moved", 1, roster.itemCount("stick"));
+		assertTrue(roster.itemWearers("stick").isEmpty());
+		// Freed, so the other pet takes it with nothing displaced.
+		assertTrue(roster.setHeldItem(SPECIES2, "stick"));
 	}
 
 	@Test
-	public void swappingReturnsPreviousAndConsumesNew()
+	public void swappingReleasesThePreviousItemForAnotherPet()
 	{
 		RosterManager roster = loadedManager();
 		roster.unlock(SPECIES);
+		roster.unlock(SPECIES2);
 		roster.grantItem("stick", 1);
 		roster.grantItem("sturdy_bracer", 1);
 		roster.setHeldItem(SPECIES, "stick");
-		assertEquals(0, roster.itemCount("stick"));
 
 		assertTrue(roster.setHeldItem(SPECIES, "sturdy_bracer"));
 		assertEquals("sturdy_bracer", roster.getPet(SPECIES).getHeldItemId());
-		assertEquals("previous item returned to stock", 1, roster.itemCount("stick"));
-		assertEquals("new item consumed", 0, roster.itemCount("sturdy_bracer"));
+		// Both are still owned, and the displaced stick is now free for the other pet.
+		assertEquals(1, roster.itemCount("stick"));
+		assertEquals(1, roster.itemCount("sturdy_bracer"));
+		assertTrue(roster.itemWearers("stick").isEmpty());
+		assertTrue(roster.setHeldItem(SPECIES2, "stick"));
+	}
+
+	@Test
+	public void givingAnItemAwayTakesItOffTheWearer()
+	{
+		RosterManager roster = loadedManager();
+		roster.unlock(SPECIES);
+		roster.grantItem("stick", 1);
+		roster.setHeldItem(SPECIES, "stick");
+
+		// Losing the only copy has to take it off the pet too, or the pet would hold what isn't owned.
+		assertTrue(roster.takeItem("stick", 1));
+		assertEquals(0, roster.itemCount("stick"));
+		assertNull(roster.getPet(SPECIES).getHeldItemId());
 	}
 }

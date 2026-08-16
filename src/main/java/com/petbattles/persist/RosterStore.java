@@ -21,7 +21,12 @@ import net.runelite.client.config.ConfigManager;
 public class RosterStore
 {
 	private static final String KEY = "roster";
-	private static final int SCHEMA_VERSION = 1;
+	/**
+	 * v1: itemInventory held *spares* — equipping a held item decremented it. v2: it holds the total
+	 * owned and equipping consumes nothing, the wear limit being a capacity check over wearers
+	 * instead. {@link RosterManager#load()} migrates v1 blobs by crediting worn copies back.
+	 */
+	public static final int SCHEMA_VERSION = 2;
 
 	/**
 	 * The serialized shape. Add fields with defaults; bump v only on breaking changes.

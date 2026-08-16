@@ -128,6 +128,9 @@ public class PetBattlesPlugin extends Plugin
 	private BattleOverlay overlay;
 	private RestOverlay restOverlay;
 	private HubOverlay hubOverlay;
+	// Whether the hub overlay is currently registered (PetBattlesConfig.showHubOverlay). Read from the
+	// AWT thread by the input handler's bounds supplier, written on the client thread.
+	private volatile boolean hubOverlayShown;
 	private QuestDialogSession questDialog;
 	private QuestDialogOverlay questDialogOverlay;
 	private QuestDialogInputHandler questDialogInputHandler;
@@ -188,8 +191,11 @@ public class PetBattlesPlugin extends Plugin
 			atBankTracker::isAtBank, nearTrainerTracker::getNearTrainerIds, tooltipManager);
 		HubActions hubActions = new HubActions(hubOverlay.getView(), db, roster,
 			this::startTrainerBattle, this::locateTrainer, this::examineItem, restOverlay::play);
-		hubInputHandler = new HubInputHandler(hubOverlay.getView(), hubActions, hubOverlay::getBounds,
-			roster, session, clientThread);
+		// A hidden overlay keeps the bounds of its last frame, so the hit test has to go with it —
+		// otherwise clicks in a dead corner of the screen would still be swallowed by the hub.
+		HubOverlay hub = hubOverlay;
+		hubInputHandler = new HubInputHandler(hubOverlay.getView(), hubActions,
+			() -> hubOverlayShown ? hub.getBounds() : null, roster, session, clientThread);
 		hubKeyListener = new HubKeyListener(hubOverlay.getView(), session, clientThread);
 
 		// Docked hub: the same HubView, embedded in the side panel as a Swing component. Its dispatch
@@ -204,7 +210,9 @@ public class PetBattlesPlugin extends Plugin
 		panel = new PetBattlesPanel(new HubPanel(panelView, panelActions, roster, session));
 		overlayManager.add(overlay);
 		overlayManager.add(restOverlay);
-		overlayManager.add(hubOverlay);
+		// The hub is the plugin's one always-on fixture, so it's the one overlay the player can turn
+		// off; the quest, rest and battle overlays only appear because something happened.
+		setHubOverlayShown(config.showHubOverlay());
 		overlayManager.add(questDialogOverlay);
 		mouseManager.registerMouseListener(inputHandler);
 		mouseManager.registerMouseListener(questDialogInputHandler);
@@ -274,6 +282,7 @@ public class PetBattlesPlugin extends Plugin
 		if (hubOverlay != null)
 		{
 			overlayManager.remove(hubOverlay);
+			hubOverlayShown = false;
 		}
 		if (questDialogOverlay != null)
 		{
@@ -369,7 +378,33 @@ public class PetBattlesPlugin extends Plugin
 		if (PetBattlesConfig.GROUP.equals(e.getGroup()))
 		{
 			Leveling.setFullCurve(PetBattlesConfig.devFullXpCurve());
+			setHubOverlayShown(config.showHubOverlay());
 			panel.refresh();
+		}
+	}
+
+	/**
+	 * Show or hide the floating hub, live. Tracked with a flag rather than asked of the
+	 * {@link OverlayManager} so a repeated call can't register the overlay twice, and so the input
+	 * handler's hit test can be switched off with it — a removed overlay keeps its last bounds.
+	 */
+	private void setHubOverlayShown(boolean shown)
+	{
+		if (hubOverlay == null || shown == hubOverlayShown)
+		{
+			return;
+		}
+		hubOverlayShown = shown;
+		if (shown)
+		{
+			overlayManager.add(hubOverlay);
+		}
+		else
+		{
+			overlayManager.remove(hubOverlay);
+			// Nothing is listening for the hub's search box any more; leaving it focused would eat
+			// keystrokes meant for the game.
+			hubOverlay.getView().blurSearch();
 		}
 	}
 
@@ -471,17 +506,20 @@ public class PetBattlesPlugin extends Plugin
 	/**
 	 * Print a held item's examine text to the chatbox, like a RuneScape item examine. Dispatched
 	 * from the hub's Items grid on the client thread, so it may touch the client directly.
+	 *
+	 * <p>An unearned item prints nothing at all — not even its name. The grid only offers items the
+	 * player owns, so this is defence in depth against a stale button naming a reward the player
+	 * hasn't found.
 	 */
 	private void examineItem(String itemId)
 	{
 		Item item = Item.byId(itemId);
-		if (item == null)
+		if (item == null || !roster.ownsItem(item))
 		{
 			return;
 		}
-		String body = roster.ownsItem(item) ? item.getDescription() : "You haven't earned this yet.";
 		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
-			"<col=ff7700>" + item.getName() + ":</col> " + body, null);
+			"<col=ff7700>" + item.getName() + ":</col> " + item.getDescription(), null);
 	}
 
 	/**

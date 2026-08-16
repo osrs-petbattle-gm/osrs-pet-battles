@@ -6,6 +6,8 @@ import com.petbattles.data.PetDatabase;
 import com.petbattles.engine.PetInstance;
 import com.petbattles.item.EquipItemDef;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.Test;
@@ -16,15 +18,17 @@ import static org.junit.Assert.assertTrue;
 
 /**
  * Cosmetic (HEAD/FACE) equipping on {@link RosterManager}. The behaviour that matters here and
- * differs from held items: cosmetics are a wardrobe, not stock — equipping never consumes one, so
- * the whole team can wear the same hat. Uses the real bundled {@code items.json}: {@code wizard_hat}
- * and {@code blue_party_hat} (HEAD), {@code stick} (HELD). Content defines no FACE item at present,
- * so the tests that need one supply their own — see {@link #loadedManagerWithFaceCosmetic()}.
+ * differs from held items: equipping a cosmetic never consumes it, yet it still can't be duplicated
+ * — a cosmetic may be worn by at most as many pets as the player owns copies of it, and equipping
+ * one that's fully out moves it. Uses the real bundled {@code items.json}: {@code wizard_hat} and
+ * {@code blue_party_hat} (HEAD), {@code stick} (HELD). Content defines no FACE item at present, so
+ * the tests that need one supply their own — see {@link #loadedManagerWithFaceCosmetic()}.
  */
 public class RosterManagerCosmeticsTest
 {
 	private static final String SPECIES = "baby_mole";
 	private static final String SPECIES2 = "pet_snakeling";
+	private static final String SPECIES3 = "baby_chinchompa";
 	/** The capstone quest that grants the blue party hat; its own constant is private to the manager. */
 	private static final String CAPSTONE_QUEST_ID = "series_of_fortunate_events";
 	/** A FACE cosmetic that exists only in this test's content; see loadedManagerWithFaceCosmetic. */
@@ -79,7 +83,7 @@ public class RosterManagerCosmeticsTest
 	}
 
 	@Test
-	public void equippingACosmeticFillsItsOwnSlotAndKeepsTheItem()
+	public void equippingACosmeticFillsItsOwnSlotAndConsumesNothing()
 	{
 		RosterManager roster = loadedManager();
 		roster.unlock(SPECIES);
@@ -89,8 +93,10 @@ public class RosterManagerCosmeticsTest
 		PetInstance pet = roster.getPet(SPECIES);
 		assertEquals("wizard_hat", pet.getHeadItemId());
 		assertNull(pet.getFaceItemId());
-		// The wardrobe rule: the unit stays in the inventory rather than moving onto the pet.
+		// Unlike a held item, the unit is not decremented — the wear limit is enforced by counting
+		// wearers (below), not by moving stock, so the inventory still reads one hat owned.
 		assertEquals(1, roster.itemCount("wizard_hat"));
+		assertEquals(1, roster.itemCapacity("wizard_hat"));
 	}
 
 	@Test
@@ -130,7 +136,7 @@ public class RosterManagerCosmeticsTest
 	}
 
 	@Test
-	public void oneCosmeticDressesTheWholeTeamAtOnce()
+	public void oneCopyDressesOnePetAtATimeAndEquippingItAgainMovesIt()
 	{
 		RosterManager roster = loadedManager();
 		roster.unlock(SPECIES);
@@ -138,14 +144,48 @@ public class RosterManagerCosmeticsTest
 		roster.grantItem("wizard_hat", 1);
 
 		assertTrue(roster.setCosmetic(SPECIES, "wizard_hat"));
+		assertEquals(Collections.singletonList(SPECIES), roster.itemWearers("wizard_hat"));
+
+		// One hat, so dressing the second pet takes it off the first rather than cloning it.
 		assertTrue(roster.setCosmetic(SPECIES2, "wizard_hat"));
-		assertEquals("wizard_hat", roster.getPet(SPECIES).getHeadItemId());
+		assertNull(roster.getPet(SPECIES).getHeadItemId());
 		assertEquals("wizard_hat", roster.getPet(SPECIES2).getHeadItemId());
+		assertEquals(Collections.singletonList(SPECIES2), roster.itemWearers("wizard_hat"));
+		// Still nothing consumed: the hat is owned exactly once throughout.
 		assertEquals(1, roster.itemCount("wizard_hat"));
+
+		// Freeing the slot frees the copy, so the first pet can have it back.
+		assertTrue(roster.clearCosmetic(SPECIES2, EquipItemDef.Slot.HEAD));
+		assertTrue(roster.itemWearers("wizard_hat").isEmpty());
+		assertTrue(roster.setCosmetic(SPECIES, "wizard_hat"));
+		assertEquals("wizard_hat", roster.getPet(SPECIES).getHeadItemId());
 	}
 
 	@Test
-	public void equippingIntoAnOccupiedSlotReplacesWithoutLosingTheOldOne()
+	public void ownedQuantityRaisesHowManyPetsCanWearIt()
+	{
+		RosterManager roster = loadedManager();
+		roster.unlock(SPECIES);
+		roster.unlock(SPECIES2);
+		roster.grantItem("wizard_hat", 2);
+		assertEquals(2, roster.itemCapacity("wizard_hat"));
+
+		// Two hats bought, two pets dressed — the second equip displaces nobody.
+		assertTrue(roster.setCosmetic(SPECIES, "wizard_hat"));
+		assertTrue(roster.setCosmetic(SPECIES2, "wizard_hat"));
+		assertEquals("wizard_hat", roster.getPet(SPECIES).getHeadItemId());
+		assertEquals("wizard_hat", roster.getPet(SPECIES2).getHeadItemId());
+		assertEquals(Arrays.asList(SPECIES, SPECIES2), roster.itemWearers("wizard_hat"));
+
+		// A third pet with only two hats owned takes one off the longest-standing wearer.
+		roster.unlock(SPECIES3);
+		assertTrue(roster.setCosmetic(SPECIES3, "wizard_hat"));
+		assertNull(roster.getPet(SPECIES).getHeadItemId());
+		assertEquals(Arrays.asList(SPECIES2, SPECIES3), roster.itemWearers("wizard_hat"));
+	}
+
+	@Test
+	public void equippingIntoAnOccupiedSlotReplacesWithoutConsumingEither()
 	{
 		RosterManager roster = loadedManager();
 		roster.unlock(SPECIES);
@@ -155,9 +195,10 @@ public class RosterManagerCosmeticsTest
 		assertTrue(roster.setCosmetic(SPECIES, "wizard_hat"));
 		assertTrue(roster.setCosmetic(SPECIES, "blue_party_hat"));
 		assertEquals("blue_party_hat", roster.getPet(SPECIES).getHeadItemId());
-		// Neither was consumed, so the displaced hat is still available.
+		// Neither was consumed, so the displaced hat is owned, unworn, and free to equip again.
 		assertEquals(1, roster.itemCount("wizard_hat"));
-		assertTrue(roster.ownsCosmetic("wizard_hat"));
+		assertTrue(roster.ownsEquipItem("wizard_hat"));
+		assertTrue(roster.itemWearers("wizard_hat").isEmpty());
 	}
 
 	@Test
@@ -202,14 +243,51 @@ public class RosterManagerCosmeticsTest
 		// The trophy is earned from the capstone, so it never enters the item inventory. Before the
 		// quest is done it is neither owned nor equippable.
 		assertEquals(0, roster.itemCount("blue_party_hat"));
-		assertFalse(roster.ownsCosmetic("blue_party_hat"));
+		assertFalse(roster.ownsEquipItem("blue_party_hat"));
 		assertFalse(roster.setCosmetic(SPECIES, "blue_party_hat"));
 
 		roster.advanceQuest(CAPSTONE_QUEST_ID, 99);
-		assertTrue(roster.ownsCosmetic("blue_party_hat"));
+		assertTrue(roster.ownsEquipItem("blue_party_hat"));
 		assertTrue(roster.setCosmetic(SPECIES, "blue_party_hat"));
 		assertEquals("blue_party_hat", roster.getPet(SPECIES).getHeadItemId());
 		assertEquals(0, roster.itemCount("blue_party_hat"));
+	}
+
+	@Test
+	public void theTrophyIsOneHatEvenThoughItHasNoInventoryUnit()
+	{
+		RosterManager roster = loadedManager();
+		roster.unlock(SPECIES);
+		roster.unlock(SPECIES2);
+		roster.advanceQuest(CAPSTONE_QUEST_ID, 99);
+
+		// Derived ownership gives capacity 1 with nothing in the inventory to count, so the trophy
+		// moves between pets exactly like a bought hat rather than dressing the whole team.
+		assertEquals(0, roster.itemCount("blue_party_hat"));
+		assertEquals(1, roster.itemCapacity("blue_party_hat"));
+
+		assertTrue(roster.setCosmetic(SPECIES, "blue_party_hat"));
+		assertTrue(roster.setCosmetic(SPECIES2, "blue_party_hat"));
+		assertNull(roster.getPet(SPECIES).getHeadItemId());
+		assertEquals(Collections.singletonList(SPECIES2), roster.itemWearers("blue_party_hat"));
+	}
+
+	@Test
+	public void aHeldItemIsNeverAcceptedIntoACosmeticSlot()
+	{
+		RosterManager roster = loadedManager();
+		roster.unlock(SPECIES);
+		roster.grantItem("stick", 1);
+
+		// Capacity and wearers are slot-agnostic — every item is counted the same way — but the slot
+		// an item declares is still the only one it can go into.
+		assertFalse(roster.setCosmetic(SPECIES, "stick"));
+		assertTrue(roster.setHeldItem(SPECIES, "stick"));
+		assertEquals(Collections.singletonList(SPECIES), roster.itemWearers("stick"));
+		assertNull(roster.getPet(SPECIES).getHeadItemId());
+
+		assertTrue(roster.itemWearers("no_such_item").isEmpty());
+		assertEquals(0, roster.itemCapacity("wizard_hat"));
 	}
 
 	@Test

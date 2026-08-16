@@ -107,6 +107,18 @@ public class RosterManager
 			data.progressionResetVersion = PROGRESSION_RESET_VERSION;
 			store.save(data);
 		}
+		boolean migrated = migrateWornHeldItemsIntoInventory();
+		// Equip capacities are recomputed, never stored, so any save can be checked against them —
+		// including one an older build left with two pets sharing a single amulet.
+		int stripped = repairEquipCapacity();
+		if (stripped > 0)
+		{
+			log.debug("Repaired {} over-capacity equip slot(s)", stripped);
+		}
+		if (migrated || stripped > 0)
+		{
+			store.save(data);
+		}
 		loaded = true;
 	}
 
@@ -556,6 +568,9 @@ public class RosterManager
 	}
 
 	// --- Equip-item inventory (held items + cosmetics won from quests / bought in the store) ---
+	//
+	// The inventory is the TOTAL owned, worn or not — it is never decremented by equipping. See the
+	// equipping block below for why the wear limit is enforced by counting wearers instead.
 
 	/**
 	 * A copy of the owned-equip-item counts ({@code EquipItemDef} id -> count). Callers iterate
@@ -567,7 +582,8 @@ public class RosterManager
 	}
 
 	/**
-	 * How many of this equip item the player owns (0 if none).
+	 * How many of this equip item the player owns in total, including any copies currently worn
+	 * (0 if none).
 	 */
 	public synchronized int itemCount(String itemId)
 	{
@@ -600,7 +616,9 @@ public class RosterManager
 
 	/**
 	 * Remove {@code count} of an equip item if the player has enough (a store trade-in / consume).
-	 * Returns false with no change otherwise. The key is dropped when its count reaches zero.
+	 * Returns false with no change otherwise. The key is dropped when its count reaches zero. Copies
+	 * given up this way are taken off their wearers if that's the only way to stay within the new
+	 * count, so the inventory and the pets can't disagree.
 	 */
 	public synchronized boolean takeItem(String itemId, int count)
 	{
@@ -617,76 +635,68 @@ public class RosterManager
 		{
 			data.itemInventory.remove(itemId);
 		}
+		stripExcessWearers(itemId);
 		save();
 		return true;
 	}
 
-	/**
-	 * Equip a HELD item on an owned pet: the pet must be owned, the item must exist, be a HELD-slot
-	 * item, and be in stock. No-op (returns false) otherwise. Equipping consumes one unit from the
-	 * inventory and returns whatever the pet was previously holding, so a given unit can only be worn
-	 * by one pet at a time.
-	 */
-	public synchronized boolean setHeldItem(String speciesId, String itemId)
-	{
-		EquipItemDef item = db.equipItem(itemId);
-		if (!isOwned(speciesId) || item == null
-			|| item.getSlot() != EquipItemDef.Slot.HELD || !hasItem(itemId))
-		{
-			return false;
-		}
-		PetInstance pet = getOrCreatePet(speciesId);
-		if (pet == null || Objects.equals(pet.getHeldItemId(), itemId))
-		{
-			return false;
-		}
-		data.itemInventory.merge(itemId, -1, Integer::sum);
-		if (data.itemInventory.getOrDefault(itemId, 0) <= 0)
-		{
-			data.itemInventory.remove(itemId);
-		}
-		String previous = pet.getHeldItemId();
-		if (previous != null)
-		{
-			data.itemInventory.merge(previous, 1, Integer::sum);
-		}
-		pet.setHeldItemId(itemId);
-		save();
-		return true;
-	}
-
-	/**
-	 * Remove whatever HELD item an owned pet is carrying, returning the unit to the inventory so it can
-	 * be re-equipped elsewhere. Returns true if it was holding one.
-	 */
-	public synchronized boolean clearHeldItem(String speciesId)
-	{
-		PetInstance pet = getPet(speciesId);
-		if (pet == null || pet.getHeldItemId() == null)
-		{
-			return false;
-		}
-		String held = pet.getHeldItemId();
-		pet.setHeldItemId(null);
-		data.itemInventory.merge(held, 1, Integer::sum);
-		save();
-		return true;
-	}
-
-	// --- Cosmetics (HEAD/FACE) ---
+	// --- Equipping (HELD / HEAD / FACE) ---
 	//
-	// Cosmetics work as a wardrobe, not as stock: equipping one does NOT consume it, so the same hat
-	// can be worn by every pet on the team at once. This differs deliberately from HELD items, which
-	// consume-on-equip so a stat bonus can't be duplicated across the team. Two reasons: a cosmetic
-	// grants nothing, so there's nothing to duplicate; and a trophy like the blue party hat has
-	// *derived* ownership (see ownsItem) with no inventory unit to move around, which the
-	// consume-and-return dance can't represent.
+	// One copy, one wearer, in every slot: an item may be worn by at most as many pets as the player
+	// owns copies of it (see itemCapacity). Equipping does NOT consume — itemInventory holds the total
+	// owned, and the limit is a capacity check recomputed from live state on each equip.
+	//
+	// Why counted rather than consumed. A decrement-on-equip / return-on-unequip pair has to be kept
+	// perfectly in step by every code path forever, and when it does slip there is no way to tell
+	// afterwards: two pets holding one amulet with no spares looks exactly like two amulets bought.
+	// Counting wearers can always be checked, and repaired (see repairEquipCapacity). It also handles
+	// the blue party hat, whose ownership is *derived* from quest progress (see ownsItem) and which
+	// never enters the inventory, so there is no unit to move around.
+	//
+	// An item at capacity is not refused: equipping it *moves* it, taking it off the wearer that has
+	// had it longest (roster insertion order). One amulet therefore behaves like one physical amulet
+	// you can put on a different pet, rather than an error message.
 
 	/**
-	 * Whether the player owns a cosmetic they could equip: either it's in the equip-item inventory
-	 * (bought or granted) or it's a key-item trophy whose ownership is derived from quest state.
+	 * How many pets may wear this equip item at once: one per copy owned. Purchased copies come from
+	 * the equip-item inventory; a derived-ownership trophy has capacity 1 with no inventory unit
+	 * behind it. 0 when the player doesn't own it at all.
 	 */
-	public synchronized boolean ownsCosmetic(String itemId)
+	public synchronized int itemCapacity(String itemId)
+	{
+		Item keyItem = Item.byId(itemId);
+		int derived = keyItem != null && ownsItem(keyItem) ? 1 : 0;
+		return Math.max(itemCount(itemId), derived);
+	}
+
+	/**
+	 * The pets currently wearing this equip item in its own slot, in roster order (oldest record
+	 * first). Empty for an unknown id.
+	 */
+	public synchronized List<String> itemWearers(String itemId)
+	{
+		List<String> wearers = new ArrayList<>();
+		EquipItemDef item = db.equipItem(itemId);
+		if (item == null)
+		{
+			return wearers;
+		}
+		for (Map.Entry<String, PetInstance> e : data.pets.entrySet())
+		{
+			if (itemId.equals(wornInSlot(e.getValue(), item.getSlot())))
+			{
+				wearers.add(e.getKey());
+			}
+		}
+		return wearers;
+	}
+
+	/**
+	 * Whether the player owns an equip item they could put on a pet: either it's in the equip-item
+	 * inventory (bought or granted) or it's a key-item trophy whose ownership is derived from quest
+	 * state.
+	 */
+	public synchronized boolean ownsEquipItem(String itemId)
 	{
 		if (hasItem(itemId))
 		{
@@ -697,7 +707,7 @@ public class RosterManager
 	}
 
 	/**
-	 * Every cosmetic the player owns, in content order — the wardrobe the equip UI offers. Includes
+	 * Every cosmetic the player owns, in content order — what the equip UI offers. Includes
 	 * derived-ownership trophies, which never appear in the item inventory.
 	 */
 	public synchronized List<EquipItemDef> ownedCosmetics()
@@ -705,12 +715,23 @@ public class RosterManager
 		List<EquipItemDef> owned = new ArrayList<>();
 		for (EquipItemDef item : db.allEquipItems())
 		{
-			if (item.isCosmetic() && ownsCosmetic(item.getId()))
+			if (item.isCosmetic() && ownsEquipItem(item.getId()))
 			{
 				owned.add(item);
 			}
 		}
 		return owned;
+	}
+
+	/**
+	 * Equip a HELD item on an owned pet, replacing whatever it was holding. The pet must be owned and
+	 * the item must exist, be a HELD-slot item, and be owned. No-op (returns false) otherwise,
+	 * including when it's already held.
+	 */
+	public synchronized boolean setHeldItem(String speciesId, String itemId)
+	{
+		EquipItemDef item = db.equipItem(itemId);
+		return item != null && item.getSlot() == EquipItemDef.Slot.HELD && equip(speciesId, item);
 	}
 
 	/**
@@ -721,38 +742,78 @@ public class RosterManager
 	public synchronized boolean setCosmetic(String speciesId, String itemId)
 	{
 		EquipItemDef item = db.equipItem(itemId);
-		if (!isOwned(speciesId) || item == null || !item.isCosmetic() || !ownsCosmetic(itemId))
+		return item != null && item.isCosmetic() && equip(speciesId, item);
+	}
+
+	/**
+	 * Put an item in its slot on an owned pet. Nothing is consumed, but the copy is not duplicated
+	 * either: if every copy the player owns is already worn, this takes one off its longest-standing
+	 * wearer rather than kitting out another pet for free. Callers wanting to tell the player who
+	 * loses it should read {@link #itemWearers(String)} first.
+	 */
+	private boolean equip(String speciesId, EquipItemDef item)
+	{
+		String itemId = item.getId();
+		if (!isOwned(speciesId) || !ownsEquipItem(itemId))
 		{
 			return false;
 		}
 		PetInstance pet = getOrCreatePet(speciesId);
-		if (pet == null || Objects.equals(cosmeticId(pet, item.getSlot()), itemId))
+		if (pet == null || Objects.equals(wornInSlot(pet, item.getSlot()), itemId))
 		{
 			return false;
 		}
-		applyCosmetic(pet, item.getSlot(), itemId);
+		// Make room for this pet: strip the oldest wearers until the copies owned can cover them all
+		// plus this one. Normally that's at most one pet; a save left over-capacity by an older build
+		// sheds its excess here.
+		// ownsEquipItem above already implies at least one copy; the floor only keeps a future
+		// ownership rule from turning a zero capacity into an empty-list index error.
+		int capacity = Math.max(1, itemCapacity(itemId));
+		List<String> wearers = itemWearers(itemId);
+		for (int i = 0; wearers.size() - i >= capacity; i++)
+		{
+			applySlot(data.pets.get(wearers.get(i)), item.getSlot(), null);
+		}
+		applySlot(pet, item.getSlot(), itemId);
 		save();
 		return true;
 	}
 
 	/**
-	 * Clear a pet's cosmetic slot. Returns true if it was wearing something there. Nothing returns to
-	 * the inventory — cosmetics are never consumed on equip.
+	 * Remove whatever HELD item an owned pet is carrying. Returns true if it was holding one. Nothing
+	 * returns to the inventory — the copy was never taken out of it — so freeing the slot simply frees
+	 * that copy for another pet.
 	 */
-	public synchronized boolean clearCosmetic(String speciesId, EquipItemDef.Slot slot)
+	public synchronized boolean clearHeldItem(String speciesId)
 	{
 		PetInstance pet = getPet(speciesId);
-		if (pet == null || cosmeticId(pet, slot) == null)
+		if (pet == null || pet.getHeldItemId() == null)
 		{
 			return false;
 		}
-		applyCosmetic(pet, slot, null);
+		pet.setHeldItemId(null);
 		save();
 		return true;
 	}
 
-	/** What this pet wears in a cosmetic slot, or null (also null for the HELD slot). */
-	private static String cosmeticId(PetInstance pet, EquipItemDef.Slot slot)
+	/**
+	 * Clear a pet's cosmetic slot. Returns true if it was wearing something there. As with held items,
+	 * nothing returns to the inventory; the copy is simply free again.
+	 */
+	public synchronized boolean clearCosmetic(String speciesId, EquipItemDef.Slot slot)
+	{
+		PetInstance pet = getPet(speciesId);
+		if (pet == null || wornInSlot(pet, slot) == null)
+		{
+			return false;
+		}
+		applySlot(pet, slot, null);
+		save();
+		return true;
+	}
+
+	/** What this pet wears in a given slot, or null. */
+	private static String wornInSlot(PetInstance pet, EquipItemDef.Slot slot)
 	{
 		switch (slot)
 		{
@@ -761,12 +822,12 @@ public class RosterManager
 			case FACE:
 				return pet.getFaceItemId();
 			default:
-				return null;
+				return pet.getHeldItemId();
 		}
 	}
 
-	/** Write a cosmetic slot on a pet; a no-op for the HELD slot. */
-	private static void applyCosmetic(PetInstance pet, EquipItemDef.Slot slot, String itemId)
+	/** Write a pet's slot. */
+	private static void applySlot(PetInstance pet, EquipItemDef.Slot slot, String itemId)
 	{
 		switch (slot)
 		{
@@ -777,8 +838,71 @@ public class RosterManager
 				pet.setFaceItemId(itemId);
 				break;
 			default:
+				pet.setHeldItemId(itemId);
 				break;
 		}
+	}
+
+	/**
+	 * Migrate a v1 roster, where the inventory held only *spares* because equipping a held item
+	 * decremented it. Under the counted model the inventory is the total owned, so every held copy
+	 * currently worn is credited back — for a save the old code kept in step, that reconstructs the
+	 * purchase total exactly. Cosmetics were never consumed and so need no correction. Returns true if
+	 * the blob was changed (callers save); does nothing on a v2 blob or a fresh roster.
+	 */
+	private boolean migrateWornHeldItemsIntoInventory()
+	{
+		if (data.v >= RosterStore.SCHEMA_VERSION)
+		{
+			return false;
+		}
+		int credited = 0;
+		for (PetInstance pet : data.pets.values())
+		{
+			String held = pet.getHeldItemId();
+			if (held != null && db.equipItem(held) != null)
+			{
+				data.itemInventory.merge(held, 1, Integer::sum);
+				credited++;
+			}
+		}
+		log.debug("Migrated roster v{} -> v{}: credited {} worn held item(s) back to the inventory",
+			data.v, RosterStore.SCHEMA_VERSION, credited);
+		data.v = RosterStore.SCHEMA_VERSION;
+		return true;
+	}
+
+	/**
+	 * Bring every equip item back within its capacity, stripping the longest-standing wearers of
+	 * anything worn by more pets than the player owns copies of. Recomputed from state, so it is
+	 * always safe to run; it is the repair half of the counted model. Returns how many slots it
+	 * cleared. Does not save — callers do.
+	 */
+	private int repairEquipCapacity()
+	{
+		int stripped = 0;
+		for (EquipItemDef item : db.allEquipItems())
+		{
+			stripped += stripExcessWearers(item.getId());
+		}
+		return stripped;
+	}
+
+	/** Strip wearers of one item beyond its capacity, oldest first. Returns how many were cleared. */
+	private int stripExcessWearers(String itemId)
+	{
+		EquipItemDef item = db.equipItem(itemId);
+		if (item == null)
+		{
+			return 0;
+		}
+		List<String> wearers = itemWearers(itemId);
+		int excess = wearers.size() - itemCapacity(itemId);
+		for (int i = 0; i < excess; i++)
+		{
+			applySlot(data.pets.get(wearers.get(i)), item.getSlot(), null);
+		}
+		return Math.max(0, excess);
 	}
 
 	/**

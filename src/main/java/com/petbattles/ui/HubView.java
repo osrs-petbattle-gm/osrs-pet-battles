@@ -30,7 +30,6 @@ import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -199,11 +198,14 @@ public class HubView
 	// immediately re-pop). Cleared when the context changes and re-triggers.
 	private Pane lastContext;
 	private boolean dismissed;
-	// The chip's flashing prompt: the key of the alert last seen, and whether the player has opened
-	// its pane. Acknowledging stops the pulse (the chip stays put) until a different alert comes up,
-	// so standing next to a trainer you've already looked at isn't a permanent blinking light.
+	// The flashing prompt: the key of the alert last seen, and whether the player has opened its pane.
+	// Acknowledging stops the pulse (the chip stays put) until a different alert comes up, so standing
+	// next to a trainer you've already looked at isn't a permanent blinking light.
 	private String alertKey;
 	private boolean alertAcknowledged;
+	// The nav-strip action to pulse this frame, or null. Recomputed each render; it is how the docked
+	// panel raises an alert at all, since it has no chip to flash.
+	private String pulsingNav;
 	private int addOffset;
 	private int challengePage;
 	// Trainers pane: which difficulty filter is active (null = all) and the scroll offset. The
@@ -492,7 +494,10 @@ public class HubView
 			dismissed = false;
 		}
 
-		Alert alert = docked ? null : currentAlert();
+		// Alerts are raised in both modes. The overlay flashes its collapsed chip; the docked panel has
+		// no chip, so it pulses the matching glyph in its own nav strip instead (see menuBody). The
+		// overlay pulses that glyph too — its chip is only visible while collapsed.
+		Alert alert = currentAlert();
 		String key = alert != null ? alert.key : null;
 		if (!Objects.equals(key, alertKey))
 		{
@@ -524,6 +529,8 @@ public class HubView
 		{
 			searchFocused = false;
 		}
+
+		pulsingNav = alert == null || alertAcknowledged ? null : navActionFor(alert);
 
 		List<Button> out = new ArrayList<>();
 		// Reset before drawing; menuBody sets it while hovering. It's added to the TooltipManager
@@ -597,6 +604,25 @@ public class HubView
 			? "Challenge " + nearby.get(0).getName()
 			: nearby.size() + " trainers nearby";
 		return new Alert(Pane.CHALLENGE, "open:challenge", label, key.toString());
+	}
+
+	/**
+	 * The nav-strip entry an alert points at, or null if it has no glyph of its own. A quest alert
+	 * opens one quest ({@code open:quest:<id>}) but the strip only carries the Quests tab, so it maps
+	 * onto that; the Challenge tab is only in the strip while a trainer is near, which is exactly when
+	 * a trainer alert exists.
+	 */
+	private static String navActionFor(Alert alert)
+	{
+		switch (alert.pane)
+		{
+			case QUESTS:
+				return "open:quests";
+			case CHALLENGE:
+				return "open:challenge";
+			default:
+				return null;
+		}
 	}
 
 	/**
@@ -829,10 +855,23 @@ public class HubView
 		int rowW = n * size + (n - 1) * gap;
 		int x = (width - rowW) / 2;
 		Point hp = hoverPoint;
+		// One sin for the whole strip: both hosts redraw continuously, so the pulse animates for free.
+		float pulse = pulsingNav == null ? 0f
+			: (float) (0.5 + 0.5 * Math.sin(System.currentTimeMillis() / 260.0));
 		for (MenuEntry e : entries)
 		{
 			Rectangle r = new Rectangle(x, y, size, size);
 			drawButtonBg(g, r, e.enabled);
+			// "Something is happening right where you're standing" — the tab that leads to it glows,
+			// the same gold wash and edge the collapsed chip uses, until the player opens that pane.
+			if (e.action.equals(pulsingNav))
+			{
+				g.setColor(new Color(COIN.getRed(), COIN.getGreen(), COIN.getBlue(), (int) (25 + 55 * pulse)));
+				g.fillRoundRect(r.x, r.y, r.width, r.height, 6, 6);
+				g.setColor(blend(BUTTON_EDGE, COIN, pulse));
+				g.setStroke(new BasicStroke(2));
+				g.drawRoundRect(r.x, r.y, r.width, r.height, 6, 6);
+			}
 			drawMenuGlyph(g, r, e.action);
 			if (e.enabled)
 			{
@@ -1429,8 +1468,12 @@ public class HubView
 
 	/**
 	 * Rewards laid out like a compact collection log: an "Obtained" tally and lifetime battle count,
-	 * then a grid of item slots (obtained bright, locked darkened). Clicking a slot prints the item's
-	 * examine text to the chatbox, like a RuneScape item examine.
+	 * then a grid of item slots. Clicking a slot prints the item's examine text to the chatbox, like a
+	 * RuneScape item examine.
+	 *
+	 * <p>Only earned items appear — no dimmed placeholders, and no "x / y" denominator. A reward the
+	 * player hasn't found should leave no trace here: its silhouette, its name and even the fact that
+	 * it exists are all things the game hasn't given away yet.
 	 */
 	private int itemsBody(Graphics2D g, List<Button> out)
 	{
@@ -1439,19 +1482,21 @@ public class HubView
 		{
 			return loginHint(g, y);
 		}
-		Item[] all = Item.values();
-		int obtained = 0;
-		for (Item item : all)
+		List<Item> obtained = new ArrayList<>();
+		for (Item item : Item.values())
 		{
 			if (roster.ownsItem(item))
 			{
-				obtained++;
+				obtained.add(item);
 			}
 		}
 
 		g.setFont(FontManager.getRunescapeFont());
-		g.setColor(TEXT);
-		g.drawString("Obtained: " + obtained + "/" + all.length, 10, y + 11);
+		if (!obtained.isEmpty())
+		{
+			g.setColor(TEXT);
+			g.drawString("Obtained: " + obtained.size(), 10, y + 11);
+		}
 		// Wallet (gold) on the first row, lifetime battle count (muted) tucked beneath it.
 		String coins = "Coins: " + roster.getCoins();
 		g.setColor(COIN);
@@ -1464,38 +1509,41 @@ public class HubView
 		g.fillRect(8, y, width - 16, 1);
 		y += 9;
 
-		int cols = 5;
-		int slot = 34;
-		int gap = 4;
-		int gridW = cols * slot + (cols - 1) * gap;
-		int startX = (width - gridW) / 2;
-		Point hp = hoverPoint;
-		for (int i = 0; i < all.length; i++)
+		if (obtained.isEmpty())
 		{
-			Item item = all[i];
-			Rectangle r = new Rectangle(startX + (i % cols) * (slot + gap), y + (i / cols) * (slot + gap), slot, slot);
-			boolean owned = roster.ownsItem(item);
-			g.setColor(new Color(0, 0, 0, 90));
-			g.fillRoundRect(r.x, r.y, slot, slot, 5, 5);
-			BufferedImage icon = itemIcon(item.getId());
-			if (icon != null)
-			{
-				drawFit(g, icon, r.x + 4, r.y + 4, slot - 8, slot - 8);
-			}
-			if (!owned)
-			{
-				// Darken like an unobtained collection-log slot.
-				g.setColor(new Color(12, 15, 17, 175));
-				g.fillRoundRect(r.x, r.y, slot, slot, 5, 5);
-			}
-			boolean hover = hp != null && r.contains(hp);
-			g.setColor(!owned ? BUTTON_DISABLED_EDGE : hover ? new Color(220, 200, 120) : BUTTON_EDGE);
-			g.setStroke(new BasicStroke(hover ? 2 : 1));
-			g.drawRoundRect(r.x, r.y, slot, slot, 5, 5);
-			out.add(new Button(r, "item.examine:" + item.getId()));
+			// No grid at all rather than an empty one: a row of blank slots would still be a count.
+			hint(g, "No rewards yet - quests and trainers give them.", y);
+			y += 22;
 		}
-		int rows = (all.length + cols - 1) / cols;
-		y += rows * (slot + gap) + 6;
+		else
+		{
+			int cols = 5;
+			int slot = 34;
+			int gap = 4;
+			int gridW = cols * slot + (cols - 1) * gap;
+			int startX = (width - gridW) / 2;
+			Point hp = hoverPoint;
+			for (int i = 0; i < obtained.size(); i++)
+			{
+				Item item = obtained.get(i);
+				Rectangle r = new Rectangle(startX + (i % cols) * (slot + gap),
+					y + (i / cols) * (slot + gap), slot, slot);
+				g.setColor(new Color(0, 0, 0, 90));
+				g.fillRoundRect(r.x, r.y, slot, slot, 5, 5);
+				BufferedImage icon = itemIcon(item.getId());
+				if (icon != null)
+				{
+					drawFit(g, icon, r.x + 4, r.y + 4, slot - 8, slot - 8);
+				}
+				boolean hover = hp != null && r.contains(hp);
+				g.setColor(hover ? new Color(220, 200, 120) : BUTTON_EDGE);
+				g.setStroke(new BasicStroke(hover ? 2 : 1));
+				g.drawRoundRect(r.x, r.y, slot, slot, 5, 5);
+				out.add(new Button(r, "item.examine:" + item.getId()));
+			}
+			int rows = (obtained.size() + cols - 1) / cols;
+			y += rows * (slot + gap) + 6;
+		}
 
 		// Held items you own, and a tap-through to equip them on a team pet. This is the discoverable
 		// home for anything bought in the Store: buy here, then equip here.
@@ -1521,12 +1569,17 @@ public class HubView
 		y += 18;
 		for (EquipItemDef item : owned)
 		{
-			y = cosmeticItemRow(g, out, y, item);
+			y = equipItemRow(g, out, y, item);
 		}
 		return y;
 	}
 
-	private int cosmeticItemRow(Graphics2D g, List<Button> out, int y, EquipItemDef item)
+	/**
+	 * One owned equip item as a row: icon, name with the quantity owned, who is wearing it, and the
+	 * action that opens the pet picker. Held items and cosmetics share this because they now share the
+	 * rule — one copy, one wearer — so the row says the same things about both.
+	 */
+	private int equipItemRow(Graphics2D g, List<Button> out, int y, EquipItemDef item)
 	{
 		int h = 32;
 		Rectangle row = new Rectangle(8, y, width - 16, h);
@@ -1540,31 +1593,62 @@ public class HubView
 		}
 		int textX = row.x + 5 + icon + 6;
 
-		List<String> wearers = new ArrayList<>();
-		for (String speciesId : roster.getTeam())
-		{
-			PetInstance pet = roster.getPet(speciesId);
-			SpeciesDef sp = db.species(speciesId);
-			if (pet != null && sp != null && item.getId().equals(wornCosmetic(pet, item.getSlot())))
-			{
-				wearers.add(sp.getName());
-			}
-		}
+		// Show how many are owned and how many are already out, so an equip that will take the item
+		// off another pet is visible before it happens.
+		int capacity = roster.itemCapacity(item.getId());
+		List<String> wearers = wearerNames(item.getId());
+		boolean atCapacity = wearers.size() >= capacity;
 		g.setFont(FontManager.getRunescapeFont());
 		g.setColor(Color.WHITE);
-		g.drawString(clip(g, item.getName(), row.width - (textX - row.x) - 60), textX, y + 14);
+		String name = item.getName() + (capacity > 1 ? "  x" + capacity : "");
+		g.drawString(clip(g, name, row.width - (textX - row.x) - 60), textX, y + 14);
 		g.setColor(MUTED);
-		String sub = wearers.isEmpty()
+		String idle = item.isCosmetic()
 			? item.getSlot().name().toLowerCase(Locale.ROOT) + " slot"
-			: "Worn by " + String.join(", ", wearers);
+			: effectText(item);
+		String sub = wearers.isEmpty()
+			? idle
+			: "Worn by " + String.join(", ", wearers) + (atCapacity ? " (all worn)" : "");
 		g.drawString(clip(g, sub, row.width - (textX - row.x) - 60), textX, y + 27);
 
 		g.setColor(new Color(220, 200, 120));
 		g.setFont(FontManager.getRunescapeFont());
-		String label = "Equip";
+		String label = atCapacity ? "Move" : "Equip";
 		g.drawString(label, row.x + row.width - g.getFontMetrics().stringWidth(label) - 8, y + 20);
 		out.add(new Button(row, "equip.open:" + item.getId()));
 		return y + h + 4;
+	}
+
+	/**
+	 * Display names of the pets wearing an item, in roster order — every pet, not just the team, since
+	 * an off-team pet still holds a copy against the item's capacity.
+	 */
+	private List<String> wearerNames(String itemId)
+	{
+		List<String> names = new ArrayList<>();
+		for (String speciesId : roster.itemWearers(itemId))
+		{
+			SpeciesDef sp = db.species(speciesId);
+			names.add(sp != null ? sp.getName() : speciesId);
+		}
+		return names;
+	}
+
+	/**
+	 * A chooser row's label: the item name, plus whose pet it would come off if every copy is already
+	 * worn. {@code worn} is whether the pet being edited is already wearing this one.
+	 */
+	private String equipChoiceLabel(EquipItemDef item, boolean worn, String suffix)
+	{
+		String label = item.getName() + (suffix == null ? "" : "  [" + suffix + "]");
+		if (worn)
+		{
+			return label;
+		}
+		List<String> others = wearerNames(item.getId());
+		return others.size() >= roster.itemCapacity(item.getId()) && !others.isEmpty()
+			? label + "  (moves from " + others.get(0) + ")"
+			: label;
 	}
 
 	/** Whether the content defines any cosmetic for this slot, i.e. whether the slot is live at all. */
@@ -1605,82 +1689,34 @@ public class HubView
 		g.drawString("Held items", 10, y + 11);
 		y += 18;
 
-		// Held items in stock plus any currently worn — a fully-equipped item keeps its row so it can
-		// still be unequipped from here (returning the unit to stock).
-		LinkedHashMap<String, EquipItemDef> held = new LinkedHashMap<>();
-		for (Map.Entry<String, Integer> e : roster.getItemInventory().entrySet())
-		{
-			EquipItemDef item = db.equipItem(e.getKey());
-			if (item != null && item.getSlot() == EquipItemDef.Slot.HELD && e.getValue() > 0)
-			{
-				held.put(item.getId(), item);
-			}
-		}
-		for (String speciesId : roster.getTeam())
-		{
-			PetInstance pet = roster.getPet(speciesId);
-			if (pet != null && pet.getHeldItemId() != null)
-			{
-				EquipItemDef item = db.equipItem(pet.getHeldItemId());
-				if (item != null && item.getSlot() == EquipItemDef.Slot.HELD)
-				{
-					held.putIfAbsent(item.getId(), item);
-				}
-			}
-		}
+		// Every held item owned. A worn copy is still owned — the inventory counts total, not spares —
+		// so a fully-equipped item keeps its row and can be moved or removed from here.
+		List<EquipItemDef> held = ownedInSlot(EquipItemDef.Slot.HELD);
 		if (held.isEmpty())
 		{
 			hint(g, "None yet - buy one in the Store.", y);
 			return y + 16;
 		}
-		for (EquipItemDef item : held.values())
+		for (EquipItemDef item : held)
 		{
-			y = heldItemRow(g, out, y, item);
+			y = equipItemRow(g, out, y, item);
 		}
 		return y;
 	}
 
-	private int heldItemRow(Graphics2D g, List<Button> out, int y, EquipItemDef item)
+	/** Every equip item the player owns in one slot, in inventory order. */
+	private List<EquipItemDef> ownedInSlot(EquipItemDef.Slot slot)
 	{
-		int h = 32;
-		Rectangle row = new Rectangle(8, y, width - 16, h);
-		drawButtonBg(g, row, true);
-
-		int icon = 24;
-		BufferedImage img = item.getSprite() == null ? null : itemIcon(item.getSprite());
-		if (img != null)
+		List<EquipItemDef> owned = new ArrayList<>();
+		for (Map.Entry<String, Integer> e : roster.getItemInventory().entrySet())
 		{
-			drawFit(g, img, row.x + 5, row.y + (h - icon) / 2, icon, icon);
-		}
-		int textX = row.x + 5 + icon + 6;
-
-		// Who's wearing it right now, so the player can see it's in use without opening the chooser.
-		List<String> wearers = new ArrayList<>();
-		for (String speciesId : roster.getTeam())
-		{
-			PetInstance pet = roster.getPet(speciesId);
-			SpeciesDef sp = db.species(speciesId);
-			if (pet != null && sp != null && item.getId().equals(pet.getHeldItemId()))
+			EquipItemDef item = db.equipItem(e.getKey());
+			if (item != null && item.getSlot() == slot && e.getValue() > 0)
 			{
-				wearers.add(sp.getName());
+				owned.add(item);
 			}
 		}
-		int spare = roster.itemCount(item.getId());
-		g.setFont(FontManager.getRunescapeFont());
-		g.setColor(Color.WHITE);
-		String name = item.getName() + (spare > 0 ? "  x" + spare : "");
-		g.drawString(clip(g, name, row.width - (textX - row.x) - 60), textX, y + 14);
-		g.setColor(MUTED);
-		String sub = wearers.isEmpty() ? effectText(item) : "Worn by " + String.join(", ", wearers);
-		g.drawString(clip(g, sub, row.width - (textX - row.x) - 60), textX, y + 27);
-
-		// The row opens the equip chooser to equip a spare or unequip a worn one.
-		g.setColor(new Color(220, 200, 120));
-		g.setFont(FontManager.getRunescapeFont());
-		String label = spare > 0 ? "Equip" : "Manage";
-		g.drawString(label, row.x + row.width - g.getFontMetrics().stringWidth(label) - 8, y + 20);
-		out.add(new Button(row, "equip.open:" + item.getId()));
-		return y + h + 4;
+		return owned;
 	}
 
 	/** The bundled icon for an item id, or null (cached) if none is present. */
@@ -2128,39 +2164,24 @@ public class HubView
 		y += 18;
 		String heldId = pet.getHeldItemId();
 		y = selectRow(g, out, y, "None", heldId == null, "pet.held.clear:" + species.getId(), true);
-		// Spare held items to choose from, plus whatever this pet already wears (so it stays selectable
-		// even with no spares left).
-		LinkedHashMap<String, EquipItemDef> heldOwned = new LinkedHashMap<>();
-		for (Map.Entry<String, Integer> e : roster.getItemInventory().entrySet())
-		{
-			EquipItemDef item = db.equipItem(e.getKey());
-			if (item != null && item.getSlot() == EquipItemDef.Slot.HELD && e.getValue() > 0)
-			{
-				heldOwned.put(item.getId(), item);
-			}
-		}
-		if (heldId != null)
-		{
-			EquipItemDef worn = db.equipItem(heldId);
-			if (worn != null && worn.getSlot() == EquipItemDef.Slot.HELD)
-			{
-				heldOwned.putIfAbsent(worn.getId(), worn);
-			}
-		}
+		// Every held item owned, including the ones other pets are carrying: picking one of those moves
+		// it here, and the row says whose pet it comes off.
+		List<EquipItemDef> heldOwned = ownedInSlot(EquipItemDef.Slot.HELD);
 		if (heldOwned.isEmpty())
 		{
 			hint(g, "No held items yet - buy one in the Store.", y);
 			y += 16;
 		}
-		for (EquipItemDef item : heldOwned.values())
+		for (EquipItemDef item : heldOwned)
 		{
-			y = selectRow(g, out, y, item.getName() + "  [" + effectText(item) + "]",
-				item.getId().equals(heldId), "pet.held:" + species.getId() + ":" + item.getId(), true);
+			boolean worn = item.getId().equals(heldId);
+			y = selectRow(g, out, y, equipChoiceLabel(item, worn, effectText(item)), worn,
+				"pet.held:" + species.getId() + ":" + item.getId(), true);
 		}
 		y += 6;
 
-		// Cosmetic choosers. Unlike held items these aren't stock-limited, so every owned cosmetic is
-		// always offered — the same hat can sit on all three team pets at once.
+		// Cosmetic choosers. Every owned cosmetic is offered even when all its copies are out: unlike a
+		// held item, picking one that's fully worn moves it here rather than failing (see setCosmetic).
 		y = cosmeticChooser(g, out, y, species, pet, EquipItemDef.Slot.HEAD, "Head");
 		y = cosmeticChooser(g, out, y, species, pet, EquipItemDef.Slot.FACE, "Face");
 
@@ -2228,7 +2249,10 @@ public class HubView
 			"pet.cosmetic.clear:" + species.getId() + ":" + slot.name(), true);
 		for (EquipItemDef item : fits)
 		{
-			y = selectRow(g, out, y, item.getName(), item.getId().equals(wornId),
+			// Every copy already out: picking it here takes it off whoever has worn it longest, so the
+			// row says whose. Still selectable — one hat you can move, not a locked-out row.
+			boolean worn = item.getId().equals(wornId);
+			y = selectRow(g, out, y, equipChoiceLabel(item, worn, null), worn,
 				"pet.cosmetic:" + species.getId() + ":" + item.getId(), true);
 		}
 		return y + 6;
@@ -2389,8 +2413,14 @@ public class HubView
 		String occupantId = pet == null ? null : wornCosmetic(pet, item.getSlot());
 		EquipItemDef occupant = occupantId == null ? null : db.equipItem(occupantId);
 		String cur = occupant == null ? null : occupant.getName();
+		// An item whose copies are all worn moves off its longest-standing wearer when equipped here;
+		// name that pet so the cost of the tap is on screen before it's paid.
+		List<String> elsewhere = wearing ? new ArrayList<>() : wearerNames(item.getId());
+		boolean moves = !wearing && !elsewhere.isEmpty()
+			&& elsewhere.size() >= roster.itemCapacity(item.getId());
 		g.setColor(MUTED);
 		String sub = !owned ? "Not unlocked" : wearing ? "Equipped"
+			: moves ? "Takes it from " + elsewhere.get(0)
 			: cur != null ? (cosmetic ? "Wears " + cur : "Holds " + cur) : "Lv " + level;
 		g.drawString(clip(g, sub, row.width - (textX - row.x) - actionW), textX, y + 26);
 
@@ -2402,19 +2432,20 @@ public class HubView
 				? "pet.cosmetic.clear:" + speciesId + ":" + item.getSlot().name()
 				: "pet.held.clear:" + speciesId));
 		}
-		// Cosmetics are a wardrobe, not stock, so they're always equippable; held items need a spare.
-		else if (owned && (cosmetic || roster.itemCount(item.getId()) > 0))
+		// Owning the item is enough to act: at capacity it moves off another pet rather than failing.
+		else if (owned && roster.itemCapacity(item.getId()) > 0)
 		{
+			String label = moves ? "Move" : "Equip";
 			g.setColor(new Color(220, 200, 120));
-			g.drawString("Equip", row.x + row.width - g.getFontMetrics().stringWidth("Equip") - 8, y + 20);
+			g.drawString(label, row.x + row.width - g.getFontMetrics().stringWidth(label) - 8, y + 20);
 			out.add(new Button(row, (cosmetic ? "pet.cosmetic:" : "pet.held:")
 				+ speciesId + ":" + item.getId()));
 		}
 		else if (owned)
 		{
-			// Owned pet, but every unit of this item is already equipped elsewhere.
+			// The pet is fine, but the player no longer owns a copy of this item at all.
 			g.setColor(MUTED);
-			g.drawString("None left", row.x + row.width - g.getFontMetrics().stringWidth("None left") - 8, y + 20);
+			g.drawString("None owned", row.x + row.width - g.getFontMetrics().stringWidth("None owned") - 8, y + 20);
 		}
 		return y + h + 4;
 	}
