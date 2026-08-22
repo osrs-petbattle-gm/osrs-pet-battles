@@ -32,6 +32,15 @@ public class BattleState
 	private final Set<Integer>[] participated;
 	private Phase phase = Phase.IN_PROGRESS;
 	private int turnNumber;
+	// Who wins a speed tie, or -1 for a coin flip (the default, used by trainer battles).
+	// See {@link #setSpeedTieSide} for why PvP pins it.
+	private int speedTieSide = -1;
+	// Whether a fainted pet is replaced automatically on BOTH sides rather than the player being
+	// prompted. See {@link #setAutoReplace}.
+	private boolean autoReplace;
+	// How the opposing side is named in battle text ("Enemy sends out …"). PvP swaps in the
+	// opponent's display name.
+	private String enemyLabel = "Enemy";
 
 	@SuppressWarnings("unchecked")
 	public BattleState(List<BattlePet> playerTeam, List<BattlePet> enemyTeam)
@@ -98,6 +107,59 @@ public class BattleState
 	public int getTurnNumber()
 	{
 		return turnNumber;
+	}
+
+	/**
+	 * Which side wins a speed tie, or -1 (the default) to flip a coin off the battle RNG.
+	 */
+	public int getSpeedTieSide()
+	{
+		return speedTieSide;
+	}
+
+	/**
+	 * Pin speed ties to one side instead of flipping for them. Lockstep PvP needs this: the two
+	 * clients hold mirrored states (each is its own PLAYER), so a shared coin flip would send the
+	 * turn order opposite ways. Pinning it to the challenger's physical side resolves the tie to
+	 * the same pet on both clients <em>and</em> draws nothing from the shared RNG stream, keeping
+	 * every later roll in step.
+	 */
+	public void setSpeedTieSide(int side)
+	{
+		this.speedTieSide = side;
+	}
+
+	/**
+	 * Whether a faint sends in the next living pet automatically on both sides.
+	 */
+	public boolean isAutoReplace()
+	{
+		return autoReplace;
+	}
+
+	/**
+	 * Replace a fainted pet automatically on both sides (PvP) rather than pausing for the player to
+	 * choose ({@link Phase#PLAYER_MUST_SWITCH}). A prompt would desync lockstep: the peer's client
+	 * has to know which pet came in, and it isn't waiting on an answer. With this set, team order is
+	 * the send-out order — voluntary switches on a normal turn still work, because those <em>are</em>
+	 * exchanged.
+	 */
+	public void setAutoReplace(boolean autoReplace)
+	{
+		this.autoReplace = autoReplace;
+	}
+
+	/**
+	 * How the opposing side is named in battle text; "Enemy" unless a PvP opponent renames it.
+	 */
+	public String getEnemyLabel()
+	{
+		return enemyLabel;
+	}
+
+	public void setEnemyLabel(String enemyLabel)
+	{
+		this.enemyLabel = enemyLabel == null || enemyLabel.isEmpty() ? "Enemy" : enemyLabel;
 	}
 
 	public void nextTurn()

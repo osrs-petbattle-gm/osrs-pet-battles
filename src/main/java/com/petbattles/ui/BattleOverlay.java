@@ -144,11 +144,10 @@ public class BattleOverlay extends Overlay
 		BattlePet enemy = state.active(BattleState.ENEMY);
 		BattlePet player = state.active(BattleState.PLAYER);
 
-		// Trainer name banner
+		// Opponent banner: the trainer's name, or the other player's in a PvP battle
 		g.setFont(FontManager.getRunescapeSmallFont());
 		g.setColor(new Color(200, 190, 160));
-		String title = session.getTrainer() != null ? "vs " + session.getTrainer().getName() : "Battle";
-		g.drawString(title, 10, 14);
+		g.drawString(session.getBattleTitle(), 10, 14);
 
 		// The end-of-battle summary replaces the battle scene entirely. A quest chapter cleared by this
 		// battle plays its payoff in the quest dialog frame alongside it (see QuestDialogSession), so
@@ -212,6 +211,16 @@ public class BattleOverlay extends Overlay
 		{
 			// Turn is resolving: no move grid, just a wide dialog box with the current line
 			drawDialogBox(g);
+		}
+		else if (session.getPhase() == BattleSession.Phase.AWAITING_OPPONENT)
+		{
+			// Both players choose in secret; this side has, so there is nothing to click until the
+			// other's choice arrives. Walking away stays available, so a battle whose opponent has
+			// gone quiet is never a trap (it also times out on its own).
+			drawWaitingBox(g);
+			Rectangle quit = new Rectangle(WIDTH - 70, 4, 60, 14);
+			drawButton(g, quit, "Give up", true, null);
+			newButtons.add(new Button(quit, "abandon"));
 		}
 		else
 		{
@@ -668,6 +677,31 @@ public class BattleOverlay extends Overlay
 			g.setColor(new Color(240, 220, 120));
 			g.drawString("▼", WIDTH - 26, boxY + boxH - 8);
 		}
+	}
+
+	/**
+	 * The PvP "they haven't chosen yet" box: the same frame the battle log uses, with an animated
+	 * ellipsis so a slow opponent still reads as a live connection rather than a frozen client.
+	 */
+	private void drawWaitingBox(Graphics2D g)
+	{
+		int boxY = 156;
+		int boxH = HEIGHT - boxY - 8;
+		g.setColor(new Color(0, 0, 0, 170));
+		g.fillRoundRect(6, boxY, WIDTH - 12, boxH, 8, 8);
+		g.setColor(PANEL_EDGE);
+		g.setStroke(new BasicStroke(1));
+		g.drawRoundRect(6, boxY, WIDTH - 12, boxH, 8, 8);
+
+		int dots = (int) ((System.currentTimeMillis() / 400) % 4);
+		StringBuilder line = new StringBuilder("Waiting for your opponent");
+		for (int i = 0; i < dots; i++)
+		{
+			line.append('.');
+		}
+		g.setFont(FontManager.getRunescapeFont());
+		g.setColor(LOG_TEXT);
+		g.drawString(line.toString(), 16, boxY + 22);
 	}
 
 	private static List<String> wrap(Graphics2D g, String text, int maxWidth)

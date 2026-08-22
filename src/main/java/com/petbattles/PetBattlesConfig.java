@@ -90,6 +90,20 @@ public interface PetBattlesConfig extends Config
 		return true;
 	}
 
+	@ConfigItem(
+		keyName = "pvpBattles",
+		name = "Player-vs-player battles",
+		description = "Battle pets against other players in your RuneLite party. Both players must have"
+			+ " this on, and must have joined the same party via the Party plugin. Rosters and moves are"
+			+ " exchanged over RuneLite's own party server; nothing is sent anywhere else and no record"
+			+ " of who you fought is kept",
+		position = 7
+	)
+	default boolean pvpBattles()
+	{
+		return false;
+	}
+
 	// --- Developer-only affordances (gated on DEV; NOT config items) ---
 	// These are STATIC on purpose: RuneLite proxies the Config interface and returns null for any
 	// instance method that lacks @ConfigItem, so an instance `default` here would NPE at runtime.

@@ -3,6 +3,7 @@ package com.petbattles.ui;
 import com.petbattles.battle.BattleSession;
 import com.petbattles.data.PetDatabase;
 import com.petbattles.persist.RosterManager;
+import com.petbattles.pvp.PvpStatus;
 import com.petbattles.quest.QuestManager;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
@@ -31,10 +32,10 @@ public class HubOverlay extends Overlay
 
 	public HubOverlay(PetDatabase db, RosterManager roster, QuestManager questManager, Sprites sprites,
 		Portraits portraits, BattleSession session, BooleanSupplier atBank,
-		Supplier<Set<String>> nearTrainers, TooltipManager tooltipManager)
+		Supplier<Set<String>> nearTrainers, TooltipManager tooltipManager, PvpStatus pvp)
 	{
 		this.view = new HubView(db, roster, questManager, sprites, portraits, session, atBank, nearTrainers,
-			tooltipManager, WIDTH, false);
+			tooltipManager, pvp, WIDTH, false);
 		setPosition(OverlayPosition.BOTTOM_LEFT);
 		setLayer(OverlayLayer.ABOVE_WIDGETS);
 		setMovable(true);

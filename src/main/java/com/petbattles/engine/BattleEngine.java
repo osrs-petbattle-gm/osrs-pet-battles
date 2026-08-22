@@ -26,11 +26,20 @@ public class BattleEngine
 	 */
 	public BattleState start(List<BattlePet> playerTeam, List<BattlePet> enemyTeam, List<BattleEvent> events)
 	{
-		BattleState state = new BattleState(playerTeam, enemyTeam);
+		return start(new BattleState(playerTeam, enemyTeam), events);
+	}
+
+	/**
+	 * Emit the opening send-out events for an already-built state. The overload above covers the
+	 * ordinary case; callers that must configure the state first (PvP pins the speed tie-break and
+	 * the enemy's label before anything is announced) build it themselves and come in here.
+	 */
+	public BattleState start(BattleState state, List<BattleEvent> events)
+	{
 		events.add(BattleEvent.of(BattleEvent.Type.PET_SENT_OUT, BattleState.PLAYER,
 			"Go, " + state.active(BattleState.PLAYER).getDisplayName() + "!"));
 		events.add(BattleEvent.of(BattleEvent.Type.PET_SENT_OUT, BattleState.ENEMY,
-			"Enemy sends out " + state.active(BattleState.ENEMY).getDisplayName() + "!"));
+			state.getEnemyLabel() + " sends out " + state.active(BattleState.ENEMY).getDisplayName() + "!"));
 		return state;
 	}
 
@@ -54,19 +63,39 @@ public class BattleEngine
 			events.add(BattleEvent.of(BattleEvent.Type.BATTLE_END, -1, "The battle is over."));
 			return events;
 		}
+		// The AI never forfeits, but a PvP opponent can — which is a win, not a draw.
+		if (enemyAction.getKind() == BattleAction.Kind.FLEE)
+		{
+			state.setPhase(BattleState.Phase.PLAYER_WON);
+			events.add(BattleEvent.of(BattleEvent.Type.FLED, BattleState.ENEMY,
+				state.getEnemyLabel() + " forfeited the battle!"));
+			events.add(BattleEvent.of(BattleEvent.Type.BATTLE_END, -1, "You won the battle!"));
+			return events;
+		}
 
-		// Switches resolve before moves: the switch consumes the turn and the
-		// opponent's attack lands on the incoming pet
-		handleSwitch(state, BattleState.PLAYER, playerAction, events);
-		handleSwitch(state, BattleState.ENEMY, enemyAction, events);
+		// Switches resolve before moves: the switch consumes the turn and the opponent's attack lands
+		// on the incoming pet. Which of two simultaneous swaps is announced first doesn't change the
+		// outcome, but under lockstep it decides what each player reads, and the two clients hold
+		// mirrored sides — so PvP (the only mode that pins a tie-break side) orders them by the
+		// challenger's pet, and both screens tell the same story. Everything else leads with the
+		// player's own swap.
+		int swapFirst = state.getSpeedTieSide() >= 0 ? state.getSpeedTieSide() : BattleState.PLAYER;
+		int swapSecond = BattleState.opponent(swapFirst);
+		handleSwitch(state, swapFirst, actionFor(swapFirst, playerAction, enemyAction), events);
+		handleSwitch(state, swapSecond, actionFor(swapSecond, playerAction, enemyAction), events);
 
-		// Speed decides order; ties are a coin flip
+		// Speed decides order; ties are a coin flip unless the state pins them (PvP — see
+		// BattleState.setSpeedTieSide), which also spares the shared RNG stream a draw.
 		int playerSpd = state.active(BattleState.PLAYER).effectiveSpd();
 		int enemySpd = state.active(BattleState.ENEMY).effectiveSpd();
 		int first;
 		if (playerSpd != enemySpd)
 		{
 			first = playerSpd > enemySpd ? BattleState.PLAYER : BattleState.ENEMY;
+		}
+		else if (state.getSpeedTieSide() >= 0)
+		{
+			first = state.getSpeedTieSide();
 		}
 		else
 		{
@@ -184,7 +213,8 @@ public class BattleEngine
 		BattlePet incoming = state.active(side);
 		String text = side == BattleState.PLAYER
 			? outgoing.getDisplayName() + ", come back! Go, " + incoming.getDisplayName() + "!"
-			: "Enemy withdraws " + outgoing.getDisplayName() + " and sends out " + incoming.getDisplayName() + "!";
+			: state.getEnemyLabel() + " withdraws " + outgoing.getDisplayName()
+				+ " and sends out " + incoming.getDisplayName() + "!";
 		events.add(BattleEvent.of(BattleEvent.Type.PET_SENT_OUT, side, text));
 	}
 
@@ -352,7 +382,7 @@ public class BattleEngine
 			events.add(BattleEvent.of(BattleEvent.Type.BATTLE_END, -1,
 				playerWon ? "You won the battle!" : "You were defeated..."));
 		}
-		else if (faintedSide == BattleState.PLAYER)
+		else if (faintedSide == BattleState.PLAYER && !state.isAutoReplace())
 		{
 			// Stop and let the player pick a replacement; the forced switch consumes the
 			// round, so the incoming pet never inherits the fainted pet's queued move.
@@ -360,13 +390,16 @@ public class BattleEngine
 		}
 		else
 		{
-			// Enemy auto-sends its next pet, but the actual swap is deferred until the UI
+			// The side auto-sends its next pet, but the actual swap is deferred until the UI
 			// shows this event — so the fainted pet plays its faint animation first instead
-			// of the replacement popping in to take the hit.
-			int next = state.nextAliveIndex(BattleState.ENEMY);
-			BattlePet nextPet = state.team(BattleState.ENEMY).get(next);
-			events.add(BattleEvent.deferredSendOut(BattleState.ENEMY, next,
-				"Enemy sends out " + nextPet.getDisplayName() + "!"));
+			// of the replacement popping in to take the hit. (The player's own side only lands
+			// here under autoReplace, i.e. PvP.)
+			int next = state.nextAliveIndex(faintedSide);
+			BattlePet nextPet = state.team(faintedSide).get(next);
+			events.add(BattleEvent.deferredSendOut(faintedSide, next,
+				faintedSide == BattleState.PLAYER
+					? "Go, " + nextPet.getDisplayName() + "!"
+					: state.getEnemyLabel() + " sends out " + nextPet.getDisplayName() + "!"));
 		}
 	}
 

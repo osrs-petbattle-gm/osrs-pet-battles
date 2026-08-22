@@ -22,11 +22,12 @@ public class HubActions
 	private final Consumer<String> fightAction;
 	private final Consumer<String> locateAction;
 	private final Consumer<String> examineAction;
+	private final Consumer<String> pvpAction;
 	private final Runnable onRest;
 
 	public HubActions(HubView view, PetDatabase db, RosterManager roster,
 		Consumer<String> fightAction, Consumer<String> locateAction, Consumer<String> examineAction,
-		Runnable onRest)
+		Consumer<String> pvpAction, Runnable onRest)
 	{
 		this.view = view;
 		this.db = db;
@@ -34,6 +35,7 @@ public class HubActions
 		this.fightAction = fightAction;
 		this.locateAction = locateAction;
 		this.examineAction = examineAction;
+		this.pvpAction = pvpAction;
 		this.onRest = onRest;
 	}
 
@@ -79,6 +81,16 @@ public class HubActions
 		else if ("open:store".equals(action))
 		{
 			view.openPane(HubView.Pane.STORE);
+		}
+		else if ("open:pvp".equals(action))
+		{
+			view.openPane(HubView.Pane.PVP);
+		}
+		else if (action.startsWith("pvp."))
+		{
+			// Everything past the prefix is the PvP layer's own vocabulary; it validates its own
+			// state, so a stale button from a frame ago is simply ignored there.
+			pvpAction.accept(action.substring("pvp.".length()));
 		}
 		else if ("open:dev".equals(action))
 		{

@@ -61,6 +61,11 @@ public class RosterStore
 		// Owned equip items (EquipItemDef id -> count): held items and cosmetics won from quests or
 		// bought in the store. A pet's equipped item references an id it owns here.
 		public Map<String, Integer> itemInventory = new LinkedHashMap<>();
+		// Player-vs-player record. Two counts and nothing else: no opponent names, no match history,
+		// nothing that identifies another player — this stays a private tally on your own save, and
+		// is never published anywhere (see the PvP section of docs/plans/roadmap.md).
+		public int pvpWins = 0;
+		public int pvpLosses = 0;
 	}
 
 	private final ConfigManager configManager;

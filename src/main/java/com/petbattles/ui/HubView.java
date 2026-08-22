@@ -12,6 +12,7 @@ import com.petbattles.engine.TrainerDef;
 import com.petbattles.item.EquipItemDef;
 import com.petbattles.item.Item;
 import com.petbattles.persist.RosterManager;
+import com.petbattles.pvp.PvpStatus;
 import com.petbattles.quest.QuestDef;
 import com.petbattles.quest.QuestManager;
 import java.awt.BasicStroke;
@@ -74,6 +75,7 @@ public class HubView
 		ITEMS,
 		TRAINERS,
 		STORE,
+		PVP,
 		PET,
 		EQUIP,
 		DEV,
@@ -148,6 +150,7 @@ public class HubView
 	private static final int CHIP = 33;
 	private static final int ADD_VISIBLE = 4;
 	private static final int TRAINERS_VISIBLE = 3;
+	private static final int PVP_PEERS_VISIBLE = 6;
 	private static final int PAD = 8;
 	// Team pane slot geometry (shared by the layout and the drag drop-index calculation).
 	private static final int TEAM_SLOT_W = 46;
@@ -175,6 +178,9 @@ public class HubView
 	private final BooleanSupplier atBank;
 	private final Supplier<Set<String>> nearTrainers;
 	private final TooltipManager tooltipManager;
+	// The PvP layer's read-only view, or null when the plugin was built without one. Everything the
+	// PvP pane draws comes from here; the pane and its nav glyph disappear when it says PvP is off.
+	private final PvpStatus pvp;
 	private final BufferedImage chipIcon;
 	// Item icons loaded lazily from /com/petbattles/items/<id>.png; a null value caches a miss.
 	private final Map<String, BufferedImage> itemIconCache = new HashMap<>();
@@ -234,7 +240,8 @@ public class HubView
 
 	public HubView(PetDatabase db, RosterManager roster, QuestManager questManager, Sprites sprites,
 		Portraits portraits, BattleSession session, BooleanSupplier atBank,
-		Supplier<Set<String>> nearTrainers, TooltipManager tooltipManager, int width, boolean docked)
+		Supplier<Set<String>> nearTrainers, TooltipManager tooltipManager, PvpStatus pvp,
+		int width, boolean docked)
 	{
 		this.db = db;
 		this.roster = roster;
@@ -245,6 +252,7 @@ public class HubView
 		this.atBank = atBank;
 		this.nearTrainers = nearTrainers;
 		this.tooltipManager = tooltipManager;
+		this.pvp = pvp;
 		this.chipIcon = ImageUtil.loadImageResource(getClass(), "/com/petbattles/icons/panel_icon.png");
 		this.width = width;
 		this.docked = docked;
@@ -580,6 +588,17 @@ public class HubView
 		{
 			return null;
 		}
+		// Another player waiting on an answer outranks anything in the world: they are sitting there
+		// watching a timeout run down, and the world will still be there afterwards.
+		if (pvp != null && pvp.isEnabled())
+		{
+			PvpStatus.Peer challenger = pvp.getIncoming();
+			if (challenger != null)
+			{
+				return new Alert(Pane.PVP, "open:pvp", challenger.getName() + " challenges you!",
+					"pvp:" + challenger.getId());
+			}
+		}
 		Set<String> near = nearTrainers.get();
 		if (near.isEmpty())
 		{
@@ -620,6 +639,8 @@ public class HubView
 				return "open:quests";
 			case CHALLENGE:
 				return "open:challenge";
+			case PVP:
+				return "open:pvp";
 			default:
 				return null;
 		}
@@ -762,6 +783,8 @@ public class HubView
 				return trainersBody(g, out);
 			case STORE:
 				return storeBody(g, out);
+			case PVP:
+				return pvpBody(g, out);
 			case PET:
 				return petBody(g, out);
 			case EQUIP:
@@ -794,6 +817,8 @@ public class HubView
 				return "Trainers";
 			case STORE:
 				return "Store";
+			case PVP:
+				return "Player battles";
 			case EQUIP:
 			{
 				EquipItemDef it = equipItemId == null ? null : db.equipItem(equipItemId);
@@ -833,6 +858,11 @@ public class HubView
 		entries.add(new MenuEntry("open:store", "Store", true));
 		entries.add(new MenuEntry("open:quests", "Quests", true));
 		entries.add(new MenuEntry("open:items", "Items", true));
+		// Opt-in feature: the tab only exists once PvP is switched on in the plugin config.
+		if (pvp != null && pvp.isEnabled())
+		{
+			entries.add(new MenuEntry("open:pvp", "Battle another player", true));
+		}
 		if (roster.anyPetInjured())
 		{
 			// Rests in one click like the Team pane's button; the Rest pane still auto-opens on its
@@ -944,6 +974,14 @@ public class HubView
 				g.drawLine(cx - 7, cy - 7, cx + 7, cy + 7);
 				g.drawLine(cx - 9, cy + 5, cx - 5, cy + 9);
 				g.drawLine(cx + 5, cy + 9, cx + 9, cy + 5);
+				break;
+			case "open:pvp":  // two pets facing off across a divide
+				g.setStroke(new BasicStroke(2, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+				g.fillOval(cx - 9, cy - 4, 7, 7);
+				g.fillOval(cx + 2, cy - 4, 7, 7);
+				g.drawLine(cx, cy - 9, cx, cy + 9);
+				g.drawLine(cx - 9, cy + 7, cx - 2, cy + 7);
+				g.drawLine(cx + 2, cy + 7, cx + 9, cy + 7);
 				break;
 			case "open:store":  // wizard hat (OSRS clan-settings motif)
 				// Brim, then the cone, then a small punched-out star so it reads as "wizard".
@@ -2074,6 +2112,143 @@ public class HubView
 		if (hp != null && buy.contains(hp) && !afford)
 		{
 			hoverTooltip = "Not enough coins";
+		}
+		return y + h + 6;
+	}
+
+	// --- PvP pane -----------------------------------------------------------
+
+	/**
+	 * Battle another player: this account's private win/loss tally, then whatever the PvP layer has
+	 * to offer — a challenge waiting on an answer, one we've sent, or the other members of the party
+	 * with a Challenge button each.
+	 *
+	 * <p>There is deliberately no way to join a party from here. Party membership is the Party
+	 * plugin's business and its own panel does it properly; duplicating it would only give players
+	 * two half-answers about which party they are in.
+	 */
+	private int pvpBody(Graphics2D g, List<Button> out)
+	{
+		int y = 26;
+		if (!roster.isLoaded())
+		{
+			return loginHint(g, y);
+		}
+		if (pvp == null || !pvp.isEnabled())
+		{
+			hint(g, "Turn on \"Player-vs-player battles\" in the plugin settings.", y);
+			return y + 16;
+		}
+
+		g.setFont(FontManager.getRunescapeFont());
+		g.setColor(TEXT);
+		g.drawString(pvp.getWins() + "W / " + pvp.getLosses() + "L", 10, y + 11);
+		y += 18;
+		g.setColor(new Color(255, 255, 255, 24));
+		g.fillRect(8, y, width - 16, 1);
+		y += 9;
+
+		String note = pvp.getNote();
+		if (note != null)
+		{
+			g.setFont(FontManager.getRunescapeFont());
+			g.setColor(COIN);
+			g.drawString(clip(g, note, width - 20), 10, y + 11);
+			y += 20;
+		}
+
+		PvpStatus.Peer incoming = pvp.getIncoming();
+		if (incoming != null)
+		{
+			return pvpChallengePrompt(g, out, y, incoming);
+		}
+		PvpStatus.Peer outgoing = pvp.getOutgoing();
+		if (outgoing != null)
+		{
+			hint(g, "Waiting for " + outgoing.getName() + "…", y);
+			y += 20;
+			return fullButton(g, out, y, "Cancel", "pvp.cancel", true);
+		}
+		if (!pvp.isInParty())
+		{
+			hint(g, "Join a RuneLite party (Party plugin) with the", y);
+			hint(g, "player you want to battle.", y + 14);
+			return y + 30;
+		}
+
+		List<PvpStatus.Peer> peers = pvp.getPeers();
+		if (peers.isEmpty())
+		{
+			hint(g, "Nobody else is in your party yet.", y);
+			return y + 16;
+		}
+		boolean canFight = !session.isActive() && roster.teamCanFight() && !roster.getTeam().isEmpty();
+		if (!canFight)
+		{
+			hint(g, "Your team can't fight right now.", y);
+			y += 18;
+		}
+		// A party has no size limit, and this pane grows a row per member — cap it so a mass-event
+		// party can't produce a hub taller than the screen.
+		int shown = Math.min(peers.size(), PVP_PEERS_VISIBLE);
+		for (int i = 0; i < shown; i++)
+		{
+			y = pvpPeerRow(g, out, y, peers.get(i), canFight);
+		}
+		if (peers.size() > shown)
+		{
+			hint(g, "+" + (peers.size() - shown) + " more in the party", y);
+			y += 16;
+		}
+		return y;
+	}
+
+	/** The "X has challenged you!" prompt, with the only two answers it can have. */
+	private int pvpChallengePrompt(Graphics2D g, List<Button> out, int y, PvpStatus.Peer challenger)
+	{
+		g.setFont(FontManager.getRunescapeBoldFont());
+		g.setColor(Color.WHITE);
+		g.drawString(clip(g, challenger.getName() + " challenges you!", width - 20), 10, y + 11);
+		y += 20;
+		boolean canFight = !session.isActive() && roster.teamCanFight() && !roster.getTeam().isEmpty();
+		if (!canFight)
+		{
+			hint(g, "Your team can't fight right now.", y);
+			y += 18;
+		}
+		int gap = 6;
+		int bw = (width - 16 - gap) / 2;
+		Rectangle accept = new Rectangle(8, y, bw, 22);
+		drawButton(g, accept, "Accept", canFight, false);
+		if (canFight)
+		{
+			out.add(new Button(accept, "pvp.accept"));
+		}
+		Rectangle decline = new Rectangle(8 + bw + gap, y, width - 16 - bw - gap, 22);
+		drawButton(g, decline, "Decline", true, false);
+		out.add(new Button(decline, "pvp.decline"));
+		return y + 26;
+	}
+
+	/** One party member, with the button that challenges them. */
+	private int pvpPeerRow(Graphics2D g, List<Button> out, int y, PvpStatus.Peer peer, boolean canFight)
+	{
+		int h = 26;
+		Rectangle row = new Rectangle(8, y, width - 16, h);
+		g.setColor(new Color(0, 0, 0, 90));
+		g.fillRoundRect(row.x, row.y, row.width, row.height, 6, 6);
+
+		int btnW = 74;
+		g.setFont(FontManager.getRunescapeFont());
+		g.setColor(Color.WHITE);
+		g.drawString(clip(g, peer.getName(), row.width - btnW - 20), row.x + 8, y + 17);
+
+		Rectangle fight = new Rectangle(row.x + row.width - btnW - 6, y + (h - 18) / 2, btnW, 18);
+		boolean enabled = canFight && !pvp.isBusy();
+		drawButton(g, fight, "Challenge", enabled, false);
+		if (enabled)
+		{
+			out.add(new Button(fight, "pvp.challenge:" + peer.getId()));
 		}
 		return y + h + 6;
 	}

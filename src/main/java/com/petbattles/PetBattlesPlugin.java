@@ -20,6 +20,8 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.input.KeyManager;
 import net.runelite.client.input.MouseManager;
+import net.runelite.client.party.PartyService;
+import net.runelite.client.party.WSClient;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
@@ -47,6 +49,7 @@ import com.petbattles.follower.HeldItemTracker;
 import com.petbattles.npc.NearTrainerTracker;
 import com.petbattles.persist.RosterManager;
 import com.petbattles.persist.RosterStore;
+import com.petbattles.pvp.PvpService;
 import com.petbattles.quest.QuestDialogSession;
 import com.petbattles.quest.QuestManager;
 import com.petbattles.ui.BattleOverlay;
@@ -115,6 +118,14 @@ public class PetBattlesPlugin extends Plugin
 	@Inject
 	private TooltipManager tooltipManager;
 
+	// RuneLite's own party layer, used for player-vs-player battles. Both are runelite-client types,
+	// so they are injected rather than declared as dependencies (see AGENTS.md).
+	@Inject
+	private PartyService partyService;
+
+	@Inject
+	private WSClient wsClient;
+
 	// "Locate" pins currently on the world map (one per known trainer location). Replaced on each
 	// Locate and cleared on shutdown. A trainer like Man has many, so this is a list.
 	private final java.util.List<WorldMapPoint> locatePins = new java.util.ArrayList<>();
@@ -146,6 +157,7 @@ public class PetBattlesPlugin extends Plugin
 	private HeldItemTracker heldItemTracker;
 	private KillXpTracker killXpTracker;
 	private EasterEggTracker easterEggTracker;
+	private PvpService pvpService;
 
 	@Override
 	protected void startUp() throws Exception
@@ -186,11 +198,25 @@ public class PetBattlesPlugin extends Plugin
 		questDialogInputHandler = new QuestDialogInputHandler(questDialogOverlay, questDialog,
 			clientThread, this::startTrainerBattle);
 
+		// Player-vs-player over RuneLite's party server. Built before the hub surfaces because both
+		// read its status to draw the PvP tab.
+		pvpService = new PvpService(client, clientThread, partyService, db, roster, config, session,
+			() ->
+			{
+				if (panel != null)
+				{
+					panel.refresh();
+				}
+			});
+		PvpService.registerMessages(wsClient);
+		eventBus.register(pvpService);
+
 		// Floating hub: the HubView drawn by a movable RuneLite overlay.
 		hubOverlay = new HubOverlay(db, roster, questManager, sprites, new Portraits(), session,
-			atBankTracker::isAtBank, nearTrainerTracker::getNearTrainerIds, tooltipManager);
+			atBankTracker::isAtBank, nearTrainerTracker::getNearTrainerIds, tooltipManager, pvpService);
 		HubActions hubActions = new HubActions(hubOverlay.getView(), db, roster,
-			this::startTrainerBattle, this::locateTrainer, this::examineItem, restOverlay::play);
+			this::startTrainerBattle, this::locateTrainer, this::examineItem,
+			pvpService::dispatch, restOverlay::play);
 		// A hidden overlay keeps the bounds of its last frame, so the hit test has to go with it —
 		// otherwise clicks in a dead corner of the screen would still be swallowed by the hub.
 		HubOverlay hub = hubOverlay;
@@ -202,11 +228,12 @@ public class PetBattlesPlugin extends Plugin
 		// runs on the EDT, so the client-touching Locate/Examine callbacks are marshalled to the
 		// client thread here (Fight already marshals internally).
 		HubView panelView = new HubView(db, roster, questManager, sprites, new Portraits(), session,
-			atBankTracker::isAtBank, nearTrainerTracker::getNearTrainerIds, tooltipManager,
+			atBankTracker::isAtBank, nearTrainerTracker::getNearTrainerIds, tooltipManager, pvpService,
 			PluginPanel.PANEL_WIDTH, true);
 		HubActions panelActions = new HubActions(panelView, db, roster, this::startTrainerBattle,
 			id -> clientThread.invokeLater(() -> locateTrainer(id)),
-			id -> clientThread.invokeLater(() -> examineItem(id)), restOverlay::play);
+			id -> clientThread.invokeLater(() -> examineItem(id)),
+			action -> clientThread.invokeLater(() -> pvpService.dispatch(action)), restOverlay::play);
 		panel = new PetBattlesPanel(new HubPanel(panelView, panelActions, roster, session));
 		overlayManager.add(overlay);
 		overlayManager.add(restOverlay);
@@ -261,6 +288,12 @@ public class PetBattlesPlugin extends Plugin
 		clientToolbar.removeNavigation(navButton);
 		clearLocatePins();
 		mapPinImage = null;
+		if (pvpService != null)
+		{
+			pvpService.shutdown();
+			eventBus.unregister(pvpService);
+			PvpService.unregisterMessages(wsClient);
+		}
 		if (collectionLogSync != null)
 		{
 			eventBus.unregister(atBankTracker);
@@ -339,12 +372,14 @@ public class PetBattlesPlugin extends Plugin
 		heldItemTracker = null;
 		killXpTracker = null;
 		easterEggTracker = null;
+		pvpService = null;
 	}
 
 	@Subscribe
 	public void onGameTick(GameTick tick)
 	{
 		session.tick();
+		pvpService.tick();
 	}
 
 	@Subscribe
@@ -367,6 +402,9 @@ public class PetBattlesPlugin extends Plugin
 				easterEggTracker.resetBaselines();
 				// Conversation cursors are per-login: the next account gets its own chapter intros.
 				questDialog.reset();
+				// A PvP battle belongs to the account that started it; leaving takes it with you.
+				session.close();
+				pvpService.shutdown();
 			}
 			panel.refresh();
 		}

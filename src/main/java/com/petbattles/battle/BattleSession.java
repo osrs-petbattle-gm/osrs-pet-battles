@@ -49,6 +49,9 @@ public class BattleSession
 		IDLE,
 		ANIMATING,
 		AWAITING_INPUT,
+		// PvP only: this client has committed its action for the turn and is waiting for the
+		// opponent's to arrive before both sides resolve the same turn.
+		AWAITING_OPPONENT,
 		// Player's active pet fainted mid-turn; they must pick a replacement to continue
 		FORCED_SWITCH,
 		// The enemy just sent in a replacement after a KO; the player is offered one optional,
@@ -63,6 +66,9 @@ public class BattleSession
 	// hit-splat pops first (0 -> HP_DRAIN_START) and the bar then animates to the new value.
 	private static final float HP_DRAIN_START = 0.15f;
 	private static final float HP_DRAIN_END = 0.55f;
+
+	// Game ticks a PvP turn waits for the opponent's action before the battle is abandoned (~60s).
+	private static final int PVP_TURN_TIMEOUT_TICKS = 100;
 
 	/**
 	 * One row of the post-battle summary: a pet that fought, its ending state and rewards.
@@ -181,6 +187,24 @@ public class BattleSession
 	private MoveDef currentMove;
 	private long eventStartMs;
 
+	// --- PvP: set for the duration of a player-vs-player battle, null for every other fight ---
+	// The wire to the opponent. Its presence is what makes this a PvP battle everywhere below.
+	private PvpTurnLink pvpLink;
+	// The opponent's display name, for the battle banner and the "Enemy …" lines.
+	private String opponentName;
+	// This turn's two committed actions. The turn resolves only once both are in hand, so both
+	// clients feed the identical pair into the identical engine and see the identical fight.
+	private BattleAction localAction;
+	private BattleAction remoteAction;
+	private int localTurn = -1;
+	private int remoteTurn = -1;
+	private long remoteChecksum;
+	// Ticks spent in AWAITING_OPPONENT, so a peer that stops answering doesn't hang the battle.
+	private int waitTicks;
+	// PvP wins since the plugin started, tapering repeat rewards (see awardPvpRewards). Deliberately
+	// in memory and not keyed by opponent: nothing about who you fought is written down.
+	private int pvpWinsThisSession;
+
 	// --- presentation state: what the overlay draws, lagged behind the resolved model ---
 	// Displayed HP per pet (by identity): the value currently at rest on screen. Damage/heal
 	// events animate this toward the model value while their line is shown (see displayHp).
@@ -253,31 +277,7 @@ public class BattleSession
 		trainer = def;
 		enemyController = new AiController(def.getDifficulty(), db.getTypeChart());
 		rng = new Random();
-		pendingEvents.clear();
-		summary.clear();
-		pendingLearns.clear();
-		progress.clear();
-		shownHp.clear();
-		faintShown.clear();
-		enemyParticipants.clear();
-		hpAnimPet = null;
-		// Seed each pet's displayed HP with its starting HP so the first hit animates from full.
-		for (BattlePet bp : playerTeam)
-		{
-			shownHp.put(bp, (float) bp.getCurrentHp());
-		}
-		for (BattlePet bp : enemyTeam)
-		{
-			shownHp.put(bp, (float) bp.getCurrentHp());
-		}
-		// Snapshot starting levels so the summary can show levels gained across the fight.
-		for (BattlePet bp : playerTeam)
-		{
-			PetInstance inst = roster.getPet(bp.getSpecies().getId());
-			progress.put(bp.getSpecies().getId(), new Progress(inst != null ? inst.getLevel() : bp.getLevel()));
-		}
-		finalized = false;
-		tickCounter = 0;
+		resetForNewBattle(playerTeam, enemyTeam);
 
 		List<BattleEvent> events = new ArrayList<>();
 		events.add(BattleEvent.of(BattleEvent.Type.PET_SENT_OUT, -1,
@@ -287,6 +287,102 @@ public class BattleSession
 		roster.recordBattleFought();
 		beginAnimating();
 		return true;
+	}
+
+	/**
+	 * Start a battle against another player, with the opponent's team already validated and rebuilt
+	 * by the party layer. Returns false (with no state change) if a battle is running or the local
+	 * team is empty.
+	 *
+	 * <p>Both clients call this with mirrored teams, the same {@code seed} and opposite
+	 * {@code localIsChallenger}, then run the same engine over the same RNG stream each turn — there
+	 * is no host. Two rules are pinned here to keep those two runs identical: speed ties go to the
+	 * challenger's pet rather than to a coin flip (a shared flip would send the mirrored states
+	 * opposite ways), and a faint sends in the next living pet on both sides rather than prompting,
+	 * since a prompt is an answer the peer's client isn't waiting for. Team order is therefore the
+	 * send-out order; switching on your own turn still works, because that is exchanged.
+	 */
+	public boolean startPvpBattle(List<BattlePet> enemyTeam, String opponent, long seed,
+		boolean localIsChallenger, PvpTurnLink link)
+	{
+		if (phase != Phase.IDLE && phase != Phase.ENDED)
+		{
+			return false;
+		}
+		if (enemyTeam == null || enemyTeam.isEmpty())
+		{
+			return false;
+		}
+		List<BattlePet> playerTeam = new ArrayList<>();
+		for (String speciesId : roster.getTeam())
+		{
+			BattlePet pet = buildPlayerPet(speciesId);
+			if (pet != null)
+			{
+				playerTeam.add(pet);
+			}
+		}
+		if (playerTeam.isEmpty())
+		{
+			return false;
+		}
+
+		trainer = null;
+		enemyController = null;
+		pvpLink = link;
+		opponentName = opponent;
+		localAction = null;
+		remoteAction = null;
+		localTurn = -1;
+		remoteTurn = -1;
+		waitTicks = 0;
+		rng = new Random(seed);
+		resetForNewBattle(playerTeam, enemyTeam);
+
+		BattleState pvpState = new BattleState(playerTeam, enemyTeam);
+		pvpState.setSpeedTieSide(localIsChallenger ? BattleState.PLAYER : BattleState.ENEMY);
+		pvpState.setAutoReplace(true);
+		pvpState.setEnemyLabel(opponent);
+		List<BattleEvent> events = new ArrayList<>();
+		events.add(BattleEvent.of(BattleEvent.Type.PET_SENT_OUT, -1, opponent + " wants to battle!"));
+		state = engine.start(pvpState, events);
+		pendingEvents.addAll(events);
+		roster.recordBattleFought();
+		beginAnimating();
+		log.debug("[pvp] battle vs {} started (seed set, challenger={})", opponent, localIsChallenger);
+		return true;
+	}
+
+	/**
+	 * Clear the per-battle bookkeeping and prime the presentation state for a fresh fight: every
+	 * pet's displayed HP starts where it really is, and each of the player's pets records the level
+	 * it walked in at so the summary can report what it gained.
+	 */
+	private void resetForNewBattle(List<BattlePet> playerTeam, List<BattlePet> enemyTeam)
+	{
+		pendingEvents.clear();
+		summary.clear();
+		pendingLearns.clear();
+		progress.clear();
+		shownHp.clear();
+		faintShown.clear();
+		enemyParticipants.clear();
+		hpAnimPet = null;
+		for (BattlePet bp : playerTeam)
+		{
+			shownHp.put(bp, (float) bp.getCurrentHp());
+		}
+		for (BattlePet bp : enemyTeam)
+		{
+			shownHp.put(bp, (float) bp.getCurrentHp());
+		}
+		for (BattlePet bp : playerTeam)
+		{
+			PetInstance inst = roster.getPet(bp.getSpecies().getId());
+			progress.put(bp.getSpecies().getId(), new Progress(inst != null ? inst.getLevel() : bp.getLevel()));
+		}
+		finalized = false;
+		tickCounter = 0;
 	}
 
 	private BattlePet buildPlayerPet(String speciesId)
@@ -367,6 +463,16 @@ public class BattleSession
 	 */
 	public void tick()
 	{
+		if (phase == Phase.AWAITING_OPPONENT)
+		{
+			// A peer that stops answering (crashed, closed the client, lost its connection) would
+			// otherwise leave this battle frozen with no way out but the Close button.
+			if (++waitTicks > PVP_TURN_TIMEOUT_TICKS)
+			{
+				abandonPvp("Opponent stopped responding.");
+			}
+			return;
+		}
 		if (phase != Phase.ANIMATING)
 		{
 			return;
@@ -443,10 +549,13 @@ public class BattleSession
 		}
 		if (event != null)
 		{
-			if (event.getType() == BattleEvent.Type.FAINTED && event.getSide() == BattleState.ENEMY)
+			if (event.getType() == BattleEvent.Type.FAINTED && event.getSide() == BattleState.ENEMY
+				&& pvpLink == null)
 			{
 				// An enemy just went down: reward the active pet now and queue its level-up /
-				// move-learning lines to play right after this faint line.
+				// move-learning lines to play right after this faint line. PvP pays out at the end
+				// instead — a mid-battle level-up would grow this client's pet and not the peer's
+				// copy of it, and the two simulations would part company on the next hit.
 				awardFaintXp();
 			}
 			currentEvent = event;
@@ -464,8 +573,10 @@ public class BattleSession
 				// its faint animation and the replacement appears exactly on this line
 				state.setActive(event.getSide(), event.getValue());
 				// The enemy just sent in a fresh pet after a KO — flag an optional free swap for
-				// the player, honoured at the drain below if they still have a benched pet.
-				if (event.getSide() == BattleState.ENEMY)
+				// the player, honoured at the drain below if they still have a benched pet. Not
+				// offered in PvP: taking it would move this client's active pet without the
+				// opponent's client ever hearing about it.
+				if (event.getSide() == BattleState.ENEMY && pvpLink == null)
 				{
 					freeSwitchOffer = true;
 				}
@@ -559,9 +670,7 @@ public class BattleSession
 		{
 			return;
 		}
-		BattleAction enemyAction = enemyController.chooseAction(state, BattleState.ENEMY, rng);
-		pendingEvents.addAll(engine.resolveTurn(state, BattleAction.move(moveIndex), enemyAction, rng));
-		beginAnimating();
+		commitAction(BattleAction.move(moveIndex));
 	}
 
 	/**
@@ -574,9 +683,104 @@ public class BattleSession
 		{
 			return;
 		}
-		BattleAction enemyAction = enemyController.chooseAction(state, BattleState.ENEMY, rng);
-		pendingEvents.addAll(engine.resolveTurn(state, BattleAction.switchTo(teamIndex), enemyAction, rng));
+		commitAction(BattleAction.switchTo(teamIndex));
+	}
+
+	/**
+	 * The player's action for this turn is decided. Against the AI that resolves the turn on the
+	 * spot; against another player it is published and the turn waits for theirs, so both clients
+	 * resolve the same pair of actions.
+	 */
+	private void commitAction(BattleAction action)
+	{
+		if (pvpLink == null)
+		{
+			BattleAction enemyAction = enemyController.chooseAction(state, BattleState.ENEMY, rng);
+			pendingEvents.addAll(engine.resolveTurn(state, action, enemyAction, rng));
+			beginAnimating();
+			return;
+		}
+		localAction = action;
+		localTurn = state.getTurnNumber();
+		waitTicks = 0;
+		phase = Phase.AWAITING_OPPONENT;
+		pvpLink.sendAction(localTurn, action, pvpLink.checksum(state));
+		resolvePvpTurnIfReady();
+	}
+
+	/**
+	 * The opponent has committed their action for {@code turn}. It may land before this client has
+	 * finished animating the previous turn, so it is simply held until both sides are on the same
+	 * turn and this client is actually waiting.
+	 */
+	public void onOpponentAction(int turn, BattleAction action, long checksum)
+	{
+		if (pvpLink == null || state == null || state.isOver())
+		{
+			return;
+		}
+		remoteTurn = turn;
+		remoteAction = action;
+		remoteChecksum = checksum;
+		resolvePvpTurnIfReady();
+	}
+
+	/**
+	 * Run the turn once both players' actions are in hand and they agree on what the board looked
+	 * like beforehand. A checksum mismatch means the two simulations have drifted apart — there is
+	 * no authority to ask, so the battle is abandoned rather than shown two different ways.
+	 */
+	private void resolvePvpTurnIfReady()
+	{
+		if (phase != Phase.AWAITING_OPPONENT || localAction == null || remoteAction == null
+			|| remoteTurn != localTurn)
+		{
+			return;
+		}
+		if (remoteChecksum != pvpLink.checksum(state))
+		{
+			log.debug("[pvp] desync on turn {}: local {} vs remote {}",
+				localTurn, pvpLink.checksum(state), remoteChecksum);
+			abandonPvp("The two clients disagreed on the battle state.");
+			return;
+		}
+		BattleAction mine = localAction;
+		BattleAction theirs = remoteAction;
+		localAction = null;
+		remoteAction = null;
+		pendingEvents.addAll(engine.resolveTurn(state, mine, theirs, rng));
 		beginAnimating();
+	}
+
+	/**
+	 * Give up on a running PvP battle: tell the opponent why, show the player the same reason, and
+	 * close the window. Damage taken so far still persists, exactly as a forfeit-close does.
+	 */
+	public void abandonPvp(String reason)
+	{
+		if (pvpLink == null)
+		{
+			return;
+		}
+		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
+			"<col=ff7700>Pet Battles:</col> Battle abandoned. " + reason, null);
+		closeInternal(reason);
+	}
+
+	/**
+	 * End a PvP battle because the opponent already told us it is over on their side. Nothing is
+	 * sent back — they know — so this is the quiet counterpart to {@link #abandonPvp}.
+	 */
+	public void opponentAbandoned(String reason)
+	{
+		if (pvpLink == null)
+		{
+			return;
+		}
+		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
+			"<col=ff7700>Pet Battles:</col> " + reason, null);
+		pvpLink = null;
+		close();
 	}
 
 	/**
@@ -627,9 +831,7 @@ public class BattleSession
 		{
 			return;
 		}
-		BattleAction enemyAction = enemyController.chooseAction(state, BattleState.ENEMY, rng);
-		pendingEvents.addAll(engine.resolveTurn(state, BattleAction.flee(), enemyAction, rng));
-		beginAnimating();
+		commitAction(BattleAction.flee());
 	}
 
 	/**
@@ -637,13 +839,31 @@ public class BattleSession
 	 */
 	public void close()
 	{
+		closeInternal("Your opponent left the battle.");
+	}
+
+	/**
+	 * Shared teardown. {@code abandonReason} is only used when a PvP battle is still running: the
+	 * opponent is sitting waiting for an action that is never coming, so they are told why.
+	 */
+	private void closeInternal(String abandonReason)
+	{
+		boolean abandoned = state != null && !finalized && phase != Phase.IDLE;
 		// Forfeit-closing mid-battle still persists the damage taken so far
-		if (state != null && !finalized && phase != Phase.IDLE)
+		if (abandoned)
 		{
 			persistTeamHp();
 			roster.petChanged();
 			onRosterChanged.run();
 		}
+		PvpTurnLink link = pvpLink;
+		pvpLink = null;
+		opponentName = null;
+		localAction = null;
+		remoteAction = null;
+		localTurn = -1;
+		remoteTurn = -1;
+		waitTicks = 0;
 		phase = Phase.IDLE;
 		state = null;
 		trainer = null;
@@ -659,6 +879,12 @@ public class BattleSession
 		currentMove = null;
 		// A pending payoff conversation is deliberately left alone: closing this window is what
 		// releases it to the quest dialog frame.
+		if (link != null && abandoned)
+		{
+			// The opponent is still sitting at their move grid waiting on an action that will never
+			// come; tell them so their side ends too.
+			link.onAbandoned(abandonReason);
+		}
 	}
 
 	/**
@@ -906,7 +1132,14 @@ public class BattleSession
 		finalized = true;
 		// Battle damage survives the fight: heal at a bank to restore it
 		persistTeamHp();
-		if (state.getPhase() == BattleState.Phase.PLAYER_WON)
+		if (pvpLink != null)
+		{
+			PvpTurnLink link = pvpLink;
+			pvpLink = null;
+			awardPvpRewards();
+			link.onBattleFinished(state.getPhase());
+		}
+		else if (state.getPhase() == BattleState.Phase.PLAYER_WON)
 		{
 			// The win count must be read before recordTrainerDefeated bumps it, so this win is paid
 			// at the rate its own prior-win count earned.
@@ -916,6 +1149,98 @@ public class BattleSession
 		}
 		roster.petChanged();
 		onRosterChanged.run();
+	}
+
+	/**
+	 * Settle a finished PvP battle: record the result, and on a win pay XP and coins once, here at
+	 * the end rather than per faint. That timing is the point — the fight is over, so growing a pet
+	 * can no longer put this client's simulation out of step with the opponent's — and it means the
+	 * level-up and move-learn lines land in the same drain the summary follows.
+	 *
+	 * <p>Repeat wins taper with {@link Leveling#repeatFactor}, counted over the wins this client has
+	 * had since the plugin started rather than per opponent: it takes the shine off two friends
+	 * farming each other for an evening without writing down a single thing about who was fought.
+	 */
+	private void awardPvpRewards()
+	{
+		boolean won = state.getPhase() == BattleState.Phase.PLAYER_WON;
+		roster.recordPvpResult(won);
+		if (!won)
+		{
+			return;
+		}
+		int priorWins = pvpWinsThisSession++;
+		List<BattlePet> team = state.team(BattleState.PLAYER);
+		List<BattlePet> earners = new ArrayList<>();
+		for (int i = 0; i < team.size(); i++)
+		{
+			if (state.hasFought(BattleState.PLAYER, i))
+			{
+				earners.add(team.get(i));
+			}
+		}
+		int share = Math.max(1, earners.size());
+		int mult = Math.max(1, PetBattlesConfig.devXpMultiplier());
+		List<BattleEvent> inject = new ArrayList<>();
+		boolean anyAward = false;
+		int totalEnemyLevels = 0;
+		for (BattlePet foe : state.team(BattleState.ENEMY))
+		{
+			totalEnemyLevels += foe.getLevel();
+		}
+
+		for (BattlePet earner : earners)
+		{
+			String speciesId = earner.getSpecies().getId();
+			PetInstance pet = roster.getPet(speciesId);
+			SpeciesDef species = db.species(speciesId);
+			if (pet == null || species == null || pet.getLevel() >= Leveling.MAX_LEVEL)
+			{
+				continue;
+			}
+			int oldLevel = pet.getLevel();
+			Progress p = progress.computeIfAbsent(speciesId, k -> new Progress(oldLevel));
+			// One share of the whole opposing team, since beating it took beating all of it.
+			long xp = 0;
+			for (BattlePet foe : state.team(BattleState.ENEMY))
+			{
+				xp += Leveling.battleWinXp(foe.getLevel(), pet.getLevel(), priorWins);
+			}
+			xp = Math.max(1, xp * mult / share);
+			xp = Leveling.capBattleXp(pet.getXp(), xp, p.startLevel);
+			if (xp <= 0)
+			{
+				continue;
+			}
+			int gained = pet.addXp(xp);
+			p.xp += xp;
+			anyAward = true;
+			inject.add(BattleEvent.value(BattleEvent.Type.XP_GAINED, BattleState.PLAYER, (int) xp,
+				displayName(pet, species) + " gained " + xp + " XP!"));
+			if (gained > 0)
+			{
+				int newLevel = pet.getLevel();
+				inject.add(BattleEvent.value(BattleEvent.Type.LEVEL_UP, BattleState.PLAYER, newLevel,
+					displayName(pet, species) + " grew to level " + newLevel + "!"));
+				learnMovesForLevelUp(pet, species, oldLevel, newLevel, p, inject);
+			}
+		}
+		if (anyAward)
+		{
+			roster.petChanged();
+		}
+		long coins = Leveling.battleWinCoins(totalEnemyLevels, priorWins);
+		if (coins > 0)
+		{
+			long balance = roster.addCoins(coins);
+			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
+				"<col=ff7700>Pet Battles:</col> You earned <col=ffff00>" + coins + "</col> coins. "
+					+ "(Wallet: <col=ffff00>" + balance + "</col>)", null);
+		}
+		for (int i = inject.size() - 1; i >= 0; i--)
+		{
+			pendingEvents.addFirst(inject.get(i));
+		}
 	}
 
 	/**
@@ -1081,6 +1406,16 @@ public class BattleSession
 	public TrainerDef getTrainer()
 	{
 		return trainer;
+	}
+
+	/** The battle banner: whoever is on the other side of this fight. */
+	public String getBattleTitle()
+	{
+		if (trainer != null)
+		{
+			return "vs " + trainer.getName();
+		}
+		return opponentName != null ? "vs " + opponentName : "Battle";
 	}
 
 	/**

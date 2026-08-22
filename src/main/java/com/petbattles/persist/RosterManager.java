@@ -530,6 +530,39 @@ public class RosterManager
 	}
 
 	/**
+	 * How many player-vs-player battles this account has won.
+	 */
+	public synchronized int getPvpWins()
+	{
+		return data.pvpWins;
+	}
+
+	/**
+	 * How many player-vs-player battles this account has lost.
+	 */
+	public synchronized int getPvpLosses()
+	{
+		return data.pvpLosses;
+	}
+
+	/**
+	 * Record the outcome of a player-vs-player battle. Only the running totals are kept -- never who
+	 * was fought -- and they stay on this save; there is no leaderboard to publish them to.
+	 */
+	public synchronized void recordPvpResult(boolean won)
+	{
+		if (won)
+		{
+			data.pvpWins++;
+		}
+		else
+		{
+			data.pvpLosses++;
+		}
+		save();
+	}
+
+	/**
 	 * The player's soft-currency wallet balance: coins earned from battles and quests, spent in the
 	 * store. Purely local -- never in-game GP, never real money, never reported anywhere.
 	 */

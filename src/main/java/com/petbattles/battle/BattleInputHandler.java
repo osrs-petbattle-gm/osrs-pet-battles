@@ -121,6 +121,11 @@ public class BattleInputHandler extends MouseAdapter
 		{
 			session.submitFlee();
 		}
+		else if ("abandon".equals(action))
+		{
+			// PvP only: walk away from a turn the opponent never answered.
+			session.abandonPvp("You left the battle.");
+		}
 		else if ("close".equals(action))
 		{
 			session.close();
